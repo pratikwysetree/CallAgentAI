@@ -103,13 +103,17 @@ export class CallManager {
       // End call if AI determines it should end
       if (aiResponse.shouldEndCall) {
         await this.endCall(twilioCallSid);
-        return twilioService.generateHangupTwiML();
+        return await twilioService.generateHangupTwiML();
       }
 
-      return twilioService.generateTwiML(aiResponse.message);
+      // Get campaign ID for voice synthesis
+      const callRecord = await storage.getCallByTwilioSid(twilioCallSid);
+      const campaignId = callRecord?.campaignId;
+
+      return await twilioService.generateTwiML(aiResponse.message, campaignId);
     } catch (error) {
       console.error('Error handling user input:', error);
-      return twilioService.generateTwiML("I'm sorry, I'm having technical difficulties. Let me end this call.");
+      return await twilioService.generateTwiML("I'm sorry, I'm having technical difficulties. Let me end this call.");
     }
   }
 

@@ -125,22 +125,114 @@ export class TwilioService {
     }
   }
 
-  generateTwiML(message: string): string {
-    return `<?xml version="1.0" encoding="UTF-8"?>
+  async generateTwiML(message: string, campaignId?: string): Promise<string> {
+    try {
+      // Check if campaign has specific voice configuration for Indic-TTS
+      let voiceConfig = null;
+      if (campaignId) {
+        const campaign = await storage.getCampaign(campaignId);
+        voiceConfig = campaign?.voiceConfig;
+      }
+
+      // If Indic-TTS configuration exists, generate audio file
+      if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
+        const { IndicTTSService } = await import('./indicTtsService');
+        const indicTtsService = new IndicTTSService();
+        
+        // Generate unique filename for this audio
+        const audioFilename = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.wav`;
+        const audioPath = `./temp/${audioFilename}`;
+        
+        // Synthesize speech using Indic-TTS
+        const result = await indicTtsService.synthesizeSpeech(message, audioPath, voiceConfig as any);
+        
+        if (result.success && result.audioPath) {
+          // Serve the audio file via HTTP endpoint
+          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          
+          return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="3" timeout="10">
+        <Play>${audioUrl}</Play>
+    </Gather>
+</Response>`;
+        } else {
+          console.error('Indic-TTS synthesis failed:', result.error);
+          // Fallback to default voice
+        }
+      }
+
+      // Default fallback - use Twilio's built-in voice
+      return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice">${message}</Say>
     <Gather input="speech" action="/api/twilio/gather" speechTimeout="3" timeout="10">
         <Say voice="alice">Please respond when you're ready.</Say>
     </Gather>
 </Response>`;
+    } catch (error) {
+      console.error('Error generating TwiML:', error);
+      // Fallback to simple TwiML
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="alice">${message}</Say>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="3" timeout="10">
+        <Say voice="alice">Please respond when you're ready.</Say>
+    </Gather>
+</Response>`;
+    }
   }
 
-  generateHangupTwiML(): string {
-    return `<?xml version="1.0" encoding="UTF-8"?>
+  async generateHangupTwiML(campaignId?: string): Promise<string> {
+    try {
+      const goodbyeMessage = "Thank you for your time. Goodbye!";
+      
+      // Check if campaign has Indic-TTS configuration
+      let voiceConfig = null;
+      if (campaignId) {
+        const campaign = await storage.getCampaign(campaignId);
+        voiceConfig = campaign?.voiceConfig;
+      }
+
+      if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
+        const { IndicTTSService } = await import('./indicTtsService');
+        const indicTtsService = new IndicTTSService();
+        
+        const audioFilename = `goodbye_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.wav`;
+        const audioPath = `./temp/${audioFilename}`;
+        
+        const result = await indicTtsService.synthesizeSpeech(goodbyeMessage, audioPath, voiceConfig as any);
+        
+        if (result.success && result.audioPath) {
+          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          
+          return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Hangup/>
+</Response>`;
+        }
+      }
+
+      // Default fallback
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="alice">${goodbyeMessage}</Say>
+    <Hangup/>
+</Response>`;
+    } catch (error) {
+      console.error('Error generating hangup TwiML:', error);
+      return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice">Thank you for your time. Goodbye!</Say>
     <Hangup/>
 </Response>`;
+    }
   }
 }
 

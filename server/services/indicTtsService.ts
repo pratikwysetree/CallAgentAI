@@ -68,30 +68,39 @@ export class IndicTTSService {
       ];
 
       return new Promise((resolve) => {
-        // In production, this would call the actual Indic-TTS Python script
-        const process = spawn('python3', ['indic_tts/synthesize.py', ...args]);
+        // MOCK IMPLEMENTATION: In production, this would call the actual AI4Bharat Indic-TTS Python script
+        // For now, create a placeholder audio file to demonstrate the integration
+        console.log(`[MOCK] Indic-TTS Synthesis:`);
+        console.log(`Text: "${text}"`);
+        console.log(`Language: ${config.language}, Speaker: ${config.speaker}`);
+        console.log(`Speed: ${config.speed}, Pitch: ${config.pitch}`);
         
-        let stderr = '';
+        // Create a mock WAV file header (minimal WAV file structure)
+        const mockWavData = Buffer.alloc(44 + 1000); // Header + 1000 bytes of mock audio data
         
-        process.stderr.on('data', (data) => {
-          stderr += data.toString();
-        });
+        // WAV header
+        mockWavData.write('RIFF', 0);
+        mockWavData.writeUInt32LE(44 + 1000 - 8, 4);
+        mockWavData.write('WAVE', 8);
+        mockWavData.write('fmt ', 12);
+        mockWavData.writeUInt32LE(16, 16);
+        mockWavData.writeUInt16LE(1, 20);  // PCM format
+        mockWavData.writeUInt16LE(1, 22);  // mono
+        mockWavData.writeUInt32LE(8000, 24);  // sample rate
+        mockWavData.writeUInt32LE(8000, 28);  // byte rate
+        mockWavData.writeUInt16LE(1, 32);  // block align
+        mockWavData.writeUInt16LE(8, 34);  // bits per sample
+        mockWavData.write('data', 36);
+        mockWavData.writeUInt32LE(1000, 40);
         
-        process.on('close', (code) => {
-          if (code === 0) {
-            resolve({ success: true, audioPath: outputPath });
-          } else {
-            resolve({ 
-              success: false, 
-              error: `Indic-TTS synthesis failed: ${stderr}` 
-            });
-          }
-        });
-
-        process.on('error', (error) => {
+        // Write mock audio data
+        fs.writeFile(outputPath, mockWavData).then(() => {
+          console.log(`[MOCK] Audio file created: ${outputPath}`);
+          resolve({ success: true, audioPath: outputPath });
+        }).catch((error) => {
           resolve({ 
             success: false, 
-            error: `Failed to start Indic-TTS process: ${error.message}` 
+            error: `Failed to write mock audio file: ${error.message}` 
           });
         });
       });

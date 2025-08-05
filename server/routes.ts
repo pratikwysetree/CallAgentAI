@@ -378,6 +378,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enable Indic-TTS for a campaign
+  app.post('/api/campaigns/:id/enable-indic-tts', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { language = 'hi', speaker = 'female', speed = 1.0, pitch = 1.0 } = req.body;
+      
+      const voiceConfig = {
+        useIndicTTS: true,
+        language,
+        speaker,
+        speed,
+        pitch,
+        model: 'fastpitch',
+        outputFormat: 'wav' as const
+      };
+      
+      const updatedCampaign = await storage.updateCampaign(id, { voiceConfig });
+      
+      res.json({ 
+        success: true, 
+        message: `Indic-TTS enabled for campaign with language: ${language}`,
+        voiceConfig,
+        campaign: updatedCampaign
+      });
+    } catch (error) {
+      console.error('Error enabling Indic-TTS:', error);
+      res.status(500).json({ error: 'Failed to enable Indic-TTS' });
+    }
+  });
+
   // Twilio webhook routes
   app.post('/api/twilio/voice', async (req, res) => {
     try {
@@ -389,12 +419,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Hello! I'm calling regarding ${campaign.name}. How are you today?` :
         "Hello! How are you today?";
 
-      const twiml = twilioService.generateTwiML(greeting);
+      const twiml = await twilioService.generateTwiML(greeting, campaignId as string);
       
       res.type('text/xml').send(twiml);
     } catch (error) {
       console.error('Error handling Twilio voice webhook:', error);
-      const errorTwiml = twilioService.generateHangupTwiML();
+      const errorTwiml = await twilioService.generateHangupTwiML();
       res.type('text/xml').send(errorTwiml);
     }
   });
@@ -404,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { CallSid, SpeechResult } = req.body;
       
       if (!SpeechResult) {
-        const twiml = twilioService.generateTwiML("I didn't catch that. Could you please repeat?");
+        const twiml = await twilioService.generateTwiML("I didn't catch that. Could you please repeat?");
         return res.type('text/xml').send(twiml);
       }
 
@@ -442,6 +472,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error handling Twilio status webhook:', error);
       res.status(500).send('Error');
+    }
+  });
+
+  // Serve generated audio files for Indic-TTS
+  app.get('/api/audio/:filename', async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const filePath = path.join(process.cwd(), 'temp', filename);
+      
+      // Security check - ensure filename doesn't contain path traversal
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
+      
+      // Check if file exists
+      const fs = await import('fs');
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Audio file not found' });
+      }
+      
+      // Set appropriate headers for audio
+      res.setHeader('Content-Type', 'audio/wav');
+      res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+      
+      // Stream the file
+      const stream = fs.createReadStream(filePath);
+      stream.pipe(res);
+      
+      // Clean up file after streaming (optional - for temporary files)
+      stream.on('end', () => {
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (error) {
+            console.log('Could not delete temporary audio file:', filename);
+          }
+        }, 60000); // Delete after 1 minute
+      });
+      
+    } catch (error) {
+      console.error('Error serving audio file:', error);
+      res.status(500).json({ error: 'Failed to serve audio file' });
     }
   });
 
