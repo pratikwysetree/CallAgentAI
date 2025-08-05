@@ -20,13 +20,32 @@ export interface CallOptions {
 export class TwilioService {
   async initiateCall(options: CallOptions): Promise<string> {
     try {
+      // Format phone number properly for Twilio
+      let formattedNumber = options.to;
+      if (!options.to.startsWith('+')) {
+        // Handle Indian numbers - if starts with 91, add +
+        if (options.to.startsWith('91') && options.to.length === 12) {
+          formattedNumber = `+${options.to}`;
+        }
+        // If starts with 9 and length 10, assume Indian number
+        else if (options.to.startsWith('9') && options.to.length === 10) {
+          formattedNumber = `+91${options.to}`;
+        }
+        // Otherwise add + if it's a full international number
+        else if (options.to.length > 10) {
+          formattedNumber = `+${options.to}`;
+        }
+      }
+      
+      console.log(`Initiating call from ${phoneNumber} to ${formattedNumber} for campaign ${options.campaignId}`);
+      
       // Create webhook URL for TwiML
       const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
       const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
       const webhookUrl = `${protocol}://${baseUrl}/api/twilio/voice`;
 
       const call = await client.calls.create({
-        to: options.to,
+        to: formattedNumber,
         from: phoneNumber!,
         url: `${webhookUrl}?campaignId=${options.campaignId}&contactId=${options.contactId || ''}`,
         statusCallback: `${protocol}://${baseUrl}/api/twilio/status`,
@@ -34,19 +53,31 @@ export class TwilioService {
         record: true,
       });
 
+      console.log(`Call initiated successfully. SID: ${call.sid}`);
+
       // Store call in database
       const callRecord = await storage.createCall({
         contactId: options.contactId,
         campaignId: options.campaignId,
-        phoneNumber: options.to,
+        phoneNumber: formattedNumber,
         status: 'active',
         twilioCallSid: call.sid,
       });
 
       return call.sid;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initiating call:', error);
-      throw new Error('Failed to initiate call');
+      
+      // Provide more specific error messages
+      if (error.code === 21219) {
+        throw new Error(`Phone number ${options.to} is not verified. For Twilio trial accounts, you need to verify phone numbers in the Twilio Console first. Go to Twilio Console > Phone Numbers > Verified Caller IDs to add this number.`);
+      } else if (error.code === 21215) {
+        throw new Error('Invalid phone number format. Please check the number and try again.');
+      } else if (error.code === 21210) {
+        throw new Error('Phone number is not a valid mobile number or is unreachable.');
+      } else {
+        throw new Error(`Failed to initiate call: ${error.message}`);
+      }
     }
   }
 
