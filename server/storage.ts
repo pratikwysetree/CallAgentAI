@@ -108,6 +108,7 @@ export class DatabaseStorage implements IStorage {
   async createContact(insertContact: InsertContact): Promise<Contact> {
     const [contact] = await db.insert(contacts).values({
       ...insertContact,
+      phoneNumber: insertContact.phone, // Map phone to phoneNumber for backward compatibility
       updatedAt: new Date(),
     }).returning();
     return contact;
