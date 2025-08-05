@@ -185,26 +185,36 @@ export class WhatsAppService {
   // Handle incoming WhatsApp message (webhook)
   static async handleIncomingMessage(messageData: any): Promise<void> {
     try {
-      const { from, text, timestamp, id: messageId } = messageData;
+      console.log('🔍 Processing incoming message:', JSON.stringify(messageData, null, 2));
       
-      // Get contact info or create new contact entry
-      let contactName = from; // Default to phone number
+      const { from, text, timestamp, id: messageId, type } = messageData;
       
-      // Try to find existing contact
-      const contacts = await db.select()
-        .from(whatsappChats)
-        .where(eq(whatsappChats.contactPhone, from))
+      console.log(`📱 Message details - From: ${from}, Type: ${type}, Text: ${text?.body}`);
+      
+      // Find contact by phone number (try with and without country code)
+      let contact = await db.select()
+        .from(contacts)
+        .where(eq(contacts.phone, from))
         .limit(1);
-      
-      if (contacts.length > 0) {
-        contactName = contacts[0].contactName;
+
+      // If not found, try without country code prefix
+      if (contact.length === 0 && from.startsWith('91')) {
+        const phoneWithoutCode = from.substring(2);
+        contact = await db.select()
+          .from(contacts)
+          .where(eq(contacts.phone, phoneWithoutCode))
+          .limit(1);
       }
 
+      const contactName = contact[0]?.name || 'Unknown Contact';
+      console.log(`👤 Contact found: ${contactName} (${contact[0]?.id || 'no ID'})`);
+      
       // Create or get existing chat
-      const chatId = await this.getOrCreateChat(from, from, contactName);
+      const chatId = await this.getOrCreateChat(from, contact[0]?.id, contactName);
 
       // Store incoming message
       const incomingMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`💾 Storing message: ${incomingMessageId}`);
       await db.insert(whatsappMessages).values({
         id: incomingMessageId,
         chatId,
@@ -229,7 +239,7 @@ export class WhatsAppService {
 
       console.log(`✅ Incoming WhatsApp message stored from ${from}: ${text?.body}`);
     } catch (error) {
-      console.error('Error handling incoming WhatsApp message:', error);
+      console.error('❌ Error handling incoming WhatsApp message:', error);
     }
   }
 
