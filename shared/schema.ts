@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, jsonb, serial, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -11,10 +11,12 @@ export const users = pgTable("users", {
 });
 
 export const contacts = pgTable("contacts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  phoneNumber: text("phone_number").notNull(),
+  phone: text("phone").notNull(), // Changed from phoneNumber to phone for consistency
   email: text("email"),
+  city: text("city"),
+  state: text("state"),
   whatsappNumber: text("whatsapp_number"),
   company: text("company"),
   notes: text("notes"),
@@ -129,6 +131,60 @@ export const bulkMessageJobsRelations = relations(bulkMessageJobs, ({ one }) => 
   }),
 }));
 
+// Enhanced contact engagement tracking
+export const contactEngagement = pgTable('contact_engagement', {
+  id: serial('id').primaryKey(),
+  contactId: integer('contact_id').notNull().references(() => contacts.id),
+  channel: varchar('channel', { length: 20 }).notNull(), // CALL, WHATSAPP, EMAIL, BOTH
+  status: varchar('status', { length: 20 }).default('PENDING'), // PENDING, REACHED, RESPONDED, ONBOARDED, FAILED
+  campaignId: varchar('campaign_id', { length: 255 }),
+  callId: varchar('call_id', { length: 255 }),
+  whatsappMessageId: varchar('whatsapp_message_id', { length: 255 }),
+  emailId: varchar('email_id', { length: 255 }),
+  response: text('response'),
+  followUpDate: timestamp('follow_up_date'),
+  nextAction: varchar('next_action', { length: 50 }), // CALL, WHATSAPP, EMAIL, ONBOARD, CLOSE
+  attempts: integer('attempts').default(0),
+  lastContactedAt: timestamp('last_contacted_at'),
+  onboardedAt: timestamp('onboarded_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Campaign analytics tracking
+export const campaignMetrics = pgTable('campaign_metrics', {
+  id: serial('id').primaryKey(),
+  campaignId: varchar('campaign_id', { length: 255 }).notNull(),
+  date: date('date').notNull(),
+  contactsReached: integer('contacts_reached').default(0),
+  responsesReceived: integer('responses_received').default(0),
+  onboardingStarted: integer('onboarding_started').default(0),
+  onboardingCompleted: integer('onboarding_completed').default(0),
+  followUpsScheduled: integer('follow_ups_scheduled').default(0),
+  callsAttempted: integer('calls_attempted').default(0),
+  callsConnected: integer('calls_connected').default(0),
+  whatsappSent: integer('whatsapp_sent').default(0),
+  whatsappDelivered: integer('whatsapp_delivered').default(0),
+  emailsSent: integer('emails_sent').default(0),
+  emailsOpened: integer('emails_opened').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Relations for enhanced tracking
+export const contactEngagementRelations = relations(contactEngagement, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [contactEngagement.contactId],
+    references: [contacts.id],
+  }),
+}));
+
+// Update existing contacts relations to include engagements
+export const contactsEnhancedRelations = relations(contacts, ({ many }) => ({
+  engagements: many(contactEngagement),
+  calls: many(calls),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -168,6 +224,18 @@ export const insertBulkMessageJobSchema = createInsertSchema(bulkMessageJobs).om
   completedAt: true,
 });
 
+export const insertContactEngagementSchema = createInsertSchema(contactEngagement).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCampaignMetricsSchema = createInsertSchema(campaignMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -190,6 +258,12 @@ export type InsertWhatsAppTemplate = z.infer<typeof insertWhatsAppTemplateSchema
 export type BulkMessageJob = typeof bulkMessageJobs.$inferSelect;
 export type InsertBulkMessageJob = z.infer<typeof insertBulkMessageJobSchema>;
 
+export type ContactEngagement = typeof contactEngagement.$inferSelect;
+export type InsertContactEngagement = z.infer<typeof insertContactEngagementSchema>;
+
+export type CampaignMetrics = typeof campaignMetrics.$inferSelect;
+export type InsertCampaignMetrics = z.infer<typeof insertCampaignMetricsSchema>;
+
 // Extended types for API responses
 export type CallWithDetails = Call & {
   contact?: Contact;
@@ -207,4 +281,22 @@ export type DashboardStats = {
   aiAccuracy: number;
   todayConversations: number;
   dataPointsToday: number;
+  // Enhanced dashboard metrics
+  todayReached: number;
+  todayResponded: number;
+  todayOnboarded: number;
+  followUpsDue: number;
+  freshContacts: number;
+  totalEngagements: number;
+  whatsappDelivered: number;
+  emailsSent: number;
+};
+
+// Enhanced contact with engagement tracking
+export type ContactWithEngagement = Contact & {
+  latestEngagement?: ContactEngagement;
+  totalEngagements: number;
+  lastContactedAt?: string;
+  nextFollowUp?: string;
+  status: string;
 };

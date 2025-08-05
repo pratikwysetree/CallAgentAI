@@ -1,162 +1,62 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
-import type { DashboardStats } from "@shared/schema";
+import { Link, useLocation } from 'wouter';
+import { cn } from '@/lib/utils';
+import {
+  Home,
+  Users,
+  MessageSquare,
+  BarChart3,
+  Settings,
+  Phone,
+  Upload,
+  Target
+} from 'lucide-react';
 
-interface SidebarProps {
-  stats?: DashboardStats;
-}
+const navigation = [
+  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Contacts', href: '/contacts', icon: Users },
+  { name: 'Campaigns', href: '/campaigns', icon: Phone },
+  { name: 'Contact Campaigns', href: '/contact-campaigns', icon: Target },
+  { name: 'WhatsApp Bulk', href: '/whatsapp-bulk', icon: MessageSquare },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Settings', href: '/enhanced-settings', icon: Settings },
+];
 
-export default function Sidebar({ stats }: SidebarProps) {
+export default function Sidebar() {
   const [location] = useLocation();
-  
-  // Fetch system status
-  const { data: systemStatus } = useQuery<{
-    database: string;
-    twilio: string;
-    openai: string;
-    timestamp: string;
-  }>({
-    queryKey: ['/api/system/status'],
-    refetchInterval: 30000,
-  });
-
-  const isActive = (path: string) => {
-    if (path === '/' && location === '/') return true;
-    if (path !== '/' && location.startsWith(path)) return true;
-    return false;
-  };
 
   return (
-    <div className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
-      {/* Logo/Brand */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <i className="fas fa-phone text-white text-lg"></i>
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">AI Agent</h1>
-            <p className="text-sm text-gray-500">Calling Platform</p>
-          </div>
-        </div>
+    <div className="flex h-full w-64 flex-col bg-white dark:bg-gray-900 border-r">
+      <div className="flex h-16 items-center px-6 border-b">
+        <Phone className="h-8 w-8 text-blue-600" />
+        <span className="ml-2 text-xl font-bold">AI Caller</span>
       </div>
-
-      {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-2">
-        <Link href="/">
-          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-            isActive('/') 
-              ? 'bg-primary text-white' 
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}>
-            <i className="fas fa-tachometer-alt w-5"></i>
-            <span>Dashboard</span>
-          </a>
-        </Link>
-        
-        <div className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700">
-          <i className="fas fa-phone-alt w-5"></i>
-          <span>Active Calls ({stats?.activeCalls || 0})</span>
-        </div>
-        
-        <div className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700">
-          <i className="fas fa-history w-5"></i>
-          <span>Call History</span>
-        </div>
-        
-        <Link href="/contacts">
-          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-            isActive('/contacts') 
-              ? 'bg-primary text-white font-medium' 
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}>
-            <i className="fas fa-database w-5"></i>
-            <span>Contact Database</span>
-          </a>
-        </Link>
-        
-        <Link href="/campaigns">
-          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-            isActive('/campaigns') 
-              ? 'bg-primary text-white font-medium' 
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}>
-            <i className="fas fa-brain w-5"></i>
-            <span>AI Configuration</span>
-          </a>
-        </Link>
-        
-        <Link href="/analytics">
-          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-            isActive('/analytics') 
-              ? 'bg-primary text-white font-medium' 
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}>
-            <i className="fas fa-chart-line w-5"></i>
-            <span>Analytics</span>
-          </a>
-        </Link>
-        
-        <Link href="/settings">
-          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-            isActive('/settings') 
-              ? 'bg-primary text-white font-medium' 
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}>
-            <i className="fas fa-cog w-5"></i>
-            <span>Settings</span>
-          </a>
-        </Link>
-        
-        <Link href="/enhanced-settings">
-          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-            isActive('/enhanced-settings') 
-              ? 'bg-primary text-white font-medium' 
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}>
-            <i className="fas fa-sliders-h w-5"></i>
-            <span>Advanced Settings</span>
-          </a>
-        </Link>
-        
-        <Link href="/whatsapp-bulk">
-          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-            isActive('/whatsapp-bulk') 
-              ? 'bg-primary text-white font-medium' 
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}>
-            <i className="fab fa-whatsapp w-5"></i>
-            <span>WhatsApp Bulk</span>
-          </a>
-        </Link>
+      <nav className="flex-1 space-y-1 px-4 py-4">
+        {navigation.map((item) => {
+          const isActive = location === item.href;
+          return (
+            <Link key={item.name} href={item.href}>
+              <a
+                className={cn(
+                  'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
+                  isActive
+                    ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                )}
+              >
+                <item.icon
+                  className={cn(
+                    'mr-3 h-5 w-5 flex-shrink-0',
+                    isActive
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300'
+                  )}
+                />
+                {item.name}
+              </a>
+            </Link>
+          );
+        })}
       </nav>
-
-      {/* System Status */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Twilio Status</span>
-            <span className={`flex items-center ${systemStatus?.twilio === 'connected' ? 'text-success' : 'text-error'}`}>
-              <div className={`w-2 h-2 rounded-full mr-2 ${systemStatus?.twilio === 'connected' ? 'bg-success' : 'bg-error'}`}></div>
-              {systemStatus?.twilio === 'connected' ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">OpenAI Status</span>
-            <span className={`flex items-center ${systemStatus?.openai === 'active' ? 'text-success' : 'text-error'}`}>
-              <div className={`w-2 h-2 rounded-full mr-2 ${systemStatus?.openai === 'active' ? 'bg-success' : 'bg-error'}`}></div>
-              {systemStatus?.openai === 'active' ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Database</span>
-            <span className={`flex items-center ${systemStatus?.database === 'online' ? 'text-success' : 'text-error'}`}>
-              <div className={`w-2 h-2 rounded-full mr-2 ${systemStatus?.database === 'online' ? 'bg-success' : 'bg-error'}`}></div>
-              {systemStatus?.database === 'online' ? 'Online' : 'Offline'}
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

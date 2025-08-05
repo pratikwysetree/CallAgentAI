@@ -1,5 +1,6 @@
 import { 
   users, contacts, campaigns, calls, callMessages, whatsappTemplates, bulkMessageJobs,
+  contactEngagement, campaignMetrics,
   type User, type InsertUser, 
   type Contact, type InsertContact,
   type Campaign, type InsertCampaign,
@@ -7,6 +8,7 @@ import {
   type CallMessage, type InsertCallMessage,
   type WhatsAppTemplate, type InsertWhatsAppTemplate,
   type BulkMessageJob, type InsertBulkMessageJob,
+  type ContactEngagement, type CampaignMetrics,
   type DashboardStats
 } from "@shared/schema";
 import { db } from "./db";
@@ -53,6 +55,18 @@ export interface IStorage {
   getWhatsAppTemplate(id: string): Promise<WhatsAppTemplate | undefined>;
   updateWhatsAppTemplate(id: string, template: Partial<InsertWhatsAppTemplate>): Promise<WhatsAppTemplate>;
 
+  // Contact Engagement (new methods for enhanced tracking)
+  createContactEngagement(engagement: any): Promise<ContactEngagement>;
+  updateContactEngagement(id: number, engagement: any): Promise<ContactEngagement>;
+  getEngagementsByCampaign(campaignId: string): Promise<ContactEngagement[]>;
+  getAllEngagements(): Promise<ContactEngagement[]>;
+  getDueFollowUps(): Promise<ContactEngagement[]>;
+
+  // Campaign Metrics
+  createCampaignMetrics(metrics: any): Promise<CampaignMetrics>;
+  updateCampaignMetrics(id: number, metrics: any): Promise<CampaignMetrics>;
+  getCampaignMetrics(campaignId: string, date: string): Promise<CampaignMetrics | undefined>;
+
   // Bulk Message Jobs
   createBulkMessageJob(job: InsertBulkMessageJob): Promise<BulkMessageJob>;
   updateBulkMessageJob(job: BulkMessageJob): Promise<BulkMessageJob>;
@@ -79,12 +93,15 @@ export class DatabaseStorage implements IStorage {
 
   // Contacts
   async getContact(id: string): Promise<Contact | undefined> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
-    return contact || undefined;
+    if (typeof id === 'string' && !isNaN(Number(id))) {
+      const [contact] = await db.select().from(contacts).where(eq(contacts.id, Number(id)));
+      return contact || undefined;
+    }
+    return undefined;
   }
 
   async getContactByPhone(phoneNumber: string): Promise<Contact | undefined> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.phoneNumber, phoneNumber));
+    const [contact] = await db.select().from(contacts).where(eq(contacts.phone, phoneNumber));
     return contact || undefined;
   }
 
@@ -99,9 +116,49 @@ export class DatabaseStorage implements IStorage {
   async updateContact(id: string, updateContact: Partial<InsertContact>): Promise<Contact> {
     const [contact] = await db.update(contacts)
       .set({ ...updateContact, updatedAt: new Date() })
-      .where(eq(contacts.id, id))
+      .where(eq(contacts.id, Number(id)))
       .returning();
     return contact;
+  }
+
+  // Enhanced contact engagement methods (stubs for now until full implementation)
+  async createContactEngagement(engagement: any): Promise<any> {
+    // Stub implementation - will be fully implemented when engagement table is pushed to DB
+    console.log('Contact engagement created:', engagement);
+    return { id: 1, ...engagement };
+  }
+
+  async updateContactEngagement(id: number, engagement: any): Promise<any> {
+    console.log('Contact engagement updated:', id, engagement);
+    return { id, ...engagement };
+  }
+
+  async getEngagementsByCampaign(campaignId: string): Promise<any[]> {
+    console.log('Getting engagements for campaign:', campaignId);
+    return [];
+  }
+
+  async getAllEngagements(): Promise<any[]> {
+    return [];
+  }
+
+  async getDueFollowUps(): Promise<any[]> {
+    return [];
+  }
+
+  async createCampaignMetrics(metrics: any): Promise<any> {
+    console.log('Campaign metrics created:', metrics);
+    return { id: 1, ...metrics };
+  }
+
+  async updateCampaignMetrics(id: number, metrics: any): Promise<any> {
+    console.log('Campaign metrics updated:', id, metrics);
+    return { id, ...metrics };
+  }
+
+  async getCampaignMetrics(campaignId: string, date: string): Promise<any> {
+    console.log('Getting campaign metrics:', campaignId, date);
+    return undefined;
   }
 
   async getContacts(limit = 50): Promise<Contact[]> {

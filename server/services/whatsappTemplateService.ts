@@ -73,6 +73,72 @@ export class WhatsAppTemplateService {
     }
   }
 
+  // Pull approved templates from Meta API and sync with database
+  static async syncTemplatesFromMeta(): Promise<WhatsAppTemplate[]> {
+    try {
+      if (!this.businessAccountId || !this.accessToken) {
+        console.warn('Meta credentials not configured, using local templates only');
+        return await this.getTemplates();
+      }
+
+      const response = await fetch(`${this.baseUrl}/${this.businessAccountId}/message_templates?fields=id,name,category,language,status,components&limit=100`, {
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('Failed to fetch templates from Meta:', result.error?.message);
+        return await this.getTemplates();
+      }
+
+      const metaTemplates = result.data || [];
+      const syncedTemplates: WhatsAppTemplate[] = [];
+
+      // Sync each template with database
+      for (const metaTemplate of metaTemplates) {
+        try {
+          const templateData: InsertWhatsAppTemplate = {
+            name: metaTemplate.name,
+            category: metaTemplate.category?.toUpperCase() || 'UTILITY',
+            language: metaTemplate.language || 'en_US',
+            status: metaTemplate.status?.toUpperCase() || 'PENDING',
+            components: metaTemplate.components || [],
+            metaTemplateId: metaTemplate.id
+          };
+
+          // Try to get existing template
+          const existingTemplates = await storage.getWhatsAppTemplates();
+          const existingTemplate = existingTemplates.find(t => t.name === metaTemplate.name);
+          
+          if (existingTemplate) {
+            // Update existing template status from Meta
+            const updatedTemplate = await storage.updateWhatsAppTemplate(existingTemplate.id, {
+              status: templateData.status,
+              components: templateData.components
+            });
+            syncedTemplates.push(updatedTemplate);
+          } else {
+            // Create new template from Meta
+            const newTemplate = await storage.createWhatsAppTemplate(templateData);
+            syncedTemplates.push(newTemplate);
+          }
+        } catch (error) {
+          console.error(`Error syncing template ${metaTemplate.name}:`, error);
+        }
+      }
+
+      console.log(`Synced ${syncedTemplates.length} templates from Meta`);
+      return syncedTemplates;
+    } catch (error) {
+      console.error('Error syncing templates from Meta:', error);
+      return await this.getTemplates();
+    }
+  }
+
   // Get all templates
   static async getTemplates(): Promise<WhatsAppTemplate[]> {
     try {

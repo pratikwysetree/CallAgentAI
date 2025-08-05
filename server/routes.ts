@@ -466,6 +466,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync templates from Meta API
+  app.post('/api/whatsapp/templates/sync', async (req, res) => {
+    try {
+      const templates = await WhatsAppTemplateService.syncTemplatesFromMeta();
+      res.json({ 
+        message: `Synced ${templates.length} templates from Meta`,
+        templates 
+      });
+    } catch (error) {
+      console.error('Error syncing templates from Meta:', error);
+      res.status(500).json({ error: 'Failed to sync templates' });
+    }
+  });
+
+  // Enhanced Contact Management Routes
+  app.get('/api/contacts/enhanced', async (req, res) => {
+    try {
+      const contacts = await storage.getContacts();
+      // Transform contacts to include engagement data
+      const enhancedContacts = contacts.map(contact => ({
+        ...contact,
+        status: 'PENDING', // Default status for existing contacts
+        totalEngagements: 0,
+        lastContactedAt: null,
+        nextFollowUp: null
+      }));
+      res.json(enhancedContacts);
+    } catch (error) {
+      console.error('Error fetching enhanced contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
+  });
+
+  // CSV Contact Upload
+  app.post('/api/contacts/upload', upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const csvData = req.file.buffer.toString('utf-8');
+      const lines = csvData.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      
+      let imported = 0;
+      const errors = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        try {
+          const values = lines[i].split(',').map(v => v.trim());
+          const contactData: any = {};
+
+          headers.forEach((header, index) => {
+            const value = values[index] || '';
+            switch (header) {
+              case 'name':
+                contactData.name = value;
+                break;
+              case 'phone':
+              case 'phone_number':
+                contactData.phone = value;
+                break;
+              case 'email':
+                contactData.email = value || null;
+                break;
+              case 'city':
+                contactData.city = value || null;
+                break;
+              case 'state':
+                contactData.state = value || null;
+                break;
+            }
+          });
+
+          if (contactData.name && contactData.phone) {
+            await storage.createContact({
+              ...contactData,
+              importedFrom: 'CSV_UPLOAD'
+            });
+            imported++;
+          }
+        } catch (error) {
+          errors.push(`Row ${i + 1}: ${error.message}`);
+        }
+      }
+
+      res.json({ 
+        imported, 
+        errors: errors.length > 0 ? errors : null,
+        message: `Successfully imported ${imported} contacts`
+      });
+    } catch (error) {
+      console.error('Error uploading CSV:', error);
+      res.status(500).json({ error: 'Failed to process CSV file' });
+    }
+  });
+
+  // Campaign Analytics
+  app.get('/api/campaigns/analytics', async (req, res) => {
+    try {
+      // For now, return mock analytics until engagement tracking is fully implemented
+      const analytics = {
+        totalContacts: await storage.getContacts().then(c => c.length),
+        contacted: 0,
+        responded: 0,
+        onboarded: 0,
+        pending: await storage.getContacts().then(c => c.length),
+        failed: 0,
+        followUpsDue: 0,
+        todayActivity: {
+          reached: 0,
+          responded: 0,
+          onboarded: 0
+        }
+      };
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching campaign analytics:', error);
+      res.status(500).json({ error: 'Failed to fetch analytics' });
+    }
+  });
+
+  // Start Multi-Channel Campaign
+  app.post('/api/campaigns/start', async (req, res) => {
+    try {
+      const { contactIds, channel, whatsappTemplate, followUpDays } = req.body;
+      
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({ error: 'Contact IDs are required' });
+      }
+
+      // For now, just log the campaign start
+      console.log(`Starting ${channel} campaign for ${contactIds.length} contacts`);
+      
+      if (channel === 'WHATSAPP' || channel === 'BOTH') {
+        if (whatsappTemplate) {
+          // Send WhatsApp messages to all contacts
+          for (const contactId of contactIds) {
+            const contact = await storage.getContact(contactId.toString());
+            if (contact && contact.phone) {
+              const result = await WhatsAppTemplateService.sendTemplateMessage(
+                contact.phone,
+                whatsappTemplate,
+                'en_US'
+              );
+              console.log(`WhatsApp sent to ${contact.phone}: ${result.success}`);
+            }
+          }
+        }
+      }
+
+      res.json({ 
+        message: `Campaign started for ${contactIds.length} contacts`,
+        campaignId: `campaign_${Date.now()}`
+      });
+    } catch (error) {
+      console.error('Error starting campaign:', error);
+      res.status(500).json({ error: 'Failed to start campaign' });
+    }
+  });
+
   app.post('/api/whatsapp/templates', async (req, res) => {
     try {
       const validation = insertWhatsAppTemplateSchema.safeParse(req.body);
