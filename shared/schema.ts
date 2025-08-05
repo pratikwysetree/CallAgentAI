@@ -94,6 +94,7 @@ export const bulkMessageJobs = pgTable("bulk_message_jobs", {
 
 export const whatsappChats = pgTable("whatsapp_chats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: varchar("contact_id").references(() => contacts.id),
   contactPhone: text("contact_phone").notNull(),
   contactName: text("contact_name").notNull(),
   lastMessage: text("last_message"),
