@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { MessagingService } from "./services/messagingService";
 import { WhatsAppTemplateService } from "./services/whatsappTemplateService";
+import { WhatsAppService } from "./services/whatsappService";
 import { insertWhatsAppTemplateSchema, insertBulkMessageJobSchema } from "@shared/schema";
 import express from "express";  
 import multer from "multer";
@@ -487,8 +488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WhatsApp Chat Routes
   app.get('/api/whatsapp/chats', async (req, res) => {
     try {
-      // Return empty chats array - no dummy data
-      const chats = [];
+      const chats = await WhatsAppService.getChats();
       res.json(chats);
     } catch (error) {
       console.error('Error fetching WhatsApp chats:', error);
@@ -500,17 +500,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { chatId, message } = req.body;
       
-      const newMessage = {
-        id: `msg_${Date.now()}`,
-        chatId,
-        message,
-        direction: "outbound",
-        status: "sent",
-        timestamp: new Date().toISOString(),
-        messageType: "text"
-      };
+      if (!chatId || !message) {
+        return res.status(400).json({ error: 'chatId and message are required' });
+      }
+
+      const result = await WhatsAppService.sendChatMessage(chatId, message);
       
-      res.json(newMessage);
+      if (result.success) {
+        res.json({ success: true, messageId: result.messageId });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
     } catch (error) {
       console.error('Error sending WhatsApp message:', error);
       res.status(500).json({ error: 'Failed to send message' });
@@ -521,21 +521,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { contactId, contactPhone, contactName, message } = req.body;
       
-      // Create new chat for the contact
-      const newChatId = `chat_${Date.now()}`;
-      const newMessage = {
-        id: `msg_${Date.now()}`,
-        chatId: newChatId,
-        contactPhone,
-        contactName,
-        message,
-        direction: "outbound",
-        status: "sent",
-        timestamp: new Date().toISOString(),
-        messageType: "text"
-      };
+      if (!contactPhone || !message || !contactName) {
+        return res.status(400).json({ error: 'contactPhone, contactName, and message are required' });
+      }
+
+      const result = await WhatsAppService.sendMessage(contactPhone, message, contactName, contactId);
       
-      res.json({ newMessage, chatId: newChatId });
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          messageId: result.messageId,
+          chatId: result.chatId 
+        });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
     } catch (error) {
       console.error('Error sending WhatsApp message to contact:', error);
       res.status(500).json({ error: 'Failed to send message to contact' });
@@ -547,7 +547,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { messageId } = req.params;
       const { message } = req.body;
       
-      res.json({ id: messageId, message, updated: true });
+      if (!message) {
+        return res.status(400).json({ error: 'message is required' });
+      }
+
+      const result = await WhatsAppService.updateMessage(messageId, message);
+      
+      if (result.success) {
+        res.json({ success: true });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
     } catch (error) {
       console.error('Error updating WhatsApp message:', error);
       res.status(500).json({ error: 'Failed to update message' });
@@ -558,7 +568,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { chatId } = req.params;
       
-      res.json({ deleted: true, chatId });
+      const result = await WhatsAppService.deleteChat(chatId);
+      
+      if (result.success) {
+        res.json({ success: true });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
     } catch (error) {
       console.error('Error deleting WhatsApp chat:', error);
       res.status(500).json({ error: 'Failed to delete chat' });

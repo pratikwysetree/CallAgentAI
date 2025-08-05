@@ -1,16 +1,13 @@
-import twilio from 'twilio';
 import { db } from '../db';
 import { whatsappChats, whatsappMessages } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
 
-// Initialize Twilio client
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
 export class WhatsAppService {
-  // Send a WhatsApp message using Twilio
+  private static baseUrl = 'https://graph.facebook.com/v18.0';
+  private static accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
+  private static phoneNumberId = process.env.META_WHATSAPP_BUSINESS_PHONE_NUMBER_ID;
+
+  // Send a WhatsApp message using Meta Business API
   static async sendMessage(
     to: string,
     message: string,
@@ -18,18 +15,38 @@ export class WhatsAppService {
     contactId?: string
   ): Promise<{ success: boolean; messageId?: string; error?: string; chatId?: string }> {
     try {
-      // Ensure phone number has proper WhatsApp format
-      const whatsappNumber = to.startsWith('whatsapp:') ? to : `whatsapp:+91${to.replace(/^\+?91/, '')}`;
-      const fromNumber = `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`;
+      if (!this.accessToken || !this.phoneNumberId) {
+        throw new Error('Meta WhatsApp credentials not configured');
+      }
 
-      console.log(`Sending WhatsApp message from ${fromNumber} to ${whatsappNumber}: ${message}`);
+      // Format phone number (remove + and non-digits)
+      const cleanNumber = to.replace(/\D/g, '');
+      const whatsappNumber = cleanNumber.startsWith('91') ? cleanNumber : `91${cleanNumber}`;
 
-      // Send message via Twilio
-      const twilioMessage = await twilioClient.messages.create({
-        body: message,
-        from: fromNumber,
-        to: whatsappNumber,
+      console.log(`Sending WhatsApp message to ${whatsappNumber}: ${message}`);
+
+      // Send message via Meta WhatsApp Business API
+      const response = await fetch(`${this.baseUrl}/${this.phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: whatsappNumber,
+          type: 'text',
+          text: {
+            body: message
+          }
+        })
       });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(`WhatsApp API error: ${result.error?.message || 'Unknown error'}`);
+      }
 
       // Create or get existing chat
       const chatId = await this.getOrCreateChat(contactId || to, to, contactName);
@@ -45,7 +62,7 @@ export class WhatsAppService {
         direction: 'outbound',
         status: 'sent',
         messageType: 'text',
-        twilioMessageSid: twilioMessage.sid,
+        twilioMessageSid: result.messages?.[0]?.id || null,
         timestamp: new Date(),
       });
 

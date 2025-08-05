@@ -94,11 +94,11 @@ export const bulkMessageJobs = pgTable("bulk_message_jobs", {
 
 export const whatsappChats = pgTable("whatsapp_chats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  contactId: varchar("contact_id").references(() => contacts.id),
+  contactId: text("contact_id"),
   contactPhone: text("contact_phone").notNull(),
   contactName: text("contact_name").notNull(),
   lastMessage: text("last_message"),
-  lastMessageTime: timestamp("last_message_time").defaultNow().notNull(),
+  lastMessageTime: timestamp("last_message_time"),
   unreadCount: integer("unread_count").default(0),
   status: text("status").default("active").notNull(), // 'active', 'archived'
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -112,7 +112,7 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
   contactName: text("contact_name").notNull(),
   message: text("message").notNull(),
   direction: text("direction").notNull(), // 'outbound', 'inbound'
-  status: text("status").notNull(), // 'sent', 'delivered', 'read', 'failed'
+  status: text("status").default("sent").notNull(), // 'sent', 'delivered', 'read', 'failed'
   messageType: text("message_type").default("text").notNull(), // 'text', 'template'
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   twilioMessageSid: text("twilio_message_sid"),
