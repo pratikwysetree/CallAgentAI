@@ -74,13 +74,20 @@ export default function WhatsAppChats() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setNewMessage("");
-      toast({ title: "Message sent successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      toast({
+        title: "Message sent successfully",
+        description: "Your WhatsApp message has been sent.",
+      });
     },
     onError: (error: any) => {
       console.error('Error sending message:', error);
-      toast({ title: "Failed to send message", description: error.message || "Please try again", variant: "destructive" });
+      toast({
+        title: "Failed to send message",
+        description: error instanceof Error ? error.message : "Failed to send WhatsApp message",
+        variant: "destructive",
+      });
     }
   });
 
