@@ -44,6 +44,7 @@ export default function WhatsAppChats() {
   const [editingMessage, setEditingMessage] = useState<WhatsAppMessage | null>(null);
   const [editMessageText, setEditMessageText] = useState("");
   const [activeTab, setActiveTab] = useState("chats");
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -57,25 +58,37 @@ export default function WhatsAppChats() {
     queryKey: ['/api/contacts/enhanced'],
   });
 
+  // Filter contacts based on search term
+  const filteredContacts = contacts.filter(contact => 
+    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    contact.phone.includes(searchTerm) ||
+    (contact.company && contact.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (contact.city && contact.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (contact.state && contact.state.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   // Send message to existing chat
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { chatId: string; message: string }) => {
-      return apiRequest('/api/whatsapp/messages', 'POST', data);
+      const response = await apiRequest('POST', '/api/whatsapp/messages', data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setNewMessage("");
       toast({ title: "Message sent successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to send message", variant: "destructive" });
+    onError: (error: any) => {
+      console.error('Error sending message:', error);
+      toast({ title: "Failed to send message", description: error.message || "Please try again", variant: "destructive" });
     }
   });
 
   // Send message to contact (creates new chat)
   const sendContactMessageMutation = useMutation({
     mutationFn: async (data: { contactId: number; contactPhone: string; contactName: string; message: string }) => {
-      return apiRequest('/api/whatsapp/messages/contact', 'POST', data);
+      const response = await apiRequest('POST', '/api/whatsapp/messages/contact', data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
@@ -84,15 +97,17 @@ export default function WhatsAppChats() {
       setActiveTab("chats");
       toast({ title: "Message sent successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to send message", variant: "destructive" });
+    onError: (error: any) => {
+      console.error('Error sending message to contact:', error);
+      toast({ title: "Failed to send message", description: error.message || "Please try again", variant: "destructive" });
     }
   });
 
   // Edit message mutation
   const editMessageMutation = useMutation({
     mutationFn: async (data: { messageId: string; message: string }) => {
-      return apiRequest(`/api/whatsapp/messages/${data.messageId}`, 'PATCH', { message: data.message });
+      const response = await apiRequest('PATCH', `/api/whatsapp/messages/${data.messageId}`, { message: data.message });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
@@ -100,23 +115,26 @@ export default function WhatsAppChats() {
       setEditMessageText("");
       toast({ title: "Message updated successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to update message", variant: "destructive" });
+    onError: (error: any) => {
+      console.error('Error editing message:', error);
+      toast({ title: "Failed to update message", description: error.message || "Please try again", variant: "destructive" });
     }
   });
 
   // Delete chat mutation
   const deleteChatMutation = useMutation({
     mutationFn: async (chatId: string) => {
-      return apiRequest(`/api/whatsapp/chats/${chatId}`, 'DELETE');
+      const response = await apiRequest('DELETE', `/api/whatsapp/chats/${chatId}`);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setSelectedChat(null);
       toast({ title: "Chat deleted successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to delete chat", variant: "destructive" });
+    onError: (error: any) => {
+      console.error('Error deleting chat:', error);
+      toast({ title: "Failed to delete chat", description: error.message || "Please try again", variant: "destructive" });
     }
   });
 
@@ -253,8 +271,19 @@ export default function WhatsAppChats() {
 
                 {/* All Contacts Tab */}
                 <TabsContent value="contacts">
-                  <div className="space-y-1 max-h-[calc(100vh-350px)] overflow-y-auto">
-                    {contacts.map((contact) => (
+                  <div className="p-4 border-b">
+                    <Input
+                      placeholder="Search contacts by name, phone, company, city..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {filteredContacts.length} of {contacts.length} contacts shown
+                    </p>
+                  </div>
+                  <div className="space-y-1 max-h-[calc(100vh-450px)] overflow-y-auto">
+                    {filteredContacts.map((contact) => (
                       <div
                         key={contact.id}
                         className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
@@ -298,11 +327,11 @@ export default function WhatsAppChats() {
                         </div>
                       </div>
                     ))}
-                    {contacts.length === 0 && (
+                    {filteredContacts.length === 0 && (
                       <div className="p-8 text-center text-muted-foreground">
                         <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>No contacts available</p>
-                        <p className="text-sm mt-2">Import contacts to start messaging</p>
+                        <p>{searchTerm ? "No contacts match your search" : "No contacts available"}</p>
+                        <p className="text-sm mt-2">{searchTerm ? "Try a different search term" : "Import contacts to start messaging"}</p>
                       </div>
                     )}
                   </div>
