@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Play, Settings, FileText, Bot } from "lucide-react";
+import { Plus, Play, Settings, FileText, Bot, Mic, Volume2 } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import type { Campaign, InsertCampaign } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -24,6 +26,16 @@ export default function Campaigns() {
     voiceConfig: null,
     transcriberConfig: null,
     isActive: true,
+  });
+  
+  const [useIndicTTS, setUseIndicTTS] = useState(false);
+  const [voiceSettings, setVoiceSettings] = useState({
+    language: "hi",
+    speaker: "female",
+    speed: 1,
+    pitch: 1,
+    model: "fastpitch",
+    outputFormat: "wav"
   });
   
   const { toast } = useToast();
@@ -50,6 +62,15 @@ export default function Campaigns() {
         transcriberConfig: null,
         isActive: true,
       });
+      setUseIndicTTS(false);
+      setVoiceSettings({
+        language: "hi",
+        speaker: "female",
+        speed: 1,
+        pitch: 1,
+        model: "fastpitch",
+        outputFormat: "wav"
+      });
       toast({
         title: "Campaign created successfully",
         description: "Your new AI calling campaign is ready to use.",
@@ -65,7 +86,14 @@ export default function Campaigns() {
   });
 
   const handleAddCampaign = () => {
-    addCampaignMutation.mutate(newCampaign);
+    const campaignData = {
+      ...newCampaign,
+      voiceConfig: useIndicTTS ? {
+        ...voiceSettings,
+        useIndicTTS: true
+      } : null
+    };
+    addCampaignMutation.mutate(campaignData);
   };
 
   const startCampaign = async (campaign: Campaign) => {
@@ -172,6 +200,127 @@ export default function Campaigns() {
                       className="min-h-[80px]"
                     />
                     <p className="text-sm text-gray-500 mt-1">Optional script template for agents to follow</p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Voice Synthesis Configuration */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Volume2 className="h-4 w-4 text-blue-600" />
+                      <Label className="text-base font-semibold">Voice Synthesis Configuration</Label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="use-indic-tts"
+                        checked={useIndicTTS}
+                        onCheckedChange={(checked) => setUseIndicTTS(checked as boolean)}
+                      />
+                      <Label htmlFor="use-indic-tts" className="flex items-center space-x-2">
+                        <Mic className="h-4 w-4" />
+                        <span>Enable AI4Bharat Indic-TTS (Hindi Voice Synthesis)</span>
+                      </Label>
+                    </div>
+                    
+                    {useIndicTTS && (
+                      <div className="bg-blue-50 p-4 rounded-lg space-y-4 border border-blue-200">
+                        <p className="text-sm text-blue-800 mb-3">
+                          Configure AI-powered Hindi voice synthesis for natural Indian language calls
+                        </p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="voice-language">Language</Label>
+                            <Select
+                              value={voiceSettings.language}
+                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, language: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select language" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="hi">Hindi (हिन्दी)</SelectItem>
+                                <SelectItem value="bn">Bengali (বাংলা)</SelectItem>
+                                <SelectItem value="gu">Gujarati (ગુજરાતી)</SelectItem>
+                                <SelectItem value="mr">Marathi (मराठी)</SelectItem>
+                                <SelectItem value="ta">Tamil (தமிழ்)</SelectItem>
+                                <SelectItem value="te">Telugu (తెలుగు)</SelectItem>
+                                <SelectItem value="kn">Kannada (ಕನ್ನಡ)</SelectItem>
+                                <SelectItem value="ml">Malayalam (മലയാളം)</SelectItem>
+                                <SelectItem value="pa">Punjabi (ਪੰਜਾਬੀ)</SelectItem>
+                                <SelectItem value="or">Odia (ଓଡ଼ିଆ)</SelectItem>
+                                <SelectItem value="as">Assamese (অসমীয়া)</SelectItem>
+                                <SelectItem value="ur">Urdu (اردو)</SelectItem>
+                                <SelectItem value="ne">Nepali (नेपाली)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="voice-speaker">Speaker</Label>
+                            <Select
+                              value={voiceSettings.speaker}
+                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, speaker: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select speaker" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="female">Female Voice</SelectItem>
+                                <SelectItem value="male">Male Voice</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="voice-speed">Speech Speed: {voiceSettings.speed}x</Label>
+                            <Select
+                              value={voiceSettings.speed.toString()}
+                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, speed: parseFloat(value) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select speed" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0.7">0.7x (Slower)</SelectItem>
+                                <SelectItem value="0.8">0.8x (Slow)</SelectItem>
+                                <SelectItem value="0.9">0.9x (Slightly Slow)</SelectItem>
+                                <SelectItem value="1">1.0x (Normal)</SelectItem>
+                                <SelectItem value="1.1">1.1x (Slightly Fast)</SelectItem>
+                                <SelectItem value="1.2">1.2x (Fast)</SelectItem>
+                                <SelectItem value="1.3">1.3x (Faster)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="voice-pitch">Voice Pitch: {voiceSettings.pitch}x</Label>
+                            <Select
+                              value={voiceSettings.pitch.toString()}
+                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, pitch: parseFloat(value) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select pitch" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0.8">0.8x (Lower Pitch)</SelectItem>
+                                <SelectItem value="0.9">0.9x (Slightly Lower)</SelectItem>
+                                <SelectItem value="1">1.0x (Natural)</SelectItem>
+                                <SelectItem value="1.1">1.1x (Slightly Higher)</SelectItem>
+                                <SelectItem value="1.2">1.2x (Higher Pitch)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                          <p className="text-sm text-green-800">
+                            <strong>Preview:</strong> {voiceSettings.language === "hi" ? "Hindi" : voiceSettings.language.toUpperCase()} {voiceSettings.speaker} voice at {voiceSettings.speed}x speed with {voiceSettings.pitch}x pitch
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">
@@ -290,6 +439,25 @@ export default function Campaigns() {
                             {campaign.aiPrompt}
                           </p>
                         </div>
+                        
+                        {campaign.voiceConfig && (
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700 flex items-center space-x-1">
+                              <Volume2 className="h-3 w-3" />
+                              <span>Voice Configuration</span>
+                            </Label>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {campaign.voiceConfig.useIndicTTS ? (
+                                <span className="inline-flex items-center space-x-1">
+                                  <Mic className="h-3 w-3 text-blue-600" />
+                                  <span>AI4Bharat {campaign.voiceConfig.language?.toUpperCase()} ({campaign.voiceConfig.speaker}) - Speed: {campaign.voiceConfig.speed}x</span>
+                                </span>
+                              ) : (
+                                "Default Twilio Voice"
+                              )}
+                            </p>
+                          </div>
+                        )}
                         
                         {campaign.script && (
                           <div>
