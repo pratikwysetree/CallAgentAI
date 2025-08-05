@@ -512,14 +512,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/webhook/whatsapp', async (req, res) => {
     try {
       const body = req.body;
+      console.log('📥 Incoming WhatsApp webhook:', JSON.stringify(body, null, 2));
       
       if (body.object === 'whatsapp_business_account') {
         body.entry?.forEach((entry: any) => {
           entry.changes?.forEach((change: any) => {
             if (change.field === 'messages') {
               const messages = change.value?.messages;
+              console.log('📨 Processing messages:', messages);
               if (messages) {
                 messages.forEach(async (message: any) => {
+                  console.log('🔄 Handling incoming message:', message);
                   await WhatsAppService.handleIncomingMessage(message);
                 });
               }
