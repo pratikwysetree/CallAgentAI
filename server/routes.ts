@@ -185,6 +185,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/campaigns/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const updatedCampaign = await storage.updateCampaign(id, updates);
+      if (!updatedCampaign) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
+      
+      res.json(updatedCampaign);
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      res.status(500).json({ error: 'Failed to update campaign' });
+    }
+  });
+
   // Twilio webhook routes
   app.post('/api/twilio/voice', async (req, res) => {
     try {

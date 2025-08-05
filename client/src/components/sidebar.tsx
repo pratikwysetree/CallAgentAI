@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import type { DashboardStats } from "@shared/schema";
 
 interface SidebarProps {
@@ -6,6 +7,8 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ stats }: SidebarProps) {
+  const [location] = useLocation();
+  
   // Fetch system status
   const { data: systemStatus } = useQuery<{
     database: string;
@@ -16,6 +19,12 @@ export default function Sidebar({ stats }: SidebarProps) {
     queryKey: ['/api/system/status'],
     refetchInterval: 30000,
   });
+
+  const isActive = (path: string) => {
+    if (path === '/' && location === '/') return true;
+    if (path !== '/' && location.startsWith(path)) return true;
+    return false;
+  };
 
   return (
     <div className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
@@ -34,34 +43,70 @@ export default function Sidebar({ stats }: SidebarProps) {
 
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-2">
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 rounded-lg bg-primary text-white font-medium">
-          <i className="fas fa-tachometer-alt w-5"></i>
-          <span>Dashboard</span>
-        </a>
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+        <Link href="/">
+          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+            isActive('/') 
+              ? 'bg-primary text-white' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}>
+            <i className="fas fa-tachometer-alt w-5"></i>
+            <span>Dashboard</span>
+          </a>
+        </Link>
+        
+        <div className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700">
           <i className="fas fa-phone-alt w-5"></i>
           <span>Active Calls ({stats?.activeCalls || 0})</span>
-        </a>
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+        </div>
+        
+        <div className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700">
           <i className="fas fa-history w-5"></i>
           <span>Call History</span>
-        </a>
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-          <i className="fas fa-database w-5"></i>
-          <span>Contact Database</span>
-        </a>
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-          <i className="fas fa-brain w-5"></i>
-          <span>AI Configuration</span>
-        </a>
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-          <i className="fas fa-chart-line w-5"></i>
-          <span>Analytics</span>
-        </a>
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-          <i className="fas fa-cog w-5"></i>
-          <span>Settings</span>
-        </a>
+        </div>
+        
+        <Link href="/contacts">
+          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            isActive('/contacts') 
+              ? 'bg-primary text-white font-medium' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}>
+            <i className="fas fa-database w-5"></i>
+            <span>Contact Database</span>
+          </a>
+        </Link>
+        
+        <Link href="/campaigns">
+          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            isActive('/campaigns') 
+              ? 'bg-primary text-white font-medium' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}>
+            <i className="fas fa-brain w-5"></i>
+            <span>AI Configuration</span>
+          </a>
+        </Link>
+        
+        <Link href="/analytics">
+          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            isActive('/analytics') 
+              ? 'bg-primary text-white font-medium' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}>
+            <i className="fas fa-chart-line w-5"></i>
+            <span>Analytics</span>
+          </a>
+        </Link>
+        
+        <Link href="/settings">
+          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            isActive('/settings') 
+              ? 'bg-primary text-white font-medium' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}>
+            <i className="fas fa-cog w-5"></i>
+            <span>Settings</span>
+          </a>
+        </Link>
       </nav>
 
       {/* System Status */}
