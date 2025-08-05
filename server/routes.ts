@@ -477,6 +477,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp Chat Routes
+  app.get('/api/whatsapp/chats', async (req, res) => {
+    try {
+      // Mock WhatsApp chats with proper message status indicators
+      const chats = [
+        {
+          id: "chat1",
+          contactPhone: "919272172578",
+          contactName: "Avighna Pathlabs",
+          lastMessage: "Perfect! We would love to see a demo.",
+          lastMessageTime: new Date(Date.now() - 900000).toISOString(),
+          unreadCount: 0,
+          status: "active",
+          messages: [
+            {
+              id: "msg1",
+              chatId: "chat1",
+              contactPhone: "919272172578",
+              contactName: "Avighna Pathlabs",
+              message: "Hello! We're interested in your AI calling services.",
+              direction: "inbound",
+              status: "read",
+              timestamp: new Date(Date.now() - 3600000).toISOString(),
+              messageType: "text"
+            },
+            {
+              id: "msg2",
+              chatId: "chat1",
+              contactPhone: "919272172578",
+              contactName: "Avighna Pathlabs",
+              message: "Thank you for your interest! Our AI calling service can help you reach more customers efficiently. Would you like to schedule a demo?",
+              direction: "outbound",
+              status: "read",
+              timestamp: new Date(Date.now() - 1800000).toISOString(),
+              messageType: "text"
+            },
+            {
+              id: "msg3",
+              chatId: "chat1",
+              contactPhone: "919272172578",
+              contactName: "Avighna Pathlabs",
+              message: "Perfect! We would love to see a demo.",
+              direction: "inbound",
+              status: "read",
+              timestamp: new Date(Date.now() - 900000).toISOString(),
+              messageType: "text"
+            }
+          ]
+        },
+        {
+          id: "chat2",
+          contactPhone: "918975758509",
+          contactName: "Spect Lab",
+          lastMessage: "When can we start the campaign?",
+          lastMessageTime: new Date(Date.now() - 3600000).toISOString(),
+          unreadCount: 1,
+          status: "active",
+          messages: [
+            {
+              id: "msg4",
+              chatId: "chat2",
+              contactPhone: "918975758509",
+              contactName: "Spect Lab",
+              message: "We need help with customer outreach for our diagnostic services",
+              direction: "inbound",
+              status: "read",
+              timestamp: new Date(Date.now() - 7200000).toISOString(),
+              messageType: "text"
+            },
+            {
+              id: "msg5",
+              chatId: "chat2",
+              contactPhone: "918975758509",
+              contactName: "Spect Lab",
+              message: "Our AI calling platform can help you reach potential customers efficiently. We can customize scripts for diagnostic services.",
+              direction: "outbound",
+              status: "delivered",
+              timestamp: new Date(Date.now() - 5400000).toISOString(),
+              messageType: "text"
+            },
+            {
+              id: "msg6",
+              chatId: "chat2",
+              contactPhone: "918975758509",
+              contactName: "Spect Lab",
+              message: "When can we start the campaign?",
+              direction: "inbound",
+              status: "sent",
+              timestamp: new Date(Date.now() - 3600000).toISOString(),
+              messageType: "text"
+            }
+          ]
+        },
+        {
+          id: "chat3",
+          contactPhone: "917620768324",
+          contactName: "UNiCare Path Lab",
+          lastMessage: "How much does it cost?",
+          lastMessageTime: new Date(Date.now() - 10800000).toISOString(),
+          unreadCount: 2,
+          status: "active",
+          messages: [
+            {
+              id: "msg7",
+              chatId: "chat3",
+              contactPhone: "917620768324",
+              contactName: "UNiCare Path Lab",
+              message: "I saw your AI calling service. How much does it cost?",
+              direction: "inbound",
+              status: "read",
+              timestamp: new Date(Date.now() - 10800000).toISOString(),
+              messageType: "text"
+            }
+          ]
+        }
+      ];
+      res.json(chats);
+    } catch (error) {
+      console.error('Error fetching WhatsApp chats:', error);
+      res.status(500).json({ error: 'Failed to fetch chats' });
+    }
+  });
+
+  app.post('/api/whatsapp/messages', async (req, res) => {
+    try {
+      const { chatId, message } = req.body;
+      
+      const newMessage = {
+        id: `msg_${Date.now()}`,
+        chatId,
+        message,
+        direction: "outbound",
+        status: "sent",
+        timestamp: new Date().toISOString(),
+        messageType: "text"
+      };
+      
+      res.json(newMessage);
+    } catch (error) {
+      console.error('Error sending WhatsApp message:', error);
+      res.status(500).json({ error: 'Failed to send message' });
+    }
+  });
+
+  app.patch('/api/whatsapp/messages/:messageId', async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      const { message } = req.body;
+      
+      res.json({ id: messageId, message, updated: true });
+    } catch (error) {
+      console.error('Error updating WhatsApp message:', error);
+      res.status(500).json({ error: 'Failed to update message' });
+    }
+  });
+
+  app.delete('/api/whatsapp/chats/:chatId', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      
+      res.json({ deleted: true, chatId });
+    } catch (error) {
+      console.error('Error deleting WhatsApp chat:', error);
+      res.status(500).json({ error: 'Failed to delete chat' });
+    }
+  });
+
   // Sync templates from Meta API
   app.post('/api/whatsapp/templates/sync', async (req, res) => {
     try {
