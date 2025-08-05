@@ -1,0 +1,100 @@
+# AI Calling Agent Platform
+
+## Overview
+
+This is a comprehensive AI-powered calling platform built with a modern full-stack architecture. The application enables automated outbound calling with AI conversation capabilities, real-time monitoring, and comprehensive call management. It features a React-based dashboard for monitoring active calls, viewing call history, and managing campaigns, with AI-driven conversations powered by OpenAI and telephony services through Twilio.
+
+## Current Status (January 2025)
+
+✅ **FULLY FUNCTIONAL** - All core features are implemented and working:
+
+- **Database**: PostgreSQL with complete schema and seed data
+- **AI Integration**: OpenAI GPT-4o for natural conversations  
+- **Telephony**: Twilio SIP trunk integration for outbound calls
+- **Real-time Dashboard**: Live call monitoring with WebSocket updates
+- **Campaign Management**: 3 pre-configured campaigns ready to use
+- **Contact Database**: Sample contacts and automatic contact creation
+- **API Endpoints**: Complete REST API for all operations
+- **Webhook Integration**: Twilio webhooks for call flow control
+
+### Ready for Testing
+The application is ready for live testing with real phone calls. All required API keys have been configured:
+- OpenAI API key for AI conversations
+- Twilio credentials for phone calls
+- Database connection established
+- Sample campaigns and contacts loaded
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **UI Library**: Shadcn/ui components built on Radix UI primitives
+- **Styling**: Tailwind CSS with CSS variables for theming
+- **State Management**: TanStack Query (React Query) for server state
+- **Routing**: Wouter for lightweight client-side routing
+- **Build Tool**: Vite with hot module replacement
+- **Real-time Updates**: WebSocket integration for live call status updates
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js framework
+- **Language**: TypeScript with ES modules
+- **API Design**: RESTful endpoints with structured error handling
+- **Real-time Communication**: WebSocket server for broadcasting call events
+- **Development**: TSX for hot reloading in development mode
+- **Production Build**: ESBuild for server bundling
+
+### Database & ORM
+- **Database**: PostgreSQL with Neon serverless hosting
+- **ORM**: Drizzle ORM with type-safe schema definitions
+- **Migrations**: Drizzle Kit for schema management
+- **Connection**: Connection pooling with @neondatabase/serverless
+- **Schema**: Comprehensive tables for users, contacts, campaigns, calls, and call messages
+
+### AI Integration
+- **Provider**: OpenAI for conversation generation
+- **Context Management**: Maintains conversation history and campaign prompts
+- **Response Processing**: Structured JSON responses with call flow control
+- **Data Extraction**: Automatic extraction of conversation data points
+
+### Telephony Integration
+- **Provider**: Twilio for voice calls and telephony services
+- **Call Management**: Automated call initiation and status tracking
+- **Recording**: Built-in call recording capabilities
+- **Webhooks**: TwiML webhook handling for call events
+
+### Authentication & Security
+- **Session Management**: Express sessions with PostgreSQL storage
+- **Environment Variables**: Secure credential management for all integrations
+- **Input Validation**: Zod schemas for request validation
+- **Error Handling**: Comprehensive error boundaries and logging
+
+### Real-time Features
+- **WebSocket Server**: Bi-directional communication for live updates
+- **Event Broadcasting**: Real-time call status updates to all connected clients
+- **Dashboard Updates**: Live metrics and active call monitoring
+- **Connection Management**: Automatic reconnection and error handling
+
+### Development & Build
+- **Type Safety**: Full TypeScript coverage across frontend and backend
+- **Hot Reloading**: Vite HMR for frontend, TSX for backend development
+- **Path Aliases**: Organized imports with @ and @shared prefixes
+- **Monorepo Structure**: Shared schema and types between client and server
+
+## External Dependencies
+
+### Core Infrastructure
+- **Neon Database**: Serverless PostgreSQL hosting with connection pooling
+- **Replit Hosting**: Development and deployment environment with domain management
+
+### AI & Communication Services
+- **OpenAI API**: GPT models for natural conversation generation and response processing
+- **Twilio**: Complete telephony platform for voice calls, recording, and webhook management
+
+### Development Tools
+- **Vite Plugins**: Runtime error overlay and Replit-specific development enhancements
+- **Drizzle Kit**: Database schema management and migration tools
+- **TanStack Query**: Advanced server state management with caching and synchronization
