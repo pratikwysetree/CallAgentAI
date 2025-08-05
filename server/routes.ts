@@ -686,7 +686,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced Contact Management Routes
   app.get('/api/contacts/enhanced', async (req, res) => {
     try {
-      const contacts = await storage.getContacts();
+      // Remove any limit to fetch ALL contacts from database
+      const contacts = await storage.getContacts(undefined);
       // Transform contacts to include engagement data
       const enhancedContacts = contacts.map(contact => ({
         ...contact,

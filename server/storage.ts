@@ -162,8 +162,9 @@ export class DatabaseStorage implements IStorage {
     return undefined;
   }
 
-  async getContacts(limit = 50): Promise<Contact[]> {
-    return await db.select().from(contacts).orderBy(desc(contacts.createdAt)).limit(limit);
+  async getContacts(limit?: number): Promise<Contact[]> {
+    const query = db.select().from(contacts).orderBy(desc(contacts.createdAt));
+    return limit ? await query.limit(limit) : await query;
   }
 
   // Campaigns
