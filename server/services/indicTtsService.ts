@@ -313,27 +313,38 @@ export class IndicTTSService {
   }
 
   private getHindiPhoneme(char: string): {phoneme: string, duration: number, frequency: number} {
-    // Hindi phoneme frequencies based on AI4Bharat research
+    // Clean Hindi phoneme frequencies - reduced and more natural
     const hindiPhonemes: {[key: string]: {duration: number, frequency: number}} = {
-      'a': { duration: 0.12, frequency: 700 },  // अ
-      'e': { duration: 0.11, frequency: 400 },  // ए
-      'i': { duration: 0.10, frequency: 300 },  // इ
-      'o': { duration: 0.13, frequency: 500 },  // ओ
-      'u': { duration: 0.11, frequency: 250 },  // उ
-      'n': { duration: 0.08, frequency: 150 },  // न
-      'm': { duration: 0.09, frequency: 120 },  // म
-      's': { duration: 0.07, frequency: 800 },  // स
-      't': { duration: 0.06, frequency: 600 },  // त
-      'r': { duration: 0.08, frequency: 350 },  // र
-      'l': { duration: 0.09, frequency: 280 },  // ल
-      'h': { duration: 0.05, frequency: 100 },  // ह
-      ' ': { duration: 0.15, frequency: 0 },    // pause
+      'a': { duration: 0.12, frequency: 400 },  // अ - reduced from 700
+      'e': { duration: 0.11, frequency: 350 },  // ए - reduced from 400
+      'i': { duration: 0.10, frequency: 300 },  // इ - same
+      'o': { duration: 0.13, frequency: 380 },  // ओ - reduced from 500
+      'u': { duration: 0.11, frequency: 250 },  // उ - same
+      'n': { duration: 0.08, frequency: 200 },  // न - increased from 150
+      'm': { duration: 0.09, frequency: 180 },  // म - increased from 120
+      's': { duration: 0.07, frequency: 450 },  // स - reduced from 800
+      't': { duration: 0.06, frequency: 350 },  // त - reduced from 600
+      'r': { duration: 0.08, frequency: 300 },  // र - reduced from 350
+      'l': { duration: 0.09, frequency: 280 },  // ल - same
+      'h': { duration: 0.05, frequency: 150 },  // ह - increased from 100
+      'y': { duration: 0.08, frequency: 320 },  // य
+      'd': { duration: 0.07, frequency: 250 },  // द
+      'g': { duration: 0.08, frequency: 220 },  // ग
+      'c': { duration: 0.06, frequency: 380 },  // च
+      'k': { duration: 0.06, frequency: 300 },  // क
+      'p': { duration: 0.06, frequency: 200 },  // प
+      'b': { duration: 0.07, frequency: 180 },  // ब
+      '!': { duration: 0.10, frequency: 0 },    // exclamation pause
+      '?': { duration: 0.12, frequency: 0 },    // question pause
+      '.': { duration: 0.20, frequency: 0 },    // period pause
+      ',': { duration: 0.10, frequency: 0 },    // comma pause
+      ' ': { duration: 0.15, frequency: 0 },    // space pause
     };
     
     return {
       phoneme: char,
       duration: hindiPhonemes[char]?.duration || 0.08,
-      frequency: hindiPhonemes[char]?.frequency || 400
+      frequency: hindiPhonemes[char]?.frequency || 350
     };
   }
 
@@ -395,19 +406,25 @@ export class IndicTTSService {
       return 0; // Silence for spaces
     }
     
-    // Formant synthesis for more realistic speech
-    const baseFreq = currentPhoneme.frequency * config.pitch;
-    const formant1 = Math.sin(2 * Math.PI * baseFreq * time);
-    const formant2 = Math.sin(2 * Math.PI * baseFreq * 2.5 * time) * 0.4;
-    const formant3 = Math.sin(2 * Math.PI * baseFreq * 4 * time) * 0.2;
+    // Clean speech synthesis without noise
+    const baseFreq = Math.min(currentPhoneme.frequency * config.pitch, 800); // Limit frequency
     
-    // Gender-specific voice coloring
-    const genderMod = config.speaker === 'female' ? 1.2 : 0.8;
+    // Simple, clean sine wave synthesis
+    const fundamental = Math.sin(2 * Math.PI * baseFreq * time);
     
-    // Natural speech envelope
-    const envelope = this.getEnvelope(time, 5.0);
+    // Gentle modulation for vowels only
+    let modulation = 1.0;
+    if ('aeiouAEIOU'.includes(currentPhoneme.phoneme)) {
+      modulation = 0.9 + 0.1 * Math.sin(2 * Math.PI * 2 * time);
+    }
     
-    return (formant1 + formant2 + formant3) * envelope * genderMod * 0.25;
+    // Gender-specific pitch adjustment
+    const genderMod = config.speaker === 'female' ? 1.1 : 0.9;
+    
+    // Smooth envelope to prevent clicks
+    const envelope = this.getSmoothEnvelope(time, currentTime, currentPhoneme.duration / config.speed);
+    
+    return fundamental * envelope * modulation * genderMod * 0.15; // Reduced volume
   }
 
   private getTextModulation(time: number, text: string, config: IndicTTSConfig): number {
@@ -434,6 +451,24 @@ export class IndicTTSService {
       return time / attackTime; // Attack
     } else if (time > totalDuration - releaseTime) {
       return (totalDuration - time) / releaseTime; // Release
+    } else {
+      return 1.0; // Sustain
+    }
+  }
+
+  private getSmoothEnvelope(globalTime: number, phonemeStartTime: number, phonemeDuration: number): number {
+    const relativeTime = globalTime - phonemeStartTime;
+    const attackTime = 0.02; // Very short attack
+    const releaseTime = 0.02; // Very short release
+    
+    if (relativeTime < 0 || relativeTime > phonemeDuration) {
+      return 0; // Outside phoneme time
+    }
+    
+    if (relativeTime < attackTime) {
+      return relativeTime / attackTime; // Smooth attack
+    } else if (relativeTime > phonemeDuration - releaseTime) {
+      return (phonemeDuration - relativeTime) / releaseTime; // Smooth release
     } else {
       return 1.0; // Sustain
     }
