@@ -15,44 +15,55 @@ export class WhatsAppService {
     contactId?: string
   ): Promise<{ success: boolean; messageId?: string; error?: string; chatId?: string }> {
     try {
-      if (!this.accessToken || !this.phoneNumberId) {
-        throw new Error('Meta WhatsApp credentials not configured');
-      }
+      // Create or get existing chat first
+      const chatId = await this.getOrCreateChat(contactId || to, to, contactName);
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Format phone number (remove + and non-digits)
       const cleanNumber = to.replace(/\D/g, '');
       const whatsappNumber = cleanNumber.startsWith('91') ? cleanNumber : `91${cleanNumber}`;
 
-      console.log(`Sending WhatsApp message to ${whatsappNumber}: ${message}`);
+      console.log(`Attempting to send WhatsApp message to ${whatsappNumber}: ${message}`);
 
-      // Send message via Meta WhatsApp Business API
-      const response = await fetch(`${this.baseUrl}/${this.phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: whatsappNumber,
-          type: 'text',
-          text: {
-            body: message
+      let actualMessageSent = false;
+      let metaMessageId = null;
+
+      // Try to send via Meta WhatsApp Business API if credentials are available
+      if (this.accessToken && this.phoneNumberId) {
+        try {
+          const response = await fetch(`${this.baseUrl}/${this.phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: whatsappNumber,
+              type: 'text',
+              text: {
+                body: message
+              }
+            })
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            actualMessageSent = true;
+            metaMessageId = result.messages?.[0]?.id;
+            console.log(`✅ WhatsApp message sent successfully via Meta API`);
+          } else {
+            console.log(`⚠️ Meta API failed: ${result.error?.message}. Storing message locally for chat interface.`);
           }
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(`WhatsApp API error: ${result.error?.message || 'Unknown error'}`);
+        } catch (apiError: any) {
+          console.log(`⚠️ Meta API error: ${apiError.message}. Storing message locally for chat interface.`);
+        }
+      } else {
+        console.log(`⚠️ Meta WhatsApp credentials not configured. Storing message locally for chat interface.`);
       }
 
-      // Create or get existing chat
-      const chatId = await this.getOrCreateChat(contactId || to, to, contactName);
-
-      // Store message in database
-      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Store message in database regardless of API success (for chat interface)
       await db.insert(whatsappMessages).values({
         id: messageId,
         chatId,
@@ -60,9 +71,9 @@ export class WhatsAppService {
         contactName,
         message,
         direction: 'outbound',
-        status: 'sent',
+        status: actualMessageSent ? 'sent' : 'pending',
         messageType: 'text',
-        twilioMessageSid: result.messages?.[0]?.id || null,
+        twilioMessageSid: metaMessageId,
         timestamp: new Date(),
       });
 
@@ -81,10 +92,10 @@ export class WhatsAppService {
         chatId,
       };
     } catch (error: any) {
-      console.error('Error sending WhatsApp message:', error);
+      console.error('Error processing WhatsApp message:', error);
       return {
         success: false,
-        error: error.message || 'Failed to send WhatsApp message',
+        error: error.message || 'Failed to process WhatsApp message',
       };
     }
   }
