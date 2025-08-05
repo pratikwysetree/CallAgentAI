@@ -542,7 +542,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (contactData.name && contactData.phone) {
             await storage.createContact({
-              ...contactData,
+              name: contactData.name,
+              phone: contactData.phone,
+              email: contactData.email,
+              city: contactData.city,
+              state: contactData.state,
               importedFrom: 'CSV_UPLOAD'
             });
             imported++;
