@@ -486,6 +486,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test ElevenLabs synthesis endpoint
+  app.post('/api/elevenlabs/test-synthesis', async (req, res) => {
+    try {
+      const { text, voiceId, model } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ error: 'Text is required' });
+      }
+      
+      console.log(`🧪 Testing ElevenLabs synthesis with voice: ${voiceId}`);
+      
+      const audioFilename = `test_synthesis_${Date.now()}.mp3`;
+      const audioPath = `./temp/${audioFilename}`;
+      
+      const result = await elevenLabsService.synthesizeSpeech(text, audioPath, {
+        voiceId: voiceId || 'Z6TUNPsOxhTPtqLx81EX',
+        model: model || 'eleven_turbo_v2',
+        stability: 0.5,
+        similarityBoost: 0.75,
+        style: 0,
+        useSpeakerBoost: true,
+      });
+      
+      if (result.success) {
+        const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+        const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+        const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+        
+        res.json({
+          success: true,
+          message: 'ElevenLabs synthesis successful',
+          audioUrl,
+          audioPath: result.audioPath,
+          text,
+          voiceId,
+          model
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error,
+          message: 'ElevenLabs synthesis failed'
+        });
+      }
+    } catch (error) {
+      console.error('Error testing ElevenLabs synthesis:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Test TwiML generation endpoint
+  app.post('/api/twilio/test-twiml', async (req, res) => {
+    try {
+      const { message, campaignId } = req.body;
+      console.log(`🧪 Testing TwiML generation for campaign: ${campaignId}`);
+      
+      const twiml = await twilioService.generateTwiML(message, campaignId);
+      
+      res.json({ 
+        success: true, 
+        twiml,
+        campaignId,
+        message 
+      });
+    } catch (error) {
+      console.error('Error testing TwiML generation:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // ElevenLabs API key configuration endpoint
   app.post('/api/secrets/elevenlabs', async (req, res) => {
     try {

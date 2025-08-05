@@ -128,15 +128,58 @@ export class TwilioService {
 
   async generateTwiML(message: string, campaignId?: string): Promise<string> {
     try {
-      // Check if campaign has specific voice configuration for Indic-TTS
+      // Check if campaign has specific voice configuration
       let voiceConfig = null;
       if (campaignId) {
         const campaign = await storage.getCampaign(campaignId);
         voiceConfig = campaign?.voiceConfig;
       }
 
-      // Re-enabled Indic-TTS with fixed audio file streaming
-      if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
+      // Check for ElevenLabs TTS first (premium option)
+      if (voiceConfig && (voiceConfig as any)?.useElevenLabs) {
+        console.log(`🎤 [ELEVENLABS] ACTIVATED - Using ElevenLabs premium TTS!`);
+        console.log(`🎤 [ELEVENLABS] Voice ID: ${(voiceConfig as any).voiceId}, Model: ${(voiceConfig as any).model}`);
+        console.log(`🎤 [ELEVENLABS] Message: "${message}"`);
+        
+        const audioFilename = `elevenlabs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
+        const audioPath = `./temp/${audioFilename}`;
+        
+        try {
+          const result = await elevenLabsService.synthesizeSpeech(message, audioPath, {
+            voiceId: (voiceConfig as any).voiceId,
+            model: (voiceConfig as any).model || 'eleven_monolingual_v1',
+            stability: (voiceConfig as any).stability || 0.5,
+            similarityBoost: (voiceConfig as any).similarityBoost || 0.75,
+            style: (voiceConfig as any).style || 0,
+            useSpeakerBoost: (voiceConfig as any).useSpeakerBoost || true,
+          });
+          
+          if (result.success && result.audioPath) {
+            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+            const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+            
+            console.log(`🎤 [ELEVENLABS] SUCCESS - Premium audio generated: ${audioUrl}`);
+            console.log(`🎤 [ELEVENLABS] Using <Play> tag for ElevenLabs voice synthesis!`);
+            
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="15">
+        <Play>${audioUrl}</Play>
+    </Gather>
+</Response>`;
+          } else {
+            console.error('🎤 [ELEVENLABS] FAILED - Synthesis error:', result.error);
+            console.log('🎤 [ELEVENLABS] Falling back to Twilio voice');
+          }
+        } catch (error) {
+          console.error('🎤 [ELEVENLABS] ERROR:', error);
+          console.log('🎤 [ELEVENLABS] Falling back to Twilio voice');
+        }
+      }
+      // Check for Indic-TTS (Hindi option)
+      else if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
         console.log(`🎤 [INDIC-TTS] ACTIVATED - Using AI4Bharat TTS for Hindi voice!`);
         console.log(`🎤 [INDIC-TTS] Language: ${(voiceConfig as any).language}, Speaker: ${(voiceConfig as any).speaker}`);
         console.log(`🎤 [INDIC-TTS] Message: "${message}"`);
@@ -197,14 +240,51 @@ export class TwilioService {
     try {
       const goodbyeMessage = "Thank you for your time. Goodbye!";
       
-      // Check if campaign has Indic-TTS configuration
+      // Check if campaign has voice configuration
       let voiceConfig = null;
       if (campaignId) {
         const campaign = await storage.getCampaign(campaignId);
         voiceConfig = campaign?.voiceConfig;
       }
-
-      if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
+      
+      // Check for ElevenLabs TTS first
+      if (voiceConfig && (voiceConfig as any)?.useElevenLabs) {
+        console.log(`🎤 [ELEVENLABS] Generating goodbye message with ElevenLabs TTS`);
+        
+        const audioFilename = `elevenlabs_goodbye_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
+        const audioPath = `./temp/${audioFilename}`;
+        
+        try {
+          const result = await elevenLabsService.synthesizeSpeech(goodbyeMessage, audioPath, {
+            voiceId: (voiceConfig as any).voiceId,
+            model: (voiceConfig as any).model || 'eleven_monolingual_v1',
+            stability: (voiceConfig as any).stability || 0.5,
+            similarityBoost: (voiceConfig as any).similarityBoost || 0.75,
+            style: (voiceConfig as any).style || 0,
+            useSpeakerBoost: (voiceConfig as any).useSpeakerBoost || true,
+          });
+          
+          if (result.success && result.audioPath) {
+            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+            const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+            
+            console.log(`🎤 [ELEVENLABS] Goodbye message generated: ${audioUrl}`);
+            
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Hangup/>
+</Response>`;
+          }
+        } catch (error) {
+          console.error('🎤 [ELEVENLABS] Error generating goodbye:', error);
+        }
+      }
+      // Check for Indic-TTS
+      else if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
+        console.log(`🎤 [INDIC-TTS] Generating goodbye message with Hindi TTS`);
+        
         const { IndicTTSService } = await import('./indicTtsService');
         const indicTtsService = new IndicTTSService();
         
@@ -217,6 +297,8 @@ export class TwilioService {
           const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
           const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
           const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          
+          console.log(`🎤 [INDIC-TTS] Goodbye message generated: ${audioUrl}`);
           
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
