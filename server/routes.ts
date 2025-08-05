@@ -485,6 +485,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp webhook for incoming messages
+  app.get('/webhook/whatsapp', (req, res) => {
+    // Webhook verification
+    const verifyToken = process.env.META_WHATSAPP_VERIFY_TOKEN || 'your-verify-token';
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    if (mode === 'subscribe' && token === verifyToken) {
+      console.log('WhatsApp webhook verified');
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
+    }
+  });
+
+  app.post('/webhook/whatsapp', async (req, res) => {
+    try {
+      const body = req.body;
+      
+      if (body.object === 'whatsapp_business_account') {
+        body.entry?.forEach((entry: any) => {
+          entry.changes?.forEach((change: any) => {
+            if (change.field === 'messages') {
+              const messages = change.value?.messages;
+              if (messages) {
+                messages.forEach(async (message: any) => {
+                  await WhatsAppService.handleIncomingMessage(message);
+                });
+              }
+            }
+          });
+        });
+      }
+      
+      res.status(200).send('EVENT_RECEIVED');
+    } catch (error) {
+      console.error('Error processing WhatsApp webhook:', error);
+      res.status(500).send('Error processing webhook');
+    }
+  });
+
   // WhatsApp Chat Routes
   app.get('/api/whatsapp/chats', async (req, res) => {
     try {

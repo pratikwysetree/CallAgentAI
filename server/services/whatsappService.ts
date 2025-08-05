@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { whatsappChats, whatsappMessages } from '@shared/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 
 export class WhatsAppService {
   private static baseUrl = 'https://graph.facebook.com/v18.0';
@@ -82,7 +82,6 @@ export class WhatsAppService {
         .set({
           lastMessage: message,
           lastMessageTime: new Date(),
-          updatedAt: new Date(),
         })
         .where(eq(whatsappChats.id, chatId));
 
@@ -173,7 +172,7 @@ export class WhatsAppService {
       }
 
       const chatData = chat[0];
-      return await this.sendMessage(chatData.contactPhone, message, chatData.contactName, chatData.contactId);
+      return await this.sendMessage(chatData.contactPhone, message, chatData.contactName, chatData.contactId || undefined);
     } catch (error: any) {
       console.error('Error sending chat message:', error);
       return {
@@ -183,13 +182,63 @@ export class WhatsAppService {
     }
   }
 
+  // Handle incoming WhatsApp message (webhook)
+  static async handleIncomingMessage(messageData: any): Promise<void> {
+    try {
+      const { from, text, timestamp, id: messageId } = messageData;
+      
+      // Get contact info or create new contact entry
+      let contactName = from; // Default to phone number
+      
+      // Try to find existing contact
+      const contacts = await db.select()
+        .from(whatsappChats)
+        .where(eq(whatsappChats.contactPhone, from))
+        .limit(1);
+      
+      if (contacts.length > 0) {
+        contactName = contacts[0].contactName;
+      }
+
+      // Create or get existing chat
+      const chatId = await this.getOrCreateChat(from, from, contactName);
+
+      // Store incoming message
+      const incomingMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await db.insert(whatsappMessages).values({
+        id: incomingMessageId,
+        chatId,
+        contactPhone: from,
+        contactName,
+        message: text?.body || '',
+        direction: 'inbound',
+        status: 'received',
+        messageType: 'text',
+        twilioMessageSid: messageId,
+        timestamp: new Date(timestamp * 1000),
+      });
+
+      // Update chat with last message
+      await db.update(whatsappChats)
+        .set({
+          lastMessage: text?.body || '',
+          lastMessageTime: new Date(timestamp * 1000),
+          unreadCount: sql`${whatsappChats.unreadCount} + 1`,
+        })
+        .where(eq(whatsappChats.id, chatId));
+
+      console.log(`✅ Incoming WhatsApp message stored from ${from}: ${text?.body}`);
+    } catch (error) {
+      console.error('Error handling incoming WhatsApp message:', error);
+    }
+  }
+
   // Update message
   static async updateMessage(messageId: string, newMessage: string): Promise<{ success: boolean; error?: string }> {
     try {
       await db.update(whatsappMessages)
         .set({
           message: newMessage,
-          updatedAt: new Date(),
         })
         .where(eq(whatsappMessages.id, messageId));
 
