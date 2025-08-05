@@ -107,6 +107,17 @@ export default function Sidebar({ stats }: SidebarProps) {
             <span>Settings</span>
           </a>
         </Link>
+        
+        <Link href="/enhanced-settings">
+          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            isActive('/enhanced-settings') 
+              ? 'bg-primary text-white font-medium' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}>
+            <i className="fas fa-sliders-h w-5"></i>
+            <span>Advanced Settings</span>
+          </a>
+        </Link>
       </nav>
 
       {/* System Status */}

@@ -51,6 +51,11 @@ interface SystemSettings {
 export default function EnhancedSettings() {
   const { toast } = useToast();
   
+  const [testWhatsAppData, setTestWhatsAppData] = useState({
+    phoneNumber: '',
+    message: 'Hello from AI Calling Agent!'
+  });
+  
   const [settings, setSettings] = useState<SystemSettings>({
     openaiModel: "gpt-4o",
     indicTts: {
@@ -146,8 +151,39 @@ export default function EnhancedSettings() {
     },
   });
 
+  // WhatsApp test mutation
+  const testWhatsAppMutation = useMutation({
+    mutationFn: async (data: { phoneNumber: string; message: string }) => {
+      const response = await fetch('/api/test/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to send WhatsApp message');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: data.success ? "WhatsApp message sent!" : "Message failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error sending WhatsApp message",
+        description: "Please check your Meta WhatsApp credentials.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSaveSettings = () => {
     saveSettingsMutation.mutate(settings);
+  };
+
+  const handleTestWhatsApp = () => {
+    testWhatsAppMutation.mutate(testWhatsAppData);
   };
 
   const indicLanguages = [
@@ -566,6 +602,51 @@ export default function EnhancedSettings() {
                         />
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>WhatsApp Test</CardTitle>
+                    <CardDescription>
+                      Test your Meta WhatsApp Business API integration
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="test-phone">Phone Number</Label>
+                        <Input
+                          id="test-phone"
+                          placeholder="+1234567890"
+                          value={testWhatsAppData.phoneNumber}
+                          onChange={(e) => setTestWhatsAppData({
+                            ...testWhatsAppData,
+                            phoneNumber: e.target.value
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="test-message">Test Message</Label>
+                        <Input
+                          id="test-message"
+                          placeholder="Hello from AI Calling Agent!"
+                          value={testWhatsAppData.message}
+                          onChange={(e) => setTestWhatsAppData({
+                            ...testWhatsAppData,
+                            message: e.target.value
+                          })}
+                        />
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={handleTestWhatsApp}
+                      disabled={testWhatsAppMutation.isPending || !testWhatsAppData.phoneNumber || !testWhatsAppData.message}
+                      className="w-full"
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      {testWhatsAppMutation.isPending ? "Sending..." : "Send Test WhatsApp Message"}
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>

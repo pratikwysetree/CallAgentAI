@@ -17,7 +17,8 @@ function Router() {
       <Route path="/contacts" component={Contacts} />
       <Route path="/campaigns" component={Campaigns} />
       <Route path="/analytics" component={Analytics} />
-      <Route path="/settings" component={EnhancedSettings} />
+      <Route path="/settings" component={Settings} />
+      <Route path="/enhanced-settings" component={EnhancedSettings} />
       <Route component={NotFound} />
     </Switch>
   );

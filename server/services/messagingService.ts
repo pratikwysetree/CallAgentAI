@@ -1,8 +1,63 @@
 import { twilioService } from './twilio';
 
 export class MessagingService {
-  // Send WhatsApp message
+  // Send WhatsApp message via Meta Business API
   static async sendWhatsAppMessage(
+    whatsappNumber: string, 
+    message: string, 
+    callSummary?: string
+  ): Promise<boolean> {
+    try {
+      const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
+      const phoneNumberId = process.env.META_WHATSAPP_BUSINESS_PHONE_NUMBER_ID;
+
+      if (!accessToken || !phoneNumberId) {
+        console.log('Meta WhatsApp credentials not configured, using Twilio fallback');
+        return await this.sendWhatsAppViaTwilio(whatsappNumber, message, callSummary);
+      }
+
+      // Format WhatsApp number (remove + and non-digits)
+      const formattedNumber = whatsappNumber.replace(/\D/g, '');
+
+      // Create personalized message
+      const personalizedMessage = callSummary 
+        ? `${message}\n\nCall Summary: ${callSummary}`
+        : message;
+
+      // Send via Meta WhatsApp Business API
+      const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: formattedNumber,
+          type: 'text',
+          text: {
+            body: personalizedMessage
+          }
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.messages) {
+        console.log(`WhatsApp message sent successfully to ${whatsappNumber}`);
+        return true;
+      } else {
+        console.error('Meta WhatsApp API error:', result);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error sending WhatsApp message via Meta API:', error);
+      return false;
+    }
+  }
+
+  // Fallback to Twilio WhatsApp
+  private static async sendWhatsAppViaTwilio(
     whatsappNumber: string, 
     message: string, 
     callSummary?: string
@@ -26,7 +81,7 @@ export class MessagingService {
 
       return result.success;
     } catch (error) {
-      console.error('Error sending WhatsApp message:', error);
+      console.error('Error sending WhatsApp message via Twilio:', error);
       return false;
     }
   }

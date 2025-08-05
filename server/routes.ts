@@ -9,6 +9,7 @@ import {
   insertCampaignSchema, 
   insertCallSchema 
 } from "@shared/schema";
+import { MessagingService } from "./services/messagingService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -420,6 +421,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error handling Twilio status webhook:', error);
       res.status(500).send('Error');
+    }
+  });
+
+  // Test WhatsApp messaging endpoint
+  app.post('/api/test/whatsapp', async (req, res) => {
+    try {
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ 
+          error: 'Phone number and message are required' 
+        });
+      }
+
+      const success = await MessagingService.sendWhatsAppMessage(
+        phoneNumber, 
+        message,
+        'Test message from AI Calling Agent'
+      );
+
+      res.json({ 
+        success, 
+        message: success 
+          ? 'WhatsApp message sent successfully' 
+          : 'Failed to send WhatsApp message'
+      });
+    } catch (error) {
+      console.error('Error testing WhatsApp:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
