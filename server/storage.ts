@@ -106,12 +106,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createContact(insertContact: InsertContact): Promise<Contact> {
-    const [contact] = await db.insert(contacts).values({
-      ...insertContact,
-      phoneNumber: insertContact.phone, // Map phone to phoneNumber for backward compatibility
-      updatedAt: new Date(),
-    }).returning();
-    return contact;
+    try {
+      const [contact] = await db.insert(contacts).values({
+        ...insertContact,
+        updatedAt: new Date(),
+      }).returning();
+      return contact;
+    } catch (error: any) {
+      // Handle duplicate phone number error
+      if (error.code === '23505' && error.constraint === 'unique_phone') {
+        throw new Error(`Contact with phone number ${insertContact.phone} already exists`);
+      }
+      throw error;
+    }
   }
 
   async updateContact(id: string, updateContact: Partial<InsertContact>): Promise<Contact> {

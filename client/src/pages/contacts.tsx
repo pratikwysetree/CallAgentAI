@@ -16,9 +16,10 @@ export default function Contacts() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newContact, setNewContact] = useState<InsertContact>({
     name: "",
-    phoneNumber: "",
+    phone: "",
     email: "",
-    whatsappNumber: "",
+    city: "",
+    state: "",
     company: "",
     notes: "",
   });
@@ -39,9 +40,10 @@ export default function Contacts() {
       setIsAddModalOpen(false);
       setNewContact({
         name: "",
-        phoneNumber: "",
+        phone: "",
         email: "",
-        whatsappNumber: "",
+        city: "",
+        state: "",
         company: "",
         notes: "",
       });
@@ -132,14 +134,14 @@ export default function Contacts() {
   const initiateCall = async (contact: Contact) => {
     try {
       const response = await apiRequest('/api/calls/initiate', 'POST', {
-        phoneNumber: contact.phoneNumber,
+        phoneNumber: contact.phone,
         contactId: contact.id,
         campaignId: "default", // You might want to select a campaign
       });
 
       toast({
         title: "Call initiated",
-        description: `Calling ${contact.name} at ${contact.phoneNumber}`,
+        description: `Calling ${contact.name} at ${contact.phone}`,
       });
     } catch (error) {
       toast({
@@ -196,9 +198,9 @@ export default function Contacts() {
                         <Label htmlFor="phone">Phone Number *</Label>
                         <Input
                           id="phone"
-                          value={newContact.phoneNumber}
-                          onChange={(e) => setNewContact({ ...newContact, phoneNumber: e.target.value })}
-                          placeholder="+1234567890"
+                          value={newContact.phone}
+                          onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                          placeholder="919876543210"
                           required
                         />
                       </div>
@@ -216,25 +218,38 @@ export default function Contacts() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="whatsapp">WhatsApp Number</Label>
+                        <Label htmlFor="city">City</Label>
                         <Input
-                          id="whatsapp"
-                          value={newContact.whatsappNumber || ""}
-                          onChange={(e) => setNewContact({ ...newContact, whatsappNumber: e.target.value })}
-                          placeholder="+1234567890"
+                          id="city"
+                          value={newContact.city || ""}
+                          onChange={(e) => setNewContact({ ...newContact, city: e.target.value })}
+                          placeholder="Mumbai"
                         />
                       </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="company">Company</Label>
-                      <Input
-                        id="company"
-                        value={newContact.company || ""}
-                        onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
-                        placeholder="Company Name"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="state">State</Label>
+                        <Input
+                          id="state"
+                          value={newContact.state || ""}
+                          onChange={(e) => setNewContact({ ...newContact, state: e.target.value })}
+                          placeholder="Maharashtra"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="company">Company</Label>
+                        <Input
+                          id="company"
+                          value={newContact.company || ""}
+                          onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                          placeholder="Pathology Lab Name"
+                        />
+                      </div>
                     </div>
+
+
 
                     <div>
                       <Label htmlFor="notes">Notes</Label>
@@ -252,7 +267,7 @@ export default function Contacts() {
                       </Button>
                       <Button 
                         onClick={handleAddContact}
-                        disabled={addContactMutation.isPending || !newContact.name || !newContact.phoneNumber}
+                        disabled={addContactMutation.isPending || !newContact.name || !newContact.phone}
                       >
                         {addContactMutation.isPending ? "Adding..." : "Add Contact"}
                       </Button>
@@ -322,9 +337,9 @@ export default function Contacts() {
                   <div className="flex items-center">
                     <Phone className="h-8 w-8 text-purple-600" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">With WhatsApp</p>
+                      <p className="text-sm font-medium text-gray-600">With City Info</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {contacts.filter(c => c.whatsappNumber).length}
+                        {contacts.filter(c => c.city).length}
                       </p>
                     </div>
                   </div>
@@ -355,7 +370,8 @@ export default function Contacts() {
                           <th className="text-left py-2 px-4">Name</th>
                           <th className="text-left py-2 px-4">Phone</th>
                           <th className="text-left py-2 px-4">Email</th>
-                          <th className="text-left py-2 px-4">WhatsApp</th>
+                          <th className="text-left py-2 px-4">City</th>
+                          <th className="text-left py-2 px-4">State</th>
                           <th className="text-left py-2 px-4">Company</th>
                           <th className="text-left py-2 px-4">Actions</th>
                         </tr>
@@ -364,9 +380,10 @@ export default function Contacts() {
                         {contacts.map((contact) => (
                           <tr key={contact.id} className="border-b hover:bg-gray-50">
                             <td className="py-3 px-4 font-medium">{contact.name}</td>
-                            <td className="py-3 px-4">{contact.phoneNumber}</td>
+                            <td className="py-3 px-4">{contact.phone}</td>
                             <td className="py-3 px-4">{contact.email || "-"}</td>
-                            <td className="py-3 px-4">{contact.whatsappNumber || "-"}</td>
+                            <td className="py-3 px-4">{contact.city || "-"}</td>
+                            <td className="py-3 px-4">{contact.state || "-"}</td>
                             <td className="py-3 px-4">{contact.company || "-"}</td>
                             <td className="py-3 px-4">
                               <Button
