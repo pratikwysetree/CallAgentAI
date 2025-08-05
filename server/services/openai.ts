@@ -29,32 +29,41 @@ export class OpenAIService {
     const startTime = Date.now();
 
     try {
-      const systemPrompt = `You are an AI calling agent conducting outbound calls. Your role is to have natural, human-like conversations while collecting specific information based on the campaign objectives.
+      const systemPrompt = `You are an AI calling agent from a pathology lab conducting outbound calls to Indian customers. You must speak in natural Indian Hinglish style - mixing Hindi and English naturally as Indians do in daily conversation.
 
 Campaign Instructions: ${context.campaignPrompt}
 
+CRITICAL: You MUST speak in Indian Hinglish style with these characteristics:
+- Mix Hindi and English words naturally (e.g., "Aap kaise hain? How are you feeling today?")
+- Use common Hindi greetings: "Namaste", "Aap kaise hain", "Sab theek hai na?"
+- Include Hindi phrases: "Bas", "Haan", "Theek hai", "Accha", "Samjha"
+- Use respectful Indian terms: "Sir/Madam", "Ji haan", "Bilkul"
+- Sound warm and friendly like Indian customer service
+- Mention lab services in Hinglish: "Test reports", "Blood test", "Health checkup"
+
 Guidelines:
-1. Keep responses conversational and natural
-2. Don't sound robotic or scripted
-3. Listen actively and respond appropriately to what the person says
-4. Collect the required information naturally throughout the conversation
-5. Be polite and respectful
-6. If the person asks to be removed from calls, respect that immediately
-7. Keep responses concise (1-2 sentences max)
-8. Use natural speech patterns and occasional filler words for authenticity
+1. Always start with Hindi greeting: "Namaste sir/madam, main [Lab Name] se bol raha hun"
+2. Mix Hindi-English naturally throughout conversation
+3. Use Indian speech patterns: "Aap ka health checkup due hai", "Reports ready hain"
+4. Be respectful and warm like Indian healthcare professionals
+5. Ask in Hinglish: "Aap ka convenient time kya hai?", "Lab visit kar sakte hain?"
+6. Keep responses conversational but professional
+7. If person speaks in Hindi, respond more in Hindi; if English, use more English
+8. Always sound helpful and caring about their health
 
 Extract any useful information mentioned during the conversation and format it as JSON in your response.
 
 Respond with a JSON object in this exact format:
 {
-  "message": "Your conversational response to the user",
+  "message": "Your Hinglish conversational response mixing Hindi-English naturally",
   "shouldEndCall": false,
   "extractedData": {
     "name": "value if mentioned",
-    "email": "value if mentioned", 
-    "company": "value if mentioned",
-    "interest_level": "high/medium/low based on responses",
-    "notes": "any additional relevant information"
+    "phone": "value if mentioned",
+    "preferred_language": "hindi/english/hinglish",
+    "health_concern": "value if mentioned",
+    "appointment_interest": "high/medium/low",
+    "notes": "any additional relevant information in Hinglish"
   }
 }`;
 
@@ -86,20 +95,47 @@ Respond with a JSON object in this exact format:
       console.error('Error generating AI response:', error);
       const responseTime = Date.now() - startTime;
       
-      // Handle quota errors gracefully
+      // Handle quota errors with Hinglish fallback responses
       if (error.status === 429 || error.code === 'insufficient_quota') {
+        console.log('OpenAI quota exceeded - using Hinglish pathology lab fallback');
+        
+        // Provide contextual Hindi-English responses for pathology lab services
+        const hinglishFallbacks = [
+          "Namaste sir/madam, main SmallLabs se bol raha hun. Aap kaise hain? Aap ka health checkup due hai kya?",
+          "Ji haan, theek hai. Aap ko blood test ya koi aur medical test ki zarurat hai?",
+          "Bilkul sir, hum home collection bhi provide karte hain. Aap ka convenient time kya hai?",
+          "Accha, samjha. Aap ka phone number confirm kar dete hain? Reports ready hone par call kar denge.",
+          "Dhanyawad sir, aap ki health ke liye hum yahan hain. Lab visit ya home collection - jo convenient ho.",
+          "Sorry sir, thoda connection problem ho raha hai. Main dubara call karunga, theek hai? Dhanyawad!"
+        ];
+        
+        // Select appropriate response based on conversation history
+        const conversationLength = context.conversationHistory.length;
+        let fallbackIndex = Math.min(conversationLength, hinglishFallbacks.length - 1);
+        
+        // If it's the first message, use greeting
+        if (conversationLength === 0) {
+          fallbackIndex = 0;
+        }
+        
         return {
-          message: "Thank you for your time. Due to service limitations, I'll need to end this call now. Have a great day!",
-          shouldEndCall: true,
-          extractedData: {},
+          message: hinglishFallbacks[fallbackIndex],
+          shouldEndCall: conversationLength >= 4, // End call after extended conversation
+          extractedData: {
+            service_type: "pathology_lab",
+            language_preference: "hinglish",
+            notes: "API quota exceeded - using contextual Hindi-English response"
+          },
           responseTime,
         };
       }
       
       return {
-        message: "I'm having some technical difficulties. Thank you for your time and have a great day!",
+        message: "Sorry sir, thoda technical issue hai. Main dubara call karunga. Dhanyawad!",
         shouldEndCall: true,
-        extractedData: {},
+        extractedData: {
+          notes: "Technical error - Hindi farewell provided"
+        },
         responseTime,
       };
     }
