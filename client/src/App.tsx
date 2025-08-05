@@ -9,6 +9,7 @@ import ContactCampaigns from "@/pages/contact-campaigns";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import EnhancedSettings from "@/pages/enhanced-settings";
+import ElevenLabsSetup from "@/pages/elevenlabs-setup";
 import WhatsAppBulk from "@/pages/whatsapp-bulk";
 import WhatsAppChats from "@/pages/whatsapp-chats";
 import NotFound from "@/pages/not-found";
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />
       <Route path="/enhanced-settings" component={EnhancedSettings} />
+      <Route path="/elevenlabs-setup" component={ElevenLabsSetup} />
       <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
       <Route path="/whatsapp-chats" component={WhatsAppChats} />
       <Route component={NotFound} />

@@ -9,7 +9,8 @@ import {
   Phone,
   Upload,
   Target,
-  MessageCircle
+  MessageCircle,
+  Volume2
 } from 'lucide-react';
 
 const navigation = [
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'WhatsApp Bulk', href: '/whatsapp-bulk', icon: MessageSquare },
   { name: 'WhatsApp Chats', href: '/whatsapp-chats', icon: MessageCircle },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'ElevenLabs Voice', href: '/elevenlabs-setup', icon: Volume2 },
   { name: 'Settings', href: '/enhanced-settings', icon: Settings },
 ];
 

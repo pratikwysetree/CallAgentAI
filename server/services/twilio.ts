@@ -1,5 +1,6 @@
 import twilio from 'twilio';
 import { storage } from '../storage';
+import { elevenLabsService } from './elevenLabsService';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.TWILIO_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN || process.env.TWILIO_TOKEN;

@@ -17,6 +17,7 @@ import { MessagingService } from "./services/messagingService";
 import { WhatsAppTemplateService } from "./services/whatsappTemplateService";
 import { WhatsAppService } from "./services/whatsappService";
 import { insertWhatsAppTemplateSchema, insertBulkMessageJobSchema } from "@shared/schema";
+import { elevenLabsService, type ElevenLabsConfig } from './services/elevenLabsService';
 import express from "express";  
 import multer from "multer";
 
@@ -406,6 +407,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error enabling Indic-TTS:', error);
       res.status(500).json({ error: 'Failed to enable Indic-TTS' });
+    }
+  });
+
+  // ElevenLabs TTS Routes
+  app.get('/api/elevenlabs/status', async (req, res) => {
+    try {
+      const isConfigured = await elevenLabsService.isConfigured();
+      if (!isConfigured) {
+        return res.json({ 
+          configured: false, 
+          message: 'ElevenLabs API key not configured' 
+        });
+      }
+      
+      const validation = await elevenLabsService.validateApiKey();
+      res.json({ 
+        configured: isConfigured, 
+        valid: validation.valid,
+        error: validation.error 
+      });
+    } catch (error) {
+      console.error('Error checking ElevenLabs status:', error);
+      res.status(500).json({ error: 'Failed to check ElevenLabs status' });
+    }
+  });
+
+  app.get('/api/elevenlabs/voices', async (req, res) => {
+    try {
+      const voices = await elevenLabsService.getAvailableVoices();
+      const recommended = await elevenLabsService.getRecommendedVoices();
+      
+      res.json({ 
+        voices: voices,
+        recommended: recommended 
+      });
+    } catch (error) {
+      console.error('Error fetching ElevenLabs voices:', error);
+      res.status(500).json({ error: 'Failed to fetch voices' });
+    }
+  });
+
+  // Enable ElevenLabs TTS for a campaign
+  app.post('/api/campaigns/:id/enable-elevenlabs', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { 
+        voiceId = 'pNInz6obpgDQGcFmaJgB', // Adam voice
+        model = 'eleven_monolingual_v1',
+        stability = 0.5,
+        similarityBoost = 0.75,
+        style = 0.0,
+        useSpeakerBoost = true
+      } = req.body;
+      
+      const voiceConfig = {
+        useElevenLabs: true,
+        voiceId,
+        model,
+        stability,
+        similarityBoost,
+        style,
+        useSpeakerBoost,
+        outputFormat: 'mp3' as const
+      };
+      
+      const updatedCampaign = await storage.updateCampaign(id, { voiceConfig });
+      
+      res.json({ 
+        success: true, 
+        message: `ElevenLabs TTS enabled for campaign with voice: ${voiceId}`,
+        voiceConfig,
+        campaign: updatedCampaign
+      });
+    } catch (error) {
+      console.error('Error enabling ElevenLabs TTS:', error);
+      res.status(500).json({ error: 'Failed to enable ElevenLabs TTS' });
+    }
+  });
+
+  // ElevenLabs API key configuration endpoint
+  app.post('/api/secrets/elevenlabs', async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ error: 'API key is required' });
+      }
+      
+      // Set the API key in the service for immediate use
+      const { ElevenLabsService } = await import('./services/elevenLabsService');
+      const elevenLabsService = new ElevenLabsService(apiKey);
+      
+      // Validate the API key
+      const validation = await elevenLabsService.validateApiKey();
+      
+      if (!validation.valid) {
+        return res.status(400).json({ 
+          error: 'Invalid API key', 
+          details: validation.error 
+        });
+      }
+      
+      // Store the API key (in a real app, you'd store this securely)
+      process.env.ELEVENLABS_API_KEY = apiKey;
+      
+      res.json({ 
+        success: true, 
+        message: 'ElevenLabs API key configured successfully',
+        configured: true
+      });
+    } catch (error) {
+      console.error('Error configuring ElevenLabs API key:', error);
+      res.status(500).json({ error: 'Failed to configure API key' });
     }
   });
 
