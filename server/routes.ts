@@ -281,6 +281,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In a real implementation, save settings to database
       console.log('Settings updated:', req.body);
       
+      // Initialize Indic-TTS and Whisper services with new config
+      const { IndicTTSService } = await import('./services/indicTtsService');
+      const { WhisperService } = await import('./services/whisperService');
+      
+      const indicTtsService = new IndicTTSService();
+      const whisperService = new WhisperService();
+      
+      // Save configurations
+      if (req.body.indicTts) {
+        await indicTtsService.saveConfig(req.body.indicTts);
+      }
+      
+      if (req.body.whisper) {
+        await whisperService.saveConfig(req.body.whisper);
+      }
+      
       res.json({ 
         message: 'Settings saved successfully',
         settings: req.body 
@@ -288,6 +304,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error saving settings:', error);
       res.status(500).json({ error: 'Failed to save settings' });
+    }
+  });
+
+  // Get available voice languages and models
+  app.get('/api/config/voice/languages', async (req, res) => {
+    try {
+      const { IndicTTSService } = await import('./services/indicTtsService');
+      const indicTtsService = new IndicTTSService();
+      
+      const languages = await indicTtsService.getAvailableLanguages();
+      const speakers = await indicTtsService.getAvailableSpeakers();
+      
+      res.json({ languages, speakers });
+    } catch (error) {
+      console.error('Error fetching voice languages:', error);
+      res.status(500).json({ error: 'Failed to fetch voice languages' });
+    }
+  });
+
+  // Get available transcription models and languages
+  app.get('/api/config/transcriber/models', async (req, res) => {
+    try {
+      const { WhisperService } = await import('./services/whisperService');
+      const whisperService = new WhisperService();
+      
+      const models = await whisperService.getAvailableModels();
+      const languages = await whisperService.getSupportedLanguages();
+      
+      res.json({ models, languages });
+    } catch (error) {
+      console.error('Error fetching transcriber models:', error);
+      res.status(500).json({ error: 'Failed to fetch transcriber models' });
     }
   });
 

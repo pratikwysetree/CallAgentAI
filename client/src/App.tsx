@@ -7,6 +7,7 @@ import Contacts from "@/pages/contacts";
 import Campaigns from "@/pages/campaigns";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import EnhancedSettings from "@/pages/enhanced-settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,7 +17,7 @@ function Router() {
       <Route path="/contacts" component={Contacts} />
       <Route path="/campaigns" component={Campaigns} />
       <Route path="/analytics" component={Analytics} />
-      <Route path="/settings" component={Settings} />
+      <Route path="/settings" component={EnhancedSettings} />
       <Route component={NotFound} />
     </Switch>
   );
