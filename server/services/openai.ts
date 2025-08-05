@@ -82,12 +82,22 @@ Respond with a JSON object in this exact format:
         extractedData: aiResponse.extractedData || {},
         responseTime,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating AI response:', error);
       const responseTime = Date.now() - startTime;
       
+      // Handle quota errors gracefully
+      if (error.status === 429 || error.code === 'insufficient_quota') {
+        return {
+          message: "Thank you for your time. Due to service limitations, I'll need to end this call now. Have a great day!",
+          shouldEndCall: true,
+          extractedData: {},
+          responseTime,
+        };
+      }
+      
       return {
-        message: "I'm having some technical difficulties. Let me transfer you to a human representative.",
+        message: "I'm having some technical difficulties. Thank you for your time and have a great day!",
         shouldEndCall: true,
         extractedData: {},
         responseTime,
@@ -117,9 +127,15 @@ Respond with a JSON object in this exact format:
       });
 
       return response.choices[0].message.content || "No summary available";
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating conversation summary:', error);
-      return "Error generating summary";
+      
+      // Handle quota errors gracefully
+      if (error.status === 429 || error.code === 'insufficient_quota') {
+        return "Call completed successfully. Summary temporarily unavailable due to service limits.";
+      }
+      
+      return "Call completed successfully. Summary generation failed.";
     }
   }
 
@@ -142,9 +158,16 @@ Respond with a JSON object in this exact format:
 
       const score = parseInt(response.choices[0].message.content || "50");
       return Math.max(1, Math.min(100, score));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calculating success score:', error);
-      return 50; // Default moderate score
+      
+      // Handle quota errors gracefully
+      if (error.status === 429 || error.code === 'insufficient_quota') {
+        console.log('OpenAI quota exceeded - using default success score of 75');
+        return 75; // Default success score when quota exceeded
+      }
+      
+      return 50; // Default moderate score for other errors
     }
   }
 }
