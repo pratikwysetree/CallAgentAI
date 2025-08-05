@@ -136,6 +136,10 @@ export class TwilioService {
 
       // If Indic-TTS configuration exists, generate audio file
       if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
+        console.log(`🎤 [INDIC-TTS] ACTIVATED - Using AI4Bharat TTS instead of OpenAI voice!`);
+        console.log(`🎤 [INDIC-TTS] Language: ${(voiceConfig as any).language}, Speaker: ${(voiceConfig as any).speaker}`);
+        console.log(`🎤 [INDIC-TTS] Message: "${message}"`);
+        
         const { IndicTTSService } = await import('./indicTtsService');
         const indicTtsService = new IndicTTSService();
         
@@ -152,6 +156,9 @@ export class TwilioService {
           const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
           const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
           
+          console.log(`🎤 [INDIC-TTS] SUCCESS - Audio file generated: ${audioUrl}`);
+          console.log(`🎤 [INDIC-TTS] TwiML will use <Play> tag instead of <Say> tag!`);
+          
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
@@ -160,9 +167,12 @@ export class TwilioService {
     </Gather>
 </Response>`;
         } else {
-          console.error('Indic-TTS synthesis failed:', result.error);
+          console.error('🎤 [INDIC-TTS] FAILED - Synthesis error:', result.error);
+          console.log('🎤 [INDIC-TTS] Falling back to Twilio default voice');
           // Fallback to default voice
         }
+      } else {
+        console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in voice (OpenAI voice not used here)`);
       }
 
       // Default fallback - use Twilio's built-in voice

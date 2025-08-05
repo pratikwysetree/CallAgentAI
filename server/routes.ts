@@ -489,6 +489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if file exists
       const fs = await import('fs');
       if (!fs.existsSync(filePath)) {
+        console.log(`Audio file not found: ${filePath}`);
         return res.status(404).json({ error: 'Audio file not found' });
       }
       
