@@ -621,6 +621,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/whatsapp/messages/contact', async (req, res) => {
+    try {
+      const { contactId, contactPhone, contactName, message } = req.body;
+      
+      // Create new chat for the contact
+      const newChatId = `chat_${Date.now()}`;
+      const newMessage = {
+        id: `msg_${Date.now()}`,
+        chatId: newChatId,
+        contactPhone,
+        contactName,
+        message,
+        direction: "outbound",
+        status: "sent",
+        timestamp: new Date().toISOString(),
+        messageType: "text"
+      };
+      
+      res.json({ newMessage, chatId: newChatId });
+    } catch (error) {
+      console.error('Error sending WhatsApp message to contact:', error);
+      res.status(500).json({ error: 'Failed to send message to contact' });
+    }
+  });
+
   app.patch('/api/whatsapp/messages/:messageId', async (req, res) => {
     try {
       const { messageId } = req.params;

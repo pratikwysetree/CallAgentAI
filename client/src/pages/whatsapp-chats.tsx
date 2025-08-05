@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, Edit, Send, Check, CheckCheck, MessageCircle, Phone, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Trash2, Edit, Send, Check, CheckCheck, MessageCircle, Phone, Clock, Users, Plus } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { Contact } from "@shared/schema";
 
 interface WhatsAppMessage {
   id: string;
@@ -36,18 +38,26 @@ interface WhatsAppChat {
 
 export default function WhatsAppChats() {
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [newContactMessage, setNewContactMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState<WhatsAppMessage | null>(null);
   const [editMessageText, setEditMessageText] = useState("");
+  const [activeTab, setActiveTab] = useState("chats");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch WhatsApp chats
-  const { data: chats = [], isLoading } = useQuery<WhatsAppChat[]>({
+  const { data: chats = [], isLoading: chatsLoading } = useQuery<WhatsAppChat[]>({
     queryKey: ['/api/whatsapp/chats'],
   });
 
-  // Send new message mutation
+  // Fetch all contacts
+  const { data: contacts = [], isLoading: contactsLoading } = useQuery<Contact[]>({
+    queryKey: ['/api/contacts/enhanced'],
+  });
+
+  // Send message to existing chat
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { chatId: string; message: string }) => {
       return apiRequest('/api/whatsapp/messages', 'POST', data);
@@ -55,6 +65,23 @@ export default function WhatsAppChats() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setNewMessage("");
+      toast({ title: "Message sent successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to send message", variant: "destructive" });
+    }
+  });
+
+  // Send message to contact (creates new chat)
+  const sendContactMessageMutation = useMutation({
+    mutationFn: async (data: { contactId: number; contactPhone: string; contactName: string; message: string }) => {
+      return apiRequest('/api/whatsapp/messages/contact', 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      setNewContactMessage("");
+      setSelectedContact(null);
+      setActiveTab("chats");
       toast({ title: "Message sent successfully" });
     },
     onError: () => {
@@ -101,6 +128,16 @@ export default function WhatsAppChats() {
     });
   };
 
+  const handleSendContactMessage = () => {
+    if (!selectedContact || !newContactMessage.trim()) return;
+    sendContactMessageMutation.mutate({
+      contactId: selectedContact.id,
+      contactPhone: selectedContact.phone,
+      contactName: selectedContact.name,
+      message: newContactMessage.trim()
+    });
+  };
+
   const handleEditMessage = (message: WhatsAppMessage) => {
     setEditingMessage(message);
     setEditMessageText(message.message);
@@ -136,10 +173,10 @@ export default function WhatsAppChats() {
     });
   };
 
-  if (isLoading) {
+  if (chatsLoading || contactsLoading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center">Loading WhatsApp chats...</div>
+        <div className="text-center">Loading WhatsApp data...</div>
       </div>
     );
   }
@@ -152,18 +189,29 @@ export default function WhatsAppChats() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-        {/* Chat List */}
+        {/* Left Panel - Chats and Contacts */}
         <div className="lg:col-span-1">
           <Card className="h-full">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5" />
-                Conversations ({chats.length})
-              </CardTitle>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="chats" className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4" />
+                    Chats ({chats.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="contacts" className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Contacts ({contacts.length})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="space-y-1 max-h-[calc(100vh-300px)] overflow-y-auto">
-                {chats.map((chat) => (
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                {/* Existing Chats Tab */}
+                <TabsContent value="chats">
+                  <div className="space-y-1 max-h-[calc(100vh-350px)] overflow-y-auto">
+                    {chats.map((chat) => (
                   <div
                     key={chat.id}
                     className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
@@ -193,19 +241,78 @@ export default function WhatsAppChats() {
                     </div>
                   </div>
                 ))}
-                {chats.length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground">
-                    <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No WhatsApp conversations yet</p>
-                    <p className="text-sm mt-2">Start a campaign to begin messaging</p>
+                    {chats.length === 0 && (
+                      <div className="p-8 text-center text-muted-foreground">
+                        <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No WhatsApp conversations yet</p>
+                        <p className="text-sm mt-2">Select a contact to start messaging</p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </TabsContent>
+
+                {/* All Contacts Tab */}
+                <TabsContent value="contacts">
+                  <div className="space-y-1 max-h-[calc(100vh-350px)] overflow-y-auto">
+                    {contacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
+                          selectedContact?.id === contact.id ? 'bg-muted' : ''
+                        }`}
+                        onClick={() => {
+                          setSelectedContact(contact);
+                          setSelectedChat(null);
+                        }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-4 h-4 text-green-600" />
+                              <p className="font-medium truncate">{contact.name}</p>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{contact.phone}</p>
+                            {contact.city && contact.state && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {contact.city}, {contact.state}
+                              </p>
+                            )}
+                            {contact.company && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {contact.company}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedContact(contact);
+                              setSelectedChat(null);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Message
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {contacts.length === 0 && (
+                      <div className="p-8 text-center text-muted-foreground">
+                        <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No contacts available</p>
+                        <p className="text-sm mt-2">Import contacts to start messaging</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
 
-        {/* Chat Messages */}
+        {/* Right Panel - Messages */}
         <div className="lg:col-span-2">
           {selectedChat ? (
             <Card className="h-full flex flex-col">
@@ -337,12 +444,70 @@ export default function WhatsAppChats() {
                 </div>
               </div>
             </Card>
+          ) : selectedContact ? (
+            <Card className="h-full flex flex-col">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Phone className="w-5 h-5 text-green-600" />
+                      {selectedContact.name}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">{selectedContact.phone}</p>
+                    {selectedContact.city && selectedContact.state && (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedContact.city}, {selectedContact.state}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant="outline">New Chat</Badge>
+                </div>
+              </CardHeader>
+
+              {/* New Contact Message Area */}
+              <CardContent className="flex-1 p-4 flex flex-col justify-end">
+                <div className="text-center text-muted-foreground mb-8">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Start a new conversation</p>
+                  <p className="text-sm mt-2">Send your first message to {selectedContact.name}</p>
+                </div>
+              </CardContent>
+
+              {/* Message Input for New Contact */}
+              <div className="border-t p-4">
+                <div className="space-y-3">
+                  <Textarea
+                    value={newContactMessage}
+                    onChange={(e) => setNewContactMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    rows={3}
+                    className="resize-none"
+                  />
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={handleSendContactMessage}
+                      disabled={!newContactMessage.trim() || sendContactMessageMutation.isPending}
+                      className="min-w-24"
+                    >
+                      {sendContactMessageMutation.isPending ? (
+                        "Sending..."
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Send Message
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
           ) : (
             <Card className="h-full flex items-center justify-center">
               <div className="text-center text-muted-foreground">
                 <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">Select a conversation to start messaging</p>
-                <p className="text-sm mt-2">Choose a chat from the left panel</p>
+                <p className="text-lg">Select a chat or contact to start messaging</p>
+                <p className="text-sm mt-2">Choose from existing chats or select a contact to send a new message</p>
               </div>
             </Card>
           )}
