@@ -356,9 +356,9 @@ export default function Campaigns() {
                                   <SelectValue placeholder="Select voice" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {elevenLabsData?.recommended?.map((voice) => (
+                                  {elevenLabsData?.voices?.map((voice) => (
                                     <SelectItem key={voice.voice_id} value={voice.voice_id}>
-                                      {voice.name} ({voice.labels?.gender || 'Unknown'})
+                                      {voice.name} ({voice.category || voice.labels?.gender || 'Custom'})
                                     </SelectItem>
                                   )) || (
                                     <>
@@ -637,9 +637,9 @@ export default function Campaigns() {
                                   <SelectValue placeholder="Select voice" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {elevenLabsData?.recommended?.map((voice) => (
+                                  {elevenLabsData?.voices?.map((voice) => (
                                     <SelectItem key={voice.voice_id} value={voice.voice_id}>
-                                      {voice.name} ({voice.labels?.gender || 'Unknown'})
+                                      {voice.name} ({voice.category || voice.labels?.gender || 'Custom'})
                                     </SelectItem>
                                   )) || (
                                     <>
