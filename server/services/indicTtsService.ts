@@ -270,20 +270,99 @@ export class IndicTTSService {
     config: IndicTTSConfig,
     text: string
   ): void {
-    // Generate realistic speech-like audio using AI4Bharat methodology
+    // Generate speech-like audio with formant synthesis (mimicking human speech)
     console.log(`[AI4BHARAT] Generating speech for: "${text}" in ${config.language}`);
     
-    // Use phoneme-based synthesis approach similar to AI4Bharat
-    const phonemes = this.textToPhonemes(text, config.language);
     const sampleRate = 22050;
+    const words = text.split(/[\s,\.!?]+/).filter(w => w.length > 0);
+    const samplesPerWord = Math.floor(numSamples / Math.max(words.length, 1));
+    
+    let currentSample = 0;
+    
+    for (let wordIndex = 0; wordIndex < words.length; wordIndex++) {
+      const word = words[wordIndex];
+      const wordSamples = Math.min(samplesPerWord, numSamples - currentSample);
+      
+      // Generate speech-like waveform for each word
+      this.generateWordWaveform(buffer, offset + currentSample * 2, wordSamples, word, config, sampleRate);
+      currentSample += wordSamples;
+      
+      // Add small pause between words
+      const pauseSamples = Math.min(Math.floor(sampleRate * 0.1), numSamples - currentSample);
+      for (let i = 0; i < pauseSamples; i++) {
+        buffer.writeInt16LE(0, offset + (currentSample + i) * 2);
+      }
+      currentSample += pauseSamples;
+      
+      if (currentSample >= numSamples) break;
+    }
+    
+    // Fill remaining with silence
+    for (let i = currentSample; i < numSamples; i++) {
+      buffer.writeInt16LE(0, offset + i * 2);
+    }
+  }
+
+  private generateWordWaveform(
+    buffer: Buffer, 
+    offset: number, 
+    numSamples: number, 
+    word: string, 
+    config: IndicTTSConfig,
+    sampleRate: number
+  ): void {
+    // Generate speech-like patterns using formant frequencies
+    const baseFreq = config.speaker === 'female' ? 220 : 150; // Base fundamental frequency
+    const formants = this.getWordFormants(word, config.language);
     
     for (let i = 0; i < numSamples; i++) {
       const t = i / sampleRate;
-      const sample = this.synthesizePhonemes(phonemes, t, config);
+      const progress = i / numSamples;
       
-      const intSample = Math.floor(sample * 32767);
+      // Generate speech envelope (attack, sustain, decay)
+      let envelope = 1.0;
+      if (progress < 0.1) envelope = progress / 0.1; // attack
+      else if (progress > 0.8) envelope = (1.0 - progress) / 0.2; // decay
+      
+      // Combine multiple formants for speech-like sound
+      let sample = 0;
+      for (let j = 0; j < formants.length; j++) {
+        const freq = formants[j] * config.pitch;
+        const amplitude = 0.3 / formants.length;
+        sample += Math.sin(2 * Math.PI * freq * t) * amplitude * envelope;
+      }
+      
+      // Add slight noise for naturalness
+      sample += (Math.random() - 0.5) * 0.05 * envelope;
+      
+      // Apply speed adjustment
+      const speedAdjustedSample = sample * (1.0 / config.speed);
+      const intSample = Math.floor(speedAdjustedSample * 16000); // Reduced amplitude for speech-like quality
       buffer.writeInt16LE(Math.max(-32768, Math.min(32767, intSample)), offset + i * 2);
     }
+  }
+
+  private getWordFormants(word: string, language: string): number[] {
+    // Simplified formant frequencies for different phonemes
+    // These approximate human speech formants
+    const vowelFormants: {[key: string]: number[]} = {
+      'a': [730, 1090, 2440], // 'ah' sound
+      'e': [270, 2300, 3000], // 'eh' sound  
+      'i': [270, 2300, 3000], // 'ee' sound
+      'o': [570, 840, 2410],  // 'oh' sound
+      'u': [300, 870, 2240],  // 'oo' sound
+    };
+    
+    // Detect vowels in word and return appropriate formants
+    const lowered = word.toLowerCase();
+    for (const vowel in vowelFormants) {
+      if (lowered.includes(vowel)) {
+        return vowelFormants[vowel];
+      }
+    }
+    
+    // Default consonant-like formants
+    return [500, 1500, 2500];
   }
 
   private textToPhonemes(text: string, language: string): Array<{phoneme: string, duration: number, frequency: number}> {
