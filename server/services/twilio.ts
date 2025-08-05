@@ -50,6 +50,22 @@ export class TwilioService {
     }
   }
 
+  // Send WhatsApp message
+  async sendWhatsAppMessage(to: string, message: string): Promise<{ success: boolean; messageSid?: string }> {
+    try {
+      const result = await client.messages.create({
+        body: message,
+        from: `whatsapp:${phoneNumber}`,
+        to: to,
+      });
+
+      return { success: true, messageSid: result.sid };
+    } catch (error) {
+      console.error('Error sending WhatsApp message:', error);
+      return { success: false };
+    }
+  }
+
   async endCall(twilioCallSid: string): Promise<void> {
     try {
       await client.calls(twilioCallSid).update({ status: 'completed' });

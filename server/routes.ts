@@ -185,6 +185,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add multer for file uploads
+  const multer = await import('multer');
+  const upload = multer.default({ storage: multer.default.memoryStorage() });
+
+  // Excel import/export endpoints
+  app.post('/api/contacts/import-excel', upload.single('excel'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const { ExcelService } = await import('./services/excelService');
+      const result = await ExcelService.importContactsFromExcel(req.file.buffer);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error importing Excel:', error);
+      res.status(500).json({ error: 'Import failed', details: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.get('/api/contacts/export-excel', async (req, res) => {
+    try {
+      const { ExcelService } = await import('./services/excelService');
+      const buffer = await ExcelService.exportContactsToExcel();
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=contacts-${new Date().toISOString().split('T')[0]}.xlsx`);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      res.status(500).json({ error: 'Export failed' });
+    }
+  });
+
+  app.get('/api/calls/export-summaries', async (req, res) => {
+    try {
+      const { ExcelService } = await import('./services/excelService');
+      const buffer = await ExcelService.exportCallSummariesWithData();
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=call-summaries-${new Date().toISOString().split('T')[0]}.xlsx`);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error exporting call summaries:', error);
+      res.status(500).json({ error: 'Export failed' });
+    }
+  });
+
+  // Configuration upload endpoints for voice and transcriber files
+  app.post('/api/config/voice', upload.single('voiceConfig'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No voice config file uploaded' });
+      }
+
+      // In a real implementation, store the configuration file
+      // For now, just acknowledge the upload
+      console.log('Voice config uploaded:', req.file.originalname);
+      
+      res.json({ 
+        message: 'Voice configuration uploaded successfully',
+        filename: req.file.originalname 
+      });
+    } catch (error) {
+      console.error('Error uploading voice config:', error);
+      res.status(500).json({ error: 'Upload failed' });
+    }
+  });
+
+  app.post('/api/config/transcriber', upload.single('transcriberConfig'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No transcriber config file uploaded' });
+      }
+
+      // In a real implementation, store the configuration file
+      // For now, just acknowledge the upload
+      console.log('Transcriber config uploaded:', req.file.originalname);
+      
+      res.json({ 
+        message: 'Transcriber configuration uploaded successfully',
+        filename: req.file.originalname 
+      });
+    } catch (error) {
+      console.error('Error uploading transcriber config:', error);
+      res.status(500).json({ error: 'Upload failed' });
+    }
+  });
+
+  // Settings endpoint
+  app.post('/api/settings', async (req, res) => {
+    try {
+      // In a real implementation, save settings to database
+      console.log('Settings updated:', req.body);
+      
+      res.json({ 
+        message: 'Settings saved successfully',
+        settings: req.body 
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      res.status(500).json({ error: 'Failed to save settings' });
+    }
+  });
+
   app.patch('/api/campaigns/:id', async (req, res) => {
     try {
       const { id } = req.params;

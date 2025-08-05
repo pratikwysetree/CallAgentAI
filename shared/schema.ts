@@ -15,8 +15,10 @@ export const contacts = pgTable("contacts", {
   name: text("name").notNull(),
   phoneNumber: text("phone_number").notNull(),
   email: text("email"),
+  whatsappNumber: text("whatsapp_number"),
   company: text("company"),
   notes: text("notes"),
+  importedFrom: text("imported_from"), // Track if imported from Excel
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -26,6 +28,10 @@ export const campaigns = pgTable("campaigns", {
   name: text("name").notNull(),
   description: text("description"),
   aiPrompt: text("ai_prompt").notNull(),
+  script: text("script"), // Agent script
+  openaiModel: text("openai_model").default("gpt-4o").notNull(),
+  voiceConfig: jsonb("voice_config"), // Open source voice configuration
+  transcriberConfig: jsonb("transcriber_config"), // Open source transcriber configuration
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -42,6 +48,10 @@ export const calls = pgTable("calls", {
   twilioCallSid: text("twilio_call_sid"),
   recordingUrl: text("recording_url"),
   conversationSummary: text("conversation_summary"),
+  extractedWhatsapp: text("extracted_whatsapp"), // WhatsApp number extracted from call
+  extractedEmail: text("extracted_email"), // Email extracted from call
+  whatsappSent: boolean("whatsapp_sent").default(false),
+  emailSent: boolean("email_sent").default(false),
   collectedData: jsonb("collected_data"),
   aiResponseTime: integer("ai_response_time"), // in milliseconds
   successScore: integer("success_score"), // 1-100
