@@ -34,9 +34,10 @@ export default function Contacts() {
 
   // Add contact mutation
   const addContactMutation = useMutation({
-    mutationFn: (contact: InsertContact) => {
+    mutationFn: async (contact: InsertContact) => {
       console.log('Frontend sending contact data:', contact);
-      return apiRequest('/api/contacts', 'POST', contact);
+      const response = await apiRequest('POST', '/api/contacts', contact);
+      return response.json();
     },
     onSuccess: (data) => {
       console.log('Contact created successfully:', data);
@@ -138,11 +139,12 @@ export default function Contacts() {
 
   const initiateCall = async (contact: Contact) => {
     try {
-      const response = await apiRequest('/api/calls/initiate', 'POST', {
+      const response = await apiRequest('POST', '/api/calls/initiate', {
         phoneNumber: contact.phone,
         contactId: contact.id,
         campaignId: "default", // You might want to select a campaign
       });
+      const result = await response.json();
 
       toast({
         title: "Call initiated",
