@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { db } from "./db";
+import { contacts } from "@shared/schema";
+import { sql } from "drizzle-orm";
 import { callManager } from "./services/callManager";
 import { twilioService } from "./services/twilio";
 import { 
@@ -12,6 +15,14 @@ import {
 import { MessagingService } from "./services/messagingService";
 import { WhatsAppTemplateService } from "./services/whatsappTemplateService";
 import { insertWhatsAppTemplateSchema, insertBulkMessageJobSchema } from "@shared/schema";
+import express from "express";  
+import multer from "multer";
+
+// Configure multer for file uploads with larger limit for CSV files
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for large CSV files
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -570,13 +581,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Campaign Analytics
   app.get('/api/campaigns/analytics', async (req, res) => {
     try {
-      // For now, return mock analytics until engagement tracking is fully implemented
+      // Get actual contact count from database
+      const totalContacts = await db.select({ count: sql`count(*)` }).from(contacts);
+      const contactCount = totalContacts[0]?.count || 0;
+      
       const analytics = {
-        totalContacts: await storage.getContacts().then(c => c.length),
+        totalContacts: parseInt(contactCount),
         contacted: 0,
         responded: 0,
         onboarded: 0,
-        pending: await storage.getContacts().then(c => c.length),
+        pending: parseInt(contactCount),
         failed: 0,
         followUpsDue: 0,
         todayActivity: {
