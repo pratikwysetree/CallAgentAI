@@ -477,58 +477,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve generated audio files for Indic-TTS
-  app.get('/api/audio/:filename', (req, res) => {
+  app.get('/api/audio/:filename', async (req, res) => {
+    const { filename } = req.params;
+    
     try {
-      const { filename } = req.params;
-      const filePath = path.join(process.cwd(), 'temp', filename);
-      
       // Security check - ensure filename doesn't contain path traversal
       if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
         return res.status(400).json({ error: 'Invalid filename' });
       }
       
-      // Import fs synchronously to avoid async issues
-      const fs = require('fs');
+      const filePath = path.join(process.cwd(), 'temp', filename);
+      
+      // Import fs promises for proper async handling
+      const fs = await import('fs/promises');
       
       // Check if file exists
-      if (!fs.existsSync(filePath)) {
+      try {
+        const stats = await fs.stat(filePath);
+        
+        // Set appropriate headers for audio
+        res.setHeader('Content-Type', 'audio/wav');
+        res.setHeader('Content-Length', stats.size);
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        res.setHeader('Accept-Ranges', 'bytes');
+        
+        // Read and send file
+        const audioData = await fs.readFile(filePath);
+        res.send(audioData);
+        
+        console.log(`Successfully served audio file: ${filename}`);
+        
+        // Clean up file after serving (with delay for potential retries)
+        setTimeout(async () => {
+          try {
+            await fs.unlink(filePath);
+            console.log(`Cleaned up temporary audio file: ${filename}`);
+          } catch (error) {
+            console.log(`Could not delete temporary audio file: ${filename}`);
+          }
+        }, 60000); // Delete after 1 minute
+        
+      } catch (statError) {
         console.log(`Audio file not found: ${filePath}`);
         return res.status(404).json({ error: 'Audio file not found' });
       }
-      
-      // Get file stats
-      const stats = fs.statSync(filePath);
-      
-      // Set appropriate headers for audio
-      res.setHeader('Content-Type', 'audio/wav');
-      res.setHeader('Content-Length', stats.size);
-      res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
-      res.setHeader('Accept-Ranges', 'bytes');
-      
-      // Create read stream and pipe to response
-      const stream = fs.createReadStream(filePath);
-      
-      stream.on('error', (error: any) => {
-        console.error('Error streaming audio file:', error);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Error streaming audio file' });
-        }
-      });
-      
-      stream.on('end', () => {
-        console.log(`Successfully streamed audio file: ${filename}`);
-        // Clean up file after a delay to allow for potential retries
-        setTimeout(() => {
-          try {
-            fs.unlinkSync(filePath);
-            console.log(`Cleaned up temporary audio file: ${filename}`);
-          } catch (error) {
-            console.log('Could not delete temporary audio file:', filename);
-          }
-        }, 300000); // Delete after 5 minutes
-      });
-      
-      stream.pipe(res);
       
     } catch (error) {
       console.error('Error serving audio file:', error);

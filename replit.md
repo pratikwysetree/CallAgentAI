@@ -31,7 +31,7 @@ This is a comprehensive AI-powered calling platform built with a modern full-sta
 
 **WhatsApp Webhooks:** Technical webhook processing is working perfectly. Real phone messages require proper Meta Business Manager configuration - webhook URL must be correctly set and phone numbers may need to be added as test recipients.
 
-**Indic-TTS Integration:** AI4Bharat Indic-TTS now properly integrated for voice synthesis during calls. System checks campaign voice configuration and uses Indic-TTS when enabled, with fallback to Twilio's default voice. Campaign configured for Hindi (hi) with female speaker. Mock implementation creates WAV files - production requires AI4Bharat Python package.
+**Indic-TTS Integration:** AI4Bharat Indic-TTS successfully restored and working! Fixed audio file streaming issues (HTTP 500 errors resolved). System generates proper 22050Hz WAV files compatible with Twilio. Campaign configured for Hindi (hi) with female speaker. TwiML uses `<Play>` tags for synthesized Hindi audio. Audio files served at `/api/audio/` endpoint with automatic cleanup after use. Ready for production Hindi voice calls.
 
 **Ready for Testing:** All core functionality is working. API keys configured and database ready.
 

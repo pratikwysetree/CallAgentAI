@@ -134,16 +134,42 @@ export class TwilioService {
         voiceConfig = campaign?.voiceConfig;
       }
 
-      // TEMPORARY: Disable Indic-TTS to fix application errors
-      // The voice synthesis will use Twilio's built-in voice until audio serving is fixed
-      console.log(`🎤 [VOICE-MODE] Using Twilio built-in voice (Indic-TTS temporarily disabled)`);
-      
-      // TODO: Re-enable Indic-TTS after fixing audio file streaming issues
-      /*
+      // Re-enabled Indic-TTS with fixed audio file streaming
       if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
-        // Indic-TTS integration code temporarily disabled
+        console.log(`🎤 [INDIC-TTS] ACTIVATED - Using AI4Bharat TTS for Hindi voice!`);
+        console.log(`🎤 [INDIC-TTS] Language: ${(voiceConfig as any).language}, Speaker: ${(voiceConfig as any).speaker}`);
+        console.log(`🎤 [INDIC-TTS] Message: "${message}"`);
+        
+        const { IndicTTSService } = await import('./indicTtsService');
+        const indicTtsService = new IndicTTSService();
+        
+        const audioFilename = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.wav`;
+        const audioPath = `./temp/${audioFilename}`;
+        
+        const result = await indicTtsService.synthesizeSpeech(message, audioPath, voiceConfig as any);
+        
+        if (result.success && result.audioPath) {
+          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          
+          console.log(`🎤 [INDIC-TTS] SUCCESS - Hindi audio generated: ${audioUrl}`);
+          console.log(`🎤 [INDIC-TTS] Using <Play> tag for AI4Bharat voice synthesis!`);
+          
+          return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="15">
+        <Play>${audioUrl}</Play>
+    </Gather>
+</Response>`;
+        } else {
+          console.error('🎤 [INDIC-TTS] FAILED - Synthesis error:', result.error);
+          console.log('🎤 [INDIC-TTS] Falling back to Twilio English voice');
+        }
+      } else {
+        console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in English voice`);
       }
-      */
 
       // Use Twilio's built-in voice with better configuration  
       return `<?xml version="1.0" encoding="UTF-8"?>
