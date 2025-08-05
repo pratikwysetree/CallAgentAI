@@ -48,7 +48,7 @@ export default function Campaigns() {
 
   // Add campaign mutation
   const addCampaignMutation = useMutation({
-    mutationFn: (campaign: InsertCampaign) => apiRequest('/api/campaigns', 'POST', campaign),
+    mutationFn: (campaign: InsertCampaign) => apiRequest('POST', '/api/campaigns', campaign),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       setIsAddModalOpen(false);
@@ -76,10 +76,11 @@ export default function Campaigns() {
         description: "Your new AI calling campaign is ready to use.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Campaign creation error:', error);
       toast({
         title: "Error creating campaign",
-        description: "Please check your information and try again.",
+        description: error.message || "Please check your information and try again.",
         variant: "destructive",
       });
     },
@@ -440,17 +441,17 @@ export default function Campaigns() {
                           </p>
                         </div>
                         
-                        {campaign.voiceConfig && (
+                        {campaign.voiceConfig && typeof campaign.voiceConfig === 'object' && (
                           <div>
                             <Label className="text-sm font-medium text-gray-700 flex items-center space-x-1">
                               <Volume2 className="h-3 w-3" />
                               <span>Voice Configuration</span>
                             </Label>
                             <p className="text-sm text-gray-600 mt-1">
-                              {campaign.voiceConfig.useIndicTTS ? (
+                              {(campaign.voiceConfig as any)?.useIndicTTS ? (
                                 <span className="inline-flex items-center space-x-1">
                                   <Mic className="h-3 w-3 text-blue-600" />
-                                  <span>AI4Bharat {campaign.voiceConfig.language?.toUpperCase()} ({campaign.voiceConfig.speaker}) - Speed: {campaign.voiceConfig.speed}x</span>
+                                  <span>AI4Bharat {(campaign.voiceConfig as any)?.language?.toUpperCase()} ({(campaign.voiceConfig as any)?.speaker}) - Speed: {(campaign.voiceConfig as any)?.speed}x</span>
                                 </span>
                               ) : (
                                 "Default Twilio Voice"
