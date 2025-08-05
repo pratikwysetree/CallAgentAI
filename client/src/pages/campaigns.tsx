@@ -17,6 +17,8 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function Campaigns() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [newCampaign, setNewCampaign] = useState<InsertCampaign>({
     name: "",
     description: "",
@@ -29,6 +31,7 @@ export default function Campaigns() {
   });
   
   const [useIndicTTS, setUseIndicTTS] = useState(false);
+  const [useElevenLabs, setUseElevenLabs] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState({
     language: "hi",
     speaker: "female",
@@ -36,6 +39,14 @@ export default function Campaigns() {
     pitch: 1,
     model: "fastpitch",
     outputFormat: "wav"
+  });
+  const [elevenLabsSettings, setElevenLabsSettings] = useState({
+    voiceId: "pNInz6obpgDQGcFmaJgB", // Adam voice
+    model: "eleven_monolingual_v1",
+    stability: 0.5,
+    similarityBoost: 0.75,
+    style: 0.0,
+    useSpeakerBoost: true
   });
   
   const { toast } = useToast();
@@ -46,31 +57,21 @@ export default function Campaigns() {
     queryKey: ['/api/campaigns'],
   });
 
+  // Fetch ElevenLabs voices
+  const { data: elevenLabsData } = useQuery<{
+    voices: any[];
+    recommended: any[];
+  }>({
+    queryKey: ['/api/elevenlabs/voices'],
+  });
+
   // Add campaign mutation
   const addCampaignMutation = useMutation({
     mutationFn: (campaign: InsertCampaign) => apiRequest('POST', '/api/campaigns', campaign),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       setIsAddModalOpen(false);
-      setNewCampaign({
-        name: "",
-        description: "",
-        aiPrompt: "",
-        script: "",
-        openaiModel: "gpt-4o",
-        voiceConfig: null,
-        transcriberConfig: null,
-        isActive: true,
-      });
-      setUseIndicTTS(false);
-      setVoiceSettings({
-        language: "hi",
-        speaker: "female",
-        speed: 1,
-        pitch: 1,
-        model: "fastpitch",
-        outputFormat: "wav"
-      });
+      resetForm();
       toast({
         title: "Campaign created successfully",
         description: "Your new AI calling campaign is ready to use.",
@@ -86,15 +87,125 @@ export default function Campaigns() {
     },
   });
 
+  // Edit campaign mutation
+  const editCampaignMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Campaign> }) => 
+      apiRequest('PATCH', `/api/campaigns/${id}`, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      setIsEditModalOpen(false);
+      setEditingCampaign(null);
+      resetForm();
+      toast({
+        title: "Campaign updated successfully",
+        description: "Your campaign settings have been saved.",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setNewCampaign({
+      name: "",
+      description: "",
+      aiPrompt: "",
+      script: "",
+      openaiModel: "gpt-4o",
+      voiceConfig: null,
+      transcriberConfig: null,
+      isActive: true,
+    });
+    setUseIndicTTS(false);
+    setUseElevenLabs(false);
+    setVoiceSettings({
+      language: "hi",
+      speaker: "female",
+      speed: 1,
+      pitch: 1,
+      model: "fastpitch",
+      outputFormat: "wav"
+    });
+    setElevenLabsSettings({
+      voiceId: "pNInz6obpgDQGcFmaJgB",
+      model: "eleven_monolingual_v1",
+      stability: 0.5,
+      similarityBoost: 0.75,
+      style: 0.0,
+      useSpeakerBoost: true
+    });
+  };
+
+  const openEditModal = (campaign: Campaign) => {
+    setEditingCampaign(campaign);
+    setNewCampaign({
+      name: campaign.name,
+      description: campaign.description || "",
+      aiPrompt: campaign.aiPrompt,
+      script: campaign.script || "",
+      openaiModel: campaign.openaiModel || "gpt-4o",
+      voiceConfig: campaign.voiceConfig,
+      transcriberConfig: campaign.transcriberConfig,
+      isActive: campaign.isActive,
+    });
+    
+    // Set voice configuration states
+    if (campaign.voiceConfig?.useIndicTTS) {
+      setUseIndicTTS(true);
+      setVoiceSettings({
+        language: campaign.voiceConfig.language || "hi",
+        speaker: campaign.voiceConfig.speaker || "female",
+        speed: campaign.voiceConfig.speed || 1,
+        pitch: campaign.voiceConfig.pitch || 1,
+        model: campaign.voiceConfig.model || "fastpitch",
+        outputFormat: campaign.voiceConfig.outputFormat || "wav"
+      });
+    }
+    
+    if (campaign.voiceConfig?.useElevenLabs) {
+      setUseElevenLabs(true);
+      setElevenLabsSettings({
+        voiceId: campaign.voiceConfig.voiceId || "pNInz6obpgDQGcFmaJgB",
+        model: campaign.voiceConfig.model || "eleven_monolingual_v1",
+        stability: campaign.voiceConfig.stability || 0.5,
+        similarityBoost: campaign.voiceConfig.similarityBoost || 0.75,
+        style: campaign.voiceConfig.style || 0.0,
+        useSpeakerBoost: campaign.voiceConfig.useSpeakerBoost ?? true
+      });
+    }
+    
+    setIsEditModalOpen(true);
+  };
+
   const handleAddCampaign = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Prepare voice configuration
+    let voiceConfig = null;
+    if (useIndicTTS) {
+      voiceConfig = {
+        useIndicTTS: true,
+        ...voiceSettings
+      };
+    } else if (useElevenLabs) {
+      voiceConfig = {
+        useElevenLabs: true,
+        ...elevenLabsSettings
+      };
+    }
+    
     const campaignData = {
       ...newCampaign,
-      voiceConfig: useIndicTTS ? {
-        ...voiceSettings,
-        useIndicTTS: true
-      } : null
+      voiceConfig
     };
-    addCampaignMutation.mutate(campaignData);
+    
+    if (editingCampaign) {
+      editCampaignMutation.mutate({ id: editingCampaign.id, updates: campaignData });
+    } else {
+      addCampaignMutation.mutate(campaignData);
+    }
   };
 
   const startCampaign = async (campaign: Campaign) => {
@@ -212,16 +323,88 @@ export default function Campaigns() {
                       <Label className="text-base font-semibold">Voice Synthesis Configuration</Label>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="use-indic-tts"
-                        checked={useIndicTTS}
-                        onCheckedChange={(checked) => setUseIndicTTS(checked as boolean)}
-                      />
-                      <Label htmlFor="use-indic-tts" className="flex items-center space-x-2">
-                        <Mic className="h-4 w-4" />
-                        <span>Enable AI4Bharat Indic-TTS (Hindi Voice Synthesis)</span>
-                      </Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="use-elevenlabs"
+                          checked={useElevenLabs}
+                          onCheckedChange={(checked) => {
+                            setUseElevenLabs(checked as boolean);
+                            if (checked) setUseIndicTTS(false);
+                          }}
+                        />
+                        <Label htmlFor="use-elevenlabs" className="flex items-center space-x-2">
+                          <Volume2 className="h-4 w-4 text-green-600" />
+                          <span>Enable ElevenLabs TTS (Premium Natural Voice)</span>
+                        </Label>
+                      </div>
+                      
+                      {useElevenLabs && (
+                        <div className="bg-green-50 p-4 rounded-lg space-y-4 border border-green-200">
+                          <p className="text-sm text-green-800 mb-3">
+                            Using high-quality ElevenLabs voice synthesis for natural-sounding calls
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="voice-id">Voice</Label>
+                              <Select
+                                value={elevenLabsSettings.voiceId}
+                                onValueChange={(value) => setElevenLabsSettings({ ...elevenLabsSettings, voiceId: value })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select voice" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {elevenLabsData?.recommended?.map((voice) => (
+                                    <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                                      {voice.name} ({voice.labels?.gender || 'Unknown'})
+                                    </SelectItem>
+                                  )) || (
+                                    <>
+                                      <SelectItem value="pNInz6obpgDQGcFmaJgB">Adam (Male)</SelectItem>
+                                      <SelectItem value="EXAVITQu4vr4xnSDxMaL">Bella (Female)</SelectItem>
+                                      <SelectItem value="ErXwobaYiN019PkySvjV">Antoni (Male)</SelectItem>
+                                    </>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="model">Model</Label>
+                              <Select
+                                value={elevenLabsSettings.model}
+                                onValueChange={(value) => setElevenLabsSettings({ ...elevenLabsSettings, model: value })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select model" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="eleven_monolingual_v1">Monolingual v1</SelectItem>
+                                  <SelectItem value="eleven_multilingual_v2">Multilingual v2</SelectItem>
+                                  <SelectItem value="eleven_turbo_v2">Turbo v2 (Fast)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="use-indic-tts"
+                          checked={useIndicTTS}
+                          onCheckedChange={(checked) => {
+                            setUseIndicTTS(checked as boolean);
+                            if (checked) setUseElevenLabs(false);
+                          }}
+                        />
+                        <Label htmlFor="use-indic-tts" className="flex items-center space-x-2">
+                          <Mic className="h-4 w-4" />
+                          <span>Enable AI4Bharat Indic-TTS (Hindi Voice Synthesis)</span>
+                        </Label>
+                      </div>
                     </div>
                     
                     {useIndicTTS && (
@@ -329,10 +512,192 @@ export default function Campaigns() {
                       Cancel
                     </Button>
                     <Button 
-                      onClick={handleAddCampaign}
+                      onClick={handleSubmit}
                       disabled={addCampaignMutation.isPending || !newCampaign.name || !newCampaign.aiPrompt}
                     >
                       {addCampaignMutation.isPending ? "Creating..." : "Create Campaign"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Campaign Dialog */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Edit Campaign</DialogTitle>
+                  <DialogDescription>
+                    Update your AI calling campaign settings and voice configuration.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-name">Campaign Name *</Label>
+                      <Input
+                        id="edit-name"
+                        value={newCampaign.name}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
+                        placeholder="Product Launch Campaign"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-openai-model">OpenAI Model</Label>
+                      <Select
+                        value={newCampaign.openaiModel || "gpt-4o"}
+                        onValueChange={(value) => setNewCampaign({ ...newCampaign, openaiModel: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select OpenAI model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="gpt-4o">GPT-4o (Latest)</SelectItem>
+                          <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                          <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                          <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Input
+                      id="edit-description"
+                      value={newCampaign.description || ""}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })}
+                      placeholder="Brief description of the campaign goals"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-ai-prompt">AI Conversation Prompt *</Label>
+                    <Textarea
+                      id="edit-ai-prompt"
+                      value={newCampaign.aiPrompt}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, aiPrompt: e.target.value })}
+                      placeholder="You are a friendly sales representative calling to discuss our new product offering..."
+                      className="min-h-[100px]"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-script">Agent Script (Optional)</Label>
+                    <Textarea
+                      id="edit-script"
+                      value={newCampaign.script || ""}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, script: e.target.value })}
+                      placeholder="Hello, this is [Agent Name] from [Company]..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+
+                  <Separator />
+
+                  {/* Voice Synthesis Configuration */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Volume2 className="h-4 w-4 text-blue-600" />
+                      <Label className="text-base font-semibold">Voice Synthesis Configuration</Label>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="edit-use-elevenlabs"
+                          checked={useElevenLabs}
+                          onCheckedChange={(checked) => {
+                            setUseElevenLabs(checked as boolean);
+                            if (checked) setUseIndicTTS(false);
+                          }}
+                        />
+                        <Label htmlFor="edit-use-elevenlabs" className="flex items-center space-x-2">
+                          <Volume2 className="h-4 w-4 text-green-600" />
+                          <span>Enable ElevenLabs TTS (Premium Natural Voice)</span>
+                        </Label>
+                      </div>
+                      
+                      {useElevenLabs && (
+                        <div className="bg-green-50 p-4 rounded-lg space-y-4 border border-green-200">
+                          <p className="text-sm text-green-800 mb-3">
+                            Using high-quality ElevenLabs voice synthesis for natural-sounding calls
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="edit-voice-id">Voice</Label>
+                              <Select
+                                value={elevenLabsSettings.voiceId}
+                                onValueChange={(value) => setElevenLabsSettings({ ...elevenLabsSettings, voiceId: value })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select voice" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {elevenLabsData?.recommended?.map((voice) => (
+                                    <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                                      {voice.name} ({voice.labels?.gender || 'Unknown'})
+                                    </SelectItem>
+                                  )) || (
+                                    <>
+                                      <SelectItem value="pNInz6obpgDQGcFmaJgB">Adam (Male)</SelectItem>
+                                      <SelectItem value="EXAVITQu4vr4xnSDxMaL">Bella (Female)</SelectItem>
+                                      <SelectItem value="ErXwobaYiN019PkySvjV">Antoni (Male)</SelectItem>
+                                    </>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="edit-model">Model</Label>
+                              <Select
+                                value={elevenLabsSettings.model}
+                                onValueChange={(value) => setElevenLabsSettings({ ...elevenLabsSettings, model: value })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select model" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="eleven_monolingual_v1">Monolingual v1</SelectItem>
+                                  <SelectItem value="eleven_multilingual_v2">Multilingual v2</SelectItem>
+                                  <SelectItem value="eleven_turbo_v2">Turbo v2 (Fast)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="edit-use-indic-tts"
+                          checked={useIndicTTS}
+                          onCheckedChange={(checked) => {
+                            setUseIndicTTS(checked as boolean);
+                            if (checked) setUseElevenLabs(false);
+                          }}
+                        />
+                        <Label htmlFor="edit-use-indic-tts" className="flex items-center space-x-2">
+                          <Mic className="h-4 w-4" />
+                          <span>Enable AI4Bharat Indic-TTS (Hindi Voice Synthesis)</span>
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleSubmit}
+                      disabled={editCampaignMutation.isPending || !newCampaign.name || !newCampaign.aiPrompt}
+                    >
+                      {editCampaignMutation.isPending ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
                 </div>
@@ -448,7 +813,12 @@ export default function Campaigns() {
                               <span>Voice Configuration</span>
                             </Label>
                             <p className="text-sm text-gray-600 mt-1">
-                              {(campaign.voiceConfig as any)?.useIndicTTS ? (
+                              {(campaign.voiceConfig as any)?.useElevenLabs ? (
+                                <span className="inline-flex items-center space-x-1">
+                                  <Volume2 className="h-3 w-3 text-green-600" />
+                                  <span>ElevenLabs Premium Voice ({(campaign.voiceConfig as any)?.model})</span>
+                                </span>
+                              ) : (campaign.voiceConfig as any)?.useIndicTTS ? (
                                 <span className="inline-flex items-center space-x-1">
                                   <Mic className="h-3 w-3 text-blue-600" />
                                   <span>AI4Bharat {(campaign.voiceConfig as any)?.language?.toUpperCase()} ({(campaign.voiceConfig as any)?.speaker}) - Speed: {(campaign.voiceConfig as any)?.speed}x</span>
@@ -477,13 +847,7 @@ export default function Campaigns() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                // In a real implementation, this would open an edit dialog
-                                toast({
-                                  title: "Edit Campaign",
-                                  description: "Campaign editing feature coming soon.",
-                                });
-                              }}
+                              onClick={() => openEditModal(campaign)}
                             >
                               <Settings className="h-4 w-4 mr-1" />
                               Edit
