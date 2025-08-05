@@ -10,6 +10,8 @@ import {
   insertCallSchema 
 } from "@shared/schema";
 import { MessagingService } from "./services/messagingService";
+import { WhatsAppTemplateService } from "./services/whatsappTemplateService";
+import { insertWhatsAppTemplateSchema, insertBulkMessageJobSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -450,6 +452,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error testing WhatsApp:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // WhatsApp Template API routes
+  app.get('/api/whatsapp/templates', async (req, res) => {
+    try {
+      const templates = await WhatsAppTemplateService.getTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching WhatsApp templates:', error);
+      res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+  });
+
+  app.post('/api/whatsapp/templates', async (req, res) => {
+    try {
+      const validation = insertWhatsAppTemplateSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors });
+      }
+
+      const template = await WhatsAppTemplateService.createTemplate(validation.data);
+      res.status(201).json(template);
+    } catch (error) {
+      console.error('Error creating WhatsApp template:', error);
+      res.status(500).json({ error: 'Failed to create template' });
+    }
+  });
+
+  app.get('/api/whatsapp/templates/examples', async (req, res) => {
+    try {
+      const examples = WhatsAppTemplateService.getTemplateExamples();
+      res.json(examples);
+    } catch (error) {
+      console.error('Error fetching template examples:', error);
+      res.status(500).json({ error: 'Failed to fetch template examples' });
+    }
+  });
+
+  // WhatsApp Bulk Messaging API routes
+  app.post('/api/whatsapp/bulk/send', async (req, res) => {
+    try {
+      const { templateName, recipients, languageCode = 'en_US', delayMs = 1000 } = req.body;
+      
+      if (!templateName || !recipients || !Array.isArray(recipients)) {
+        return res.status(400).json({ 
+          error: 'templateName and recipients array are required' 
+        });
+      }
+
+      const job = await WhatsAppTemplateService.sendBulkTemplateMessages(
+        templateName,
+        recipients,
+        languageCode,
+        delayMs
+      );
+
+      res.status(202).json(job);
+    } catch (error) {
+      console.error('Error starting bulk WhatsApp job:', error);
+      res.status(500).json({ error: 'Failed to start bulk messaging job' });
+    }
+  });
+
+  app.get('/api/whatsapp/bulk/jobs', async (req, res) => {
+    try {
+      const jobs = await WhatsAppTemplateService.getBulkMessageJobs();
+      res.json(jobs);
+    } catch (error) {
+      console.error('Error fetching bulk message jobs:', error);
+      res.status(500).json({ error: 'Failed to fetch bulk message jobs' });
+    }
+  });
+
+  app.get('/api/whatsapp/bulk/jobs/:jobId', async (req, res) => {
+    try {
+      const { jobId } = req.params;
+      const job = await WhatsAppTemplateService.getBulkMessageJob(jobId);
+      
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      res.json(job);
+    } catch (error) {
+      console.error('Error fetching bulk message job:', error);
+      res.status(500).json({ error: 'Failed to fetch bulk message job' });
+    }
+  });
+
+  app.post('/api/whatsapp/send', async (req, res) => {
+    try {
+      const { phoneNumber, templateName, variables, languageCode = 'en_US' } = req.body;
+      
+      if (!phoneNumber || !templateName) {
+        return res.status(400).json({ 
+          error: 'phoneNumber and templateName are required' 
+        });
+      }
+
+      const result = await WhatsAppTemplateService.sendTemplateMessage(
+        phoneNumber,
+        templateName,
+        languageCode,
+        variables
+      );
+
+      if (result.success) {
+        res.json({ success: true, messageId: result.messageId });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error) {
+      console.error('Error sending WhatsApp template message:', error);
+      res.status(500).json({ error: 'Failed to send WhatsApp message' });
     }
   });
 

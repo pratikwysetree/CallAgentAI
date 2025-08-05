@@ -65,6 +65,31 @@ export const callMessages = pgTable("call_messages", {
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
+export const whatsappTemplates = pgTable("whatsapp_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // 'AUTHENTICATION', 'MARKETING', 'UTILITY'
+  language: text("language").notNull(),
+  status: text("status").notNull(), // 'PENDING', 'APPROVED', 'REJECTED'
+  components: jsonb("components").notNull(),
+  metaTemplateId: text("meta_template_id"), // Meta's template ID
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const bulkMessageJobs = pgTable("bulk_message_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateName: text("template_name").notNull(),
+  recipients: jsonb("recipients").notNull(),
+  status: text("status").notNull(), // 'PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'
+  totalMessages: integer("total_messages").notNull(),
+  sentMessages: integer("sent_messages").default(0).notNull(),
+  failedMessages: integer("failed_messages").default(0).notNull(),
+  languageCode: text("language_code").default("en_US").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Relations
 export const contactsRelations = relations(contacts, ({ many }) => ({
   calls: many(calls),
@@ -90,6 +115,17 @@ export const callMessagesRelations = relations(callMessages, ({ one }) => ({
   call: one(calls, {
     fields: [callMessages.callId],
     references: [calls.id],
+  }),
+}));
+
+export const whatsappTemplatesRelations = relations(whatsappTemplates, ({ many }) => ({
+  bulkJobs: many(bulkMessageJobs),
+}));
+
+export const bulkMessageJobsRelations = relations(bulkMessageJobs, ({ one }) => ({
+  template: one(whatsappTemplates, {
+    fields: [bulkMessageJobs.templateName],
+    references: [whatsappTemplates.name],
   }),
 }));
 
@@ -120,6 +156,18 @@ export const insertCallMessageSchema = createInsertSchema(callMessages).omit({
   timestamp: true,
 });
 
+export const insertWhatsAppTemplateSchema = createInsertSchema(whatsappTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBulkMessageJobSchema = createInsertSchema(bulkMessageJobs).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -135,6 +183,12 @@ export type InsertCall = z.infer<typeof insertCallSchema>;
 
 export type CallMessage = typeof callMessages.$inferSelect;
 export type InsertCallMessage = z.infer<typeof insertCallMessageSchema>;
+
+export type WhatsAppTemplate = typeof whatsappTemplates.$inferSelect;
+export type InsertWhatsAppTemplate = z.infer<typeof insertWhatsAppTemplateSchema>;
+
+export type BulkMessageJob = typeof bulkMessageJobs.$inferSelect;
+export type InsertBulkMessageJob = z.infer<typeof insertBulkMessageJobSchema>;
 
 // Extended types for API responses
 export type CallWithDetails = Call & {

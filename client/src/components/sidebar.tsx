@@ -118,6 +118,17 @@ export default function Sidebar({ stats }: SidebarProps) {
             <span>Advanced Settings</span>
           </a>
         </Link>
+        
+        <Link href="/whatsapp-bulk">
+          <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            isActive('/whatsapp-bulk') 
+              ? 'bg-primary text-white font-medium' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}>
+            <i className="fab fa-whatsapp w-5"></i>
+            <span>WhatsApp Bulk</span>
+          </a>
+        </Link>
       </nav>
 
       {/* System Status */}

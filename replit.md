@@ -17,6 +17,8 @@ This is a comprehensive AI-powered calling platform built with a modern full-sta
 - **Voice Synthesis**: AI4Bharat Indic-TTS integration for 13 Indian languages
 - **Speech Recognition**: OpenAI Whisper integration with multiple model options
 - **Messaging Integration**: Real-time WhatsApp and Email messaging during calls
+- **WhatsApp Bulk Messaging**: Meta Business API integration with template management and bulk campaigns
+- **Template Management**: WhatsApp message template creation, approval tracking, and bulk messaging
 - **Call Analytics**: Automated call summaries with contact data extraction
 - **API Endpoints**: Complete REST API for all operations including file uploads
 - **Webhook Integration**: Twilio webhooks for call flow control

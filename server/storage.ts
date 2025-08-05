@@ -1,10 +1,12 @@
 import { 
-  users, contacts, campaigns, calls, callMessages,
+  users, contacts, campaigns, calls, callMessages, whatsappTemplates, bulkMessageJobs,
   type User, type InsertUser, 
   type Contact, type InsertContact,
   type Campaign, type InsertCampaign,
   type Call, type InsertCall, type CallWithDetails,
   type CallMessage, type InsertCallMessage,
+  type WhatsAppTemplate, type InsertWhatsAppTemplate,
+  type BulkMessageJob, type InsertBulkMessageJob,
   type DashboardStats
 } from "@shared/schema";
 import { db } from "./db";
@@ -44,6 +46,18 @@ export interface IStorage {
 
   // Dashboard Stats
   getDashboardStats(): Promise<DashboardStats>;
+
+  // WhatsApp Templates
+  createWhatsAppTemplate(template: InsertWhatsAppTemplate): Promise<WhatsAppTemplate>;
+  getWhatsAppTemplates(): Promise<WhatsAppTemplate[]>;
+  getWhatsAppTemplate(id: string): Promise<WhatsAppTemplate | undefined>;
+  updateWhatsAppTemplate(id: string, template: Partial<InsertWhatsAppTemplate>): Promise<WhatsAppTemplate>;
+
+  // Bulk Message Jobs
+  createBulkMessageJob(job: InsertBulkMessageJob): Promise<BulkMessageJob>;
+  updateBulkMessageJob(job: BulkMessageJob): Promise<BulkMessageJob>;
+  getBulkMessageJob(id: string): Promise<BulkMessageJob | undefined>;
+  getBulkMessageJobs(): Promise<BulkMessageJob[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -296,6 +310,58 @@ export class DatabaseStorage implements IStorage {
       todayConversations,
       dataPointsToday,
     };
+  }
+
+  // WhatsApp Templates
+  async createWhatsAppTemplate(insertTemplate: InsertWhatsAppTemplate): Promise<WhatsAppTemplate> {
+    const [template] = await db.insert(whatsappTemplates).values(insertTemplate).returning();
+    return template;
+  }
+
+  async getWhatsAppTemplates(): Promise<WhatsAppTemplate[]> {
+    return await db.select().from(whatsappTemplates).orderBy(desc(whatsappTemplates.createdAt));
+  }
+
+  async getWhatsAppTemplate(id: string): Promise<WhatsAppTemplate | undefined> {
+    const [template] = await db.select().from(whatsappTemplates).where(eq(whatsappTemplates.id, id));
+    return template || undefined;
+  }
+
+  async updateWhatsAppTemplate(id: string, updateTemplate: Partial<InsertWhatsAppTemplate>): Promise<WhatsAppTemplate> {
+    const [template] = await db.update(whatsappTemplates)
+      .set({ ...updateTemplate, updatedAt: new Date() })
+      .where(eq(whatsappTemplates.id, id))
+      .returning();
+    return template;
+  }
+
+  // Bulk Message Jobs
+  async createBulkMessageJob(insertJob: InsertBulkMessageJob): Promise<BulkMessageJob> {
+    const [job] = await db.insert(bulkMessageJobs).values(insertJob).returning();
+    return job;
+  }
+
+  async updateBulkMessageJob(job: BulkMessageJob): Promise<BulkMessageJob> {
+    const [updatedJob] = await db.update(bulkMessageJobs)
+      .set({
+        recipients: job.recipients,
+        status: job.status,
+        sentMessages: job.sentMessages,
+        failedMessages: job.failedMessages,
+        completedAt: job.completedAt,
+      })
+      .where(eq(bulkMessageJobs.id, job.id))
+      .returning();
+    return updatedJob;
+  }
+
+  async getBulkMessageJob(id: string): Promise<BulkMessageJob | undefined> {
+    const [job] = await db.select().from(bulkMessageJobs).where(eq(bulkMessageJobs.id, id));
+    return job || undefined;
+  }
+
+  async getBulkMessageJobs(): Promise<BulkMessageJob[]> {
+    return await db.select().from(bulkMessageJobs).orderBy(desc(bulkMessageJobs.createdAt));
   }
 }
 

@@ -8,6 +8,7 @@ import Campaigns from "@/pages/campaigns";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import EnhancedSettings from "@/pages/enhanced-settings";
+import WhatsAppBulk from "@/pages/whatsapp-bulk";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />
       <Route path="/enhanced-settings" component={EnhancedSettings} />
+      <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
       <Route component={NotFound} />
     </Switch>
   );
