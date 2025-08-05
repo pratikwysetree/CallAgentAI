@@ -2,7 +2,7 @@
 
 ## Your Webhook Configuration
 
-**Webhook URL**: `https://[your-replit-domain].replit.app/webhook/whatsapp`
+**Webhook URL**: `https://04b918f8-1324-429a-8c64-ebdefef53c64-00-2atotxxaug2tv.worf.replit.dev/webhook/whatsapp`
 **Verify Token**: `whatsapp_labs_verify_2025`
 
 ## Steps to Configure in Meta Business Manager:
@@ -18,7 +18,7 @@
 ## Testing the Webhook:
 
 You can test the webhook verification by visiting:
-`https://[your-replit-domain].replit.app/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=whatsapp_labs_verify_2025&hub.challenge=test123`
+`https://04b918f8-1324-429a-8c64-ebdefef53c64-00-2atotxxaug2tv.worf.replit.dev/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=whatsapp_labs_verify_2025&hub.challenge=test123`
 
 ## If Still Getting Errors:
 
