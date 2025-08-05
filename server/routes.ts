@@ -168,12 +168,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/contacts', async (req, res) => {
     try {
+      console.log('Creating contact with data:', req.body);
       const validatedData = insertContactSchema.parse(req.body);
+      console.log('Validated data:', validatedData);
       const contact = await storage.createContact(validatedData);
+      console.log('Created contact:', contact);
       res.status(201).json(contact);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating contact:', error);
-      res.status(400).json({ error: 'Invalid contact data' });
+      if (error.message?.includes('already exists')) {
+        res.status(409).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: 'Invalid contact data', details: error.message });
+      }
     }
   });
 

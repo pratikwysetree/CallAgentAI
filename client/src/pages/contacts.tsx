@@ -34,8 +34,12 @@ export default function Contacts() {
 
   // Add contact mutation
   const addContactMutation = useMutation({
-    mutationFn: (contact: InsertContact) => apiRequest('/api/contacts', 'POST', contact),
-    onSuccess: () => {
+    mutationFn: (contact: InsertContact) => {
+      console.log('Frontend sending contact data:', contact);
+      return apiRequest('/api/contacts', 'POST', contact);
+    },
+    onSuccess: (data) => {
+      console.log('Contact created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
       setIsAddModalOpen(false);
       setNewContact({
@@ -52,10 +56,11 @@ export default function Contacts() {
         description: "The new contact has been added to your database.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Error adding contact:', error);
       toast({
         title: "Error adding contact",
-        description: "Please check your information and try again.",
+        description: error.message || "Please check your information and try again.",
         variant: "destructive",
       });
     },
