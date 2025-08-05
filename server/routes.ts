@@ -413,14 +413,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/twilio/voice', async (req, res) => {
     try {
       const { campaignId, contactId } = req.query;
+      console.log(`🔥 [WEBHOOK START] Campaign ID: ${campaignId}, Contact ID: ${contactId}`);
       
-      // Get campaign to create initial greeting
+      // Get campaign to use actual script content
       const campaign = await storage.getCampaign(campaignId as string);
-      const greeting = campaign ? 
-        `Hello! I'm calling regarding ${campaign.name}. How are you today?` :
-        "Hello! How are you today?";
+      console.log(`📋 [CAMPAIGN FOUND] Campaign exists: ${!!campaign}, Name: ${campaign?.name || 'null'}`);
+      
+      let scriptToSpeak = "Hello! How are you today?";
+      
+      if (campaign) {
+        console.log(`📋 [CAMPAIGN DEBUG] Campaign: ${campaign.name}`);
+        console.log(`📋 [SCRIPT DEBUG] Script exists: ${!!campaign.script}, length: ${campaign.script?.length || 0}`);
+        console.log(`📋 [PROMPT DEBUG] AI Prompt exists: ${!!campaign.aiPrompt}, length: ${campaign.aiPrompt?.length || 0}`);
+        
+        // Use campaign script if available, otherwise use AI prompt, otherwise fallback
+        if (campaign.script && campaign.script.trim()) {
+          scriptToSpeak = campaign.script;
+          console.log(`🎯 [CAMPAIGN SCRIPT] Using full campaign script (${campaign.script.length} chars)`);
+          console.log(`🎯 [SCRIPT PREVIEW] "${campaign.script.substring(0, 200)}..."`);
+        } else if (campaign.aiPrompt && campaign.aiPrompt.trim()) {
+          // Extract speaking content from AI prompt - convert to first person speech
+          let speakingScript = campaign.aiPrompt;
+          
+          // Convert prompts to natural speaking
+          speakingScript = speakingScript
+            .replace(/You are/gi, "I am")
+            .replace(/Your goal is to/gi, "I will")
+            .replace(/assistant/gi, "representative")
+            .replace(/agent/gi, "representative")
+            .replace(/calling to/gi, "calling to");
+          
+          // If it's a long prompt, take first meaningful part
+          const sentences = speakingScript.split(/[.!?]+/);
+          scriptToSpeak = sentences.slice(0, 3).join('. ').trim();
+          if (scriptToSpeak.length > 200) {
+            scriptToSpeak = scriptToSpeak.substring(0, 200) + "...";
+          }
+          
+          console.log(`🎯 [AI PROMPT] Converting AI prompt to speech (${scriptToSpeak.length} chars)`);
+          console.log(`🎯 [PROMPT PREVIEW] "${scriptToSpeak}"`);
+        } else {
+          scriptToSpeak = `Hello! I'm calling regarding ${campaign.name}. How are you today?`;
+          console.log(`🎯 [FALLBACK] Using campaign name fallback: "${scriptToSpeak}"`);
+        }
+      } else {
+        console.log(`❌ [NO CAMPAIGN] Campaign ${campaignId} not found, using generic greeting`);
+      }
 
-      const twiml = await twilioService.generateTwiML(greeting, campaignId as string);
+      console.log(`🎙️ [FINAL SCRIPT] Speaking: "${scriptToSpeak}"`);
+      const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
       
       res.type('text/xml').send(twiml);
     } catch (error) {
