@@ -512,28 +512,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/webhook/whatsapp', async (req, res) => {
     try {
       const body = req.body;
-      console.log('📥 Incoming WhatsApp webhook:', JSON.stringify(body, null, 2));
+      console.log('🚨 WEBHOOK RECEIVED - Raw body:', JSON.stringify(body, null, 2));
+      console.log('🚨 WEBHOOK HEADERS:', JSON.stringify(req.headers, null, 2));
       
       if (body.object === 'whatsapp_business_account') {
+        console.log('✅ Valid WhatsApp Business webhook object');
         body.entry?.forEach((entry: any) => {
+          console.log('📋 Processing entry:', JSON.stringify(entry, null, 2));
           entry.changes?.forEach((change: any) => {
+            console.log('🔄 Processing change:', JSON.stringify(change, null, 2));
             if (change.field === 'messages') {
               const messages = change.value?.messages;
-              console.log('📨 Processing messages:', messages);
+              console.log('📨 Found messages:', JSON.stringify(messages, null, 2));
               if (messages) {
                 messages.forEach(async (message: any) => {
-                  console.log('🔄 Handling incoming message:', message);
+                  console.log('💬 Processing individual message:', JSON.stringify(message, null, 2));
                   await WhatsAppService.handleIncomingMessage(message);
                 });
               }
             }
           });
         });
+      } else {
+        console.log('❌ Invalid webhook object:', body.object);
       }
       
       res.status(200).send('EVENT_RECEIVED');
     } catch (error) {
-      console.error('Error processing WhatsApp webhook:', error);
+      console.error('❌ Error processing WhatsApp webhook:', error);
       res.status(500).send('Error processing webhook');
     }
   });

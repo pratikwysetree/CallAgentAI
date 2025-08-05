@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { whatsappChats, whatsappMessages } from '@shared/schema';
+import { whatsappChats, whatsappMessages, contacts } from '@shared/schema';
 import { eq, desc, sql } from 'drizzle-orm';
 
 export class WhatsAppService {
@@ -117,9 +117,14 @@ export class WhatsAppService {
       await db.insert(whatsappChats).values({
         id: chatId,
         contactId,
-        contactPhone,
+        contactPhone: contactPhone,
         contactName,
+        lastMessage: '',
+        lastMessageTime: new Date(),
+        unreadCount: 0,
         status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       return chatId;
@@ -210,7 +215,7 @@ export class WhatsAppService {
       console.log(`👤 Contact found: ${contactName} (${contact[0]?.id || 'no ID'})`);
       
       // Create or get existing chat
-      const chatId = await this.getOrCreateChat(from, contact[0]?.id, contactName);
+      const chatId = await this.getOrCreateChat(contact[0]?.id || from, from, contactName);
 
       // Store incoming message
       const incomingMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
