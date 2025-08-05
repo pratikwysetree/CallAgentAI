@@ -134,53 +134,23 @@ export class TwilioService {
         voiceConfig = campaign?.voiceConfig;
       }
 
-      // If Indic-TTS configuration exists, generate audio file
+      // TEMPORARY: Disable Indic-TTS to fix application errors
+      // The voice synthesis will use Twilio's built-in voice until audio serving is fixed
+      console.log(`🎤 [VOICE-MODE] Using Twilio built-in voice (Indic-TTS temporarily disabled)`);
+      
+      // TODO: Re-enable Indic-TTS after fixing audio file streaming issues
+      /*
       if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
-        console.log(`🎤 [INDIC-TTS] ACTIVATED - Using AI4Bharat TTS instead of OpenAI voice!`);
-        console.log(`🎤 [INDIC-TTS] Language: ${(voiceConfig as any).language}, Speaker: ${(voiceConfig as any).speaker}`);
-        console.log(`🎤 [INDIC-TTS] Message: "${message}"`);
-        
-        const { IndicTTSService } = await import('./indicTtsService');
-        const indicTtsService = new IndicTTSService();
-        
-        // Generate unique filename for this audio
-        const audioFilename = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.wav`;
-        const audioPath = `./temp/${audioFilename}`;
-        
-        // Synthesize speech using Indic-TTS
-        const result = await indicTtsService.synthesizeSpeech(message, audioPath, voiceConfig as any);
-        
-        if (result.success && result.audioPath) {
-          // Serve the audio file via HTTP endpoint
-          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-          
-          console.log(`🎤 [INDIC-TTS] SUCCESS - Audio file generated: ${audioUrl}`);
-          console.log(`🎤 [INDIC-TTS] TwiML will use <Play> tag instead of <Say> tag!`);
-          
-          return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Play>${audioUrl}</Play>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="3" timeout="10">
-        <Play>${audioUrl}</Play>
-    </Gather>
-</Response>`;
-        } else {
-          console.error('🎤 [INDIC-TTS] FAILED - Synthesis error:', result.error);
-          console.log('🎤 [INDIC-TTS] Falling back to Twilio default voice');
-          // Fallback to default voice
-        }
-      } else {
-        console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in voice (OpenAI voice not used here)`);
+        // Indic-TTS integration code temporarily disabled
       }
+      */
 
-      // Default fallback - use Twilio's built-in voice
+      // Use Twilio's built-in voice with better configuration  
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice">${message}</Say>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="3" timeout="10">
-        <Say voice="alice">Please respond when you're ready.</Say>
+    <Say voice="alice" language="en-US">${message}</Say>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="15">
+        <Say voice="alice" language="en-US">Please respond when you're ready.</Say>
     </Gather>
 </Response>`;
     } catch (error) {

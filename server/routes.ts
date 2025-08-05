@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import path from 'path';
 import { storage } from "./storage";
 import { db } from "./db";
 import { contacts } from "@shared/schema";
@@ -476,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve generated audio files for Indic-TTS
-  app.get('/api/audio/:filename', async (req, res) => {
+  app.get('/api/audio/:filename', (req, res) => {
     try {
       const { filename } = req.params;
       const filePath = path.join(process.cwd(), 'temp', filename);
@@ -486,31 +487,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Invalid filename' });
       }
       
+      // Import fs synchronously to avoid async issues
+      const fs = require('fs');
+      
       // Check if file exists
-      const fs = await import('fs');
       if (!fs.existsSync(filePath)) {
         console.log(`Audio file not found: ${filePath}`);
         return res.status(404).json({ error: 'Audio file not found' });
       }
       
+      // Get file stats
+      const stats = fs.statSync(filePath);
+      
       // Set appropriate headers for audio
       res.setHeader('Content-Type', 'audio/wav');
+      res.setHeader('Content-Length', stats.size);
       res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+      res.setHeader('Accept-Ranges', 'bytes');
       
-      // Stream the file
+      // Create read stream and pipe to response
       const stream = fs.createReadStream(filePath);
-      stream.pipe(res);
       
-      // Clean up file after streaming (optional - for temporary files)
+      stream.on('error', (error: any) => {
+        console.error('Error streaming audio file:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error streaming audio file' });
+        }
+      });
+      
       stream.on('end', () => {
+        console.log(`Successfully streamed audio file: ${filename}`);
+        // Clean up file after a delay to allow for potential retries
         setTimeout(() => {
           try {
             fs.unlinkSync(filePath);
+            console.log(`Cleaned up temporary audio file: ${filename}`);
           } catch (error) {
             console.log('Could not delete temporary audio file:', filename);
           }
-        }, 60000); // Delete after 1 minute
+        }, 300000); // Delete after 5 minutes
       });
+      
+      stream.pipe(res);
       
     } catch (error) {
       console.error('Error serving audio file:', error);

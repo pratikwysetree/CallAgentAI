@@ -93,11 +93,16 @@ export class IndicTTSService {
         mockWavData.write('data', 36);
         mockWavData.writeUInt32LE(1000, 40);
         
-        // Write mock audio data
-        fs.writeFile(outputPath, mockWavData).then(() => {
+        // Ensure temp directory exists
+        const tempDir = path.dirname(outputPath);
+        fs.mkdir(tempDir, { recursive: true }).then(() => {
+          // Write mock audio data
+          return fs.writeFile(outputPath, mockWavData);
+        }).then(() => {
           console.log(`[MOCK] Audio file created: ${outputPath}`);
           resolve({ success: true, audioPath: outputPath });
         }).catch((error) => {
+          console.error('Error creating mock audio file:', error);
           resolve({ 
             success: false, 
             error: `Failed to write mock audio file: ${error.message}` 
