@@ -497,10 +497,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Set the API key in the service for immediate use
       const { ElevenLabsService } = await import('./services/elevenLabsService');
-      const elevenLabsService = new ElevenLabsService(apiKey);
+      const testService = new ElevenLabsService(apiKey);
       
       // Validate the API key
-      const validation = await elevenLabsService.validateApiKey();
+      const validation = await testService.validateApiKey();
       
       if (!validation.valid) {
         return res.status(400).json({ 
@@ -511,6 +511,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Store the API key (in a real app, you'd store this securely)
       process.env.ELEVENLABS_API_KEY = apiKey;
+      
+      // Update the main service instance
+      const { elevenLabsService } = await import('./services/elevenLabsService');
+      elevenLabsService.updateApiKey(apiKey);
       
       res.json({ 
         success: true, 

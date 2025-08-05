@@ -35,6 +35,10 @@ export class ElevenLabsService {
     }
   }
 
+  updateApiKey(apiKey: string): void {
+    this.apiKey = apiKey;
+  }
+
   async isConfigured(): Promise<boolean> {
     return !!this.apiKey;
   }

@@ -51,10 +51,25 @@ export default function ElevenLabsSetup() {
   // Configure API key mutation
   const configureApiKey = useMutation({
     mutationFn: async (data: { apiKey: string }) => {
-      return apiRequest('/api/secrets/elevenlabs', {
-        method: 'POST',
-        body: data,
-      });
+      try {
+        const response = await fetch('/api/secrets/elevenlabs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+          throw new Error(errorData.error || errorData.details || 'Configuration failed');
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error('API key configuration error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -65,10 +80,11 @@ export default function ElevenLabsSetup() {
       queryClient.invalidateQueries({ queryKey: ['/api/elevenlabs/voices'] });
       setApiKey("");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
+      console.error('Configuration error:', error);
       toast({
         title: "Configuration Failed",
-        description: error.details || "Failed to configure API key. Please check your key and try again.",
+        description: error.message || "Failed to configure API key. Please check your key and try again.",
         variant: "destructive",
       });
     },
