@@ -29,8 +29,16 @@ export default function LiveConversation() {
   useEffect(() => {
     if (lastMessage) {
       try {
+        // Validate message structure
+        if (!lastMessage) return;
+        
         const messageContent = typeof lastMessage === 'string' ? lastMessage : lastMessage.data;
+        if (!messageContent || typeof messageContent !== 'string') return;
+        
         const data = JSON.parse(messageContent);
+        
+        // Validate parsed data structure
+        if (!data || typeof data !== 'object' || !data.type) return;
         
         // Handle live conversation events
         if (data.type === 'live_conversation') {

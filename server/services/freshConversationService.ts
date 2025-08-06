@@ -51,7 +51,10 @@ export class FreshConversationService {
         }
         
         // Extract recording SID from URL
-        const recordingSid = recordingUrl.split('/').pop();
+        const recordingSid = recordingUrl.split('/').pop()?.split('.')[0];
+        if (!recordingSid) {
+          throw new Error('Invalid recording URL format - cannot extract SID');
+        }
         console.log(`📞 [TWILIO-AUTH] Getting recording: ${recordingSid}`);
         
         // Fetch authenticated recording
@@ -158,7 +161,13 @@ Use JSON format for all responses.`
       const aiResponse = await openai.chat.completions.create(requestPayload);
       
       const openaiProcessingTime = Date.now() - openaiRequestStart;
-      const aiResponseContent = aiResponse.choices[0].message.content || '{}';
+      
+      // Validate OpenAI response structure
+      if (!aiResponse || !aiResponse.choices || !Array.isArray(aiResponse.choices) || aiResponse.choices.length === 0) {
+        throw new Error('Invalid OpenAI response structure');
+      }
+      
+      const aiResponseContent = aiResponse.choices[0]?.message?.content || '{}';
       
       // Broadcast OpenAI response
       this.broadcastConversationEvent(callSid, 'openai_response', aiResponseContent, {
@@ -180,6 +189,29 @@ Use JSON format for all responses.`
         };
       }
 
+      // Validate aiData structure to prevent crashes
+      if (!aiData || typeof aiData !== 'object') {
+        console.error('❌ [AI DATA] Invalid AI response structure');
+        aiData = {
+          message: "Great! Can I get your WhatsApp number for partnership details?",
+          should_end: false,
+          collected_data: {}
+        };
+      }
+      
+      // Ensure required fields exist
+      if (!aiData.message || typeof aiData.message !== 'string') {
+        aiData.message = "Great! Can I get your WhatsApp number for partnership details?";
+      }
+      
+      if (typeof aiData.should_end !== 'boolean') {
+        aiData.should_end = false;
+      }
+      
+      if (!aiData.collected_data || typeof aiData.collected_data !== 'object') {
+        aiData.collected_data = {};
+      }
+
       console.log(`🤖 [AI] Response: "${aiData.message}"`);
       
       // 5. Generate voice with ElevenLabs
@@ -196,6 +228,11 @@ Use JSON format for all responses.`
           style: 0,
           useSpeakerBoost: true,
         });
+        
+        // Validate audio filename exists
+        if (!audioFilename || typeof audioFilename !== 'string') {
+          throw new Error('ElevenLabs returned invalid audio filename');
+        }
         
         const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
         const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
@@ -215,6 +252,9 @@ Use JSON format for all responses.`
       } catch (ttsError) {
         console.error('❌ [ELEVENLABS] Error:', ttsError);
         this.broadcastConversationEvent(callSid, 'error', `Voice synthesis failed: ${(ttsError as Error).message}`);
+        
+        // Continue conversation even if TTS fails - use fallback text-to-speech
+        console.log('🔄 [FALLBACK] Continuing with built-in TTS instead of ElevenLabs');
       }
       
       // 6. Store conversation data if collected
