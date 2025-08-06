@@ -616,9 +616,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📋 [PROMPT DEBUG] AI Prompt exists: ${!!campaign.aiPrompt}, length: ${campaign.aiPrompt?.length || 0}`);
         
         // Always use natural conversational opening - NEVER read scripts
-        scriptToSpeak = "Hi! This is Aavika from LabsCheck. How are you doing today?";
-        console.log(`🎯 [NATURAL CONVERSATION] Using greeting - NO script reading allowed`);
-        console.log(`🎯 [AI FLOW] Conversation will be 100% natural with LabsCheck reference info only`);
+        scriptToSpeak = "Hi! Aavika speaking from LabsCheck. Aap kaise hain?";
+        console.log(`🎯 [NATURAL CONVERSATION] Using simple Hinglish greeting`);
+        console.log(`🎯 [NO SCRIPTS] AI will respond naturally to customer words only`);
       } else {
         console.log(`❌ [NO CAMPAIGN] Campaign ${campaignId} not found, using generic greeting`);
       }

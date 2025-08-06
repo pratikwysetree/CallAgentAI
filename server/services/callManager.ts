@@ -36,7 +36,7 @@ export class CallManager {
 
       // Set up conversation context for natural conversation (no script reading)
       const conversationContext: ConversationContext = {
-        campaignPrompt: campaign.aiPrompt || "Introduce LabsCheck services and collect WhatsApp/email for sharing details",
+        campaignPrompt: "Have a natural conversation to collect WhatsApp number and email ID for sharing LabsCheck information",
         conversationHistory: [],
         contactName: contact?.name,
         phoneNumber,
@@ -100,8 +100,14 @@ export class CallManager {
         });
       }
 
-      // End call if AI determines it should end
-      if (aiResponse.shouldEndCall) {
+      // Check if AI wants to end call OR if we have collected both contact details
+      const extractedData = aiResponse.extractedData || {};
+      const hasCompleteContact = extractedData.contact_complete === 'yes' || 
+                                (extractedData.whatsapp_number && extractedData.email);
+      
+      // End call if AI determines it should end OR contact details are complete
+      if (aiResponse.shouldEndCall || hasCompleteContact || extractedData.customer_interest === 'not_interested') {
+        console.log(`🏁 [CALL END] Ending call - AI decision: ${aiResponse.shouldEndCall}, Contact complete: ${hasCompleteContact}, Interest: ${extractedData.customer_interest}`);
         await this.endCall(twilioCallSid);
         return await twilioService.generateHangupTwiML();
       }
