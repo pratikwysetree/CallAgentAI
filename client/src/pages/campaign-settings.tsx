@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,14 +50,28 @@ export default function CampaignSettings() {
   const { data: campaigns, isLoading, error } = useQuery({
     queryKey: ['/api/campaigns'],
     queryFn: async () => {
-      const response = await apiRequest('/api/campaigns');
-      return response;
+      const response = await fetch('/api/campaigns');
+      if (!response.ok) {
+        throw new Error('Failed to fetch campaigns');
+      }
+      return response.json();
     }
   });
 
   const updateCampaignMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Campaign> }) =>
-      apiRequest(`/api/campaigns/${id}`, 'PATCH', data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Campaign> }) => {
+      const response = await fetch(`/api/campaigns/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update campaign');
+      }
+      return response.json();
+    },
     onSuccess: () => {
       toast({ title: "Campaign updated successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
@@ -70,7 +83,15 @@ export default function CampaignSettings() {
   });
 
   const deleteCampaignMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/campaigns/${id}`, 'DELETE'),
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/campaigns/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete campaign');
+      }
+      return response.json();
+    },
     onSuccess: () => {
       toast({ title: "Campaign deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
