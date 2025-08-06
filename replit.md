@@ -41,12 +41,23 @@ This is a comprehensive AI-powered calling platform built with a modern full-sta
 
 **Ready for Testing:** All core functionality working with enhanced language understanding and comprehensive LabsCheck knowledge base. System now better processes unclear/mixed Hindi-English speech from Indian customers.
 
-**LabsCheck Website Integration (January 6, 2025):** Complete website content from labscheck.com integrated into AI model memory including:
-- Current pricing: Blood Glucose ₹180, CBC ₹400, Thyroid ₹350, Vitamin D ₹800
-- 20+ partner labs: Dr Lal PathLabs, Thyrocare, Metropolis, Apollo Diagnostics, Redcliffe Labs, Pathkind
-- Service features: Transparent pricing, home collection, 12-72 hour reports, location-based filtering
-- Platform mission: "Blood Tests & Radiology made SEAMLESS" - compare, choose, book from NABL-accredited partners
-- WhatsApp messages now include comprehensive service details with accurate pricing and partner information
+**LabsCheck Website Integration - CORRECTED (January 6, 2025):** Complete website content from labscheck.com/about integrated into AI model memory with ACCURATE business model:
+
+**CORRECT BUSINESS MODEL:**
+- LabsCheck is NOT a laboratory - it's a neutral aggregator platform founded in 2025
+- Mission: Partner with ALL laboratories across India to create transparency  
+- Goal: Bridge gap between people seeking tests and labs offering diagnostics
+- Zero commission model - labs keep 100% of payments directly from customers
+- Platform connects 500+ partner labs to 100k+ users across 140+ cities
+
+**AI MODEL UPDATED:**
+- Changed from "health checkup calls" to "lab partnership calls"
+- Conversations now focus on recruiting labs as partners, not selling tests to patients
+- WhatsApp messages promote partnership benefits: zero commission, free listing, direct bookings
+- Accurate positioning: LabsCheck helps labs get more customers, not compete with them
+- Partnership focus: Join 500+ existing partners including Dr Lal PathLabs, Thyrocare, Metropolis
+
+**CAMPAIGN OBJECTIVE:** Recruit pathology labs as platform partners for business growth
 
 ## User Preferences
 
