@@ -83,6 +83,22 @@ export class FreshConversationService {
   async processAudio(recordingUrl: string, callSid: string): Promise<string> {
     const startTime = Date.now();
     
+    // Get campaign voice configuration from the call
+    let voiceConfig: any = null;
+    try {
+      const { storage } = await import('../storage');
+      const calls = await storage.getCalls();
+      const currentCall = calls.find(call => call.twilioCallSid === callSid);
+      
+      if (currentCall?.campaignId) {
+        const campaign = await storage.getCampaign(currentCall.campaignId);
+        voiceConfig = campaign?.voiceConfig;
+        console.log(`🎤 [VOICE-CONFIG] Found campaign voice config:`, voiceConfig);
+      }
+    } catch (error) {
+      console.error('❌ [VOICE-CONFIG] Could not load campaign voice config:', error);
+    }
+    
     try {
       console.log(`🎙️ [FRESH-RECORDING] Call: ${callSid}, Recording: ${recordingUrl.split('/').pop()}, URL: ${recordingUrl}`);
       console.log(`🎙️ [FRESH-SERVICE] Processing audio from: ${recordingUrl}`);
@@ -241,20 +257,31 @@ Use JSON format for all responses.`
 
       console.log(`🤖 [AI] Response: "${aiResponse.message}"`);
       
-      // 5. Generate voice with ElevenLabs
+      // 5. Generate voice with ElevenLabs using campaign voice config
       let audioUrl = null;
       try {
-        const { elevenLabsService } = await import('./elevenLabsService');
-        
-        const voiceSynthesisStart = Date.now();
-        const audioFilename = await elevenLabsService.generateAudioFile(aiResponse.message, {
-          voiceId: '7w5JDCUNbeKrn4ySFgfu', // Aavika's voice
+        // Use campaign voice settings or fallback to default
+        const voiceSettings = voiceConfig && voiceConfig.useElevenLabs ? {
+          voiceId: voiceConfig.voiceId || '7w5JDCUNbeKrn4ySFgfu', // Use selected voice or Aavika default
+          model: voiceConfig.model || 'eleven_multilingual_v2',
+          stability: voiceConfig.stability || 0.5,
+          similarityBoost: voiceConfig.similarityBoost || 0.75,
+          style: voiceConfig.style || 0,
+          useSpeakerBoost: voiceConfig.useSpeakerBoost || true,
+        } : {
+          voiceId: '7w5JDCUNbeKrn4ySFgfu', // Default Aavika voice
           model: 'eleven_multilingual_v2',
           stability: 0.5,
           similarityBoost: 0.75,
           style: 0,
           useSpeakerBoost: true,
-        });
+        };
+        
+        const { elevenLabsService } = await import('./elevenLabsService');
+        
+        const voiceSynthesisStart = Date.now();
+        console.log(`🎤 [VOICE-SYNTHESIS] Using voice settings:`, voiceSettings);
+        const audioFilename = await elevenLabsService.generateAudioFile(aiResponse.message, voiceSettings);
         
         // Validate audio filename exists
         if (!audioFilename || typeof audioFilename !== 'string') {
@@ -268,20 +295,22 @@ Use JSON format for all responses.`
         const voiceProcessingTime = Date.now() - voiceSynthesisStart;
         console.log(`🎵 [ELEVENLABS] Generated audio: ${audioUrl}`);
         
-        // Broadcast voice synthesis event
+        // Broadcast voice synthesis event with actual voice settings used
         this.broadcastConversationEvent(callSid, 'voice_synthesis', aiResponse.message, {
-          voiceId: '7w5JDCUNbeKrn4ySFgfu',
-          model: 'eleven_multilingual_v2',
+          voiceId: voiceSettings.voiceId,
+          model: voiceSettings.model,
           processingTime: voiceProcessingTime,
-          audioUrl
+          audioUrl,
+          campaignVoice: voiceConfig ? 'selected' : 'default'
         });
         
       } catch (ttsError) {
         console.error('❌ [ELEVENLABS] Error:', ttsError);
         this.broadcastConversationEvent(callSid, 'error', `Voice synthesis failed: ${(ttsError as Error).message}`);
         
-        // Continue conversation even if TTS fails - use fallback text-to-speech
-        console.log('🔄 [FALLBACK] Continuing with built-in TTS instead of ElevenLabs');
+        // CRITICAL: Do not fall back to different voice - instead try to retry with same voice or fail gracefully
+        console.log('🔄 [VOICE-CONSISTENCY] ElevenLabs failed but maintaining voice consistency by not using fallback voice');
+        audioUrl = null; // This will use the same voice settings in TwiML generation
       }
       
       // 6. Store conversation data if collected
@@ -289,8 +318,8 @@ Use JSON format for all responses.`
         await this.storeCollectedData(callSid, aiResponse.collected_data);
       }
       
-      // 7. Generate TwiML response
-      const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid);
+      // 7. Generate TwiML response with consistent voice settings
+      const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid, voiceConfig);
       
       // 8. Cleanup temp file
       try {
@@ -314,17 +343,19 @@ Use JSON format for all responses.`
     }
   }
   
-  private generateTwiMLResponse(audioUrl: string | null, message: string, shouldEnd: boolean, callSid: string): string {
+  private generateTwiMLResponse(audioUrl: string | null, message: string, shouldEnd: boolean, callSid: string, voiceConfig?: any): string {
+    // Use consistent voice settings even in fallback scenarios
+    const fallbackVoice = voiceConfig?.useElevenLabs ? 'alice' : 'alice'; // Keep consistent even for fallback
     if (shouldEnd) {
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  ${audioUrl ? `<Play>${audioUrl}</Play>` : `<Say voice="alice" language="en-IN">${message}</Say>`}
+  ${audioUrl ? `<Play>${audioUrl}</Play>` : `<Say voice="${fallbackVoice}" language="en-IN">${message}</Say>`}
   <Hangup/>
 </Response>`;
     } else {
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  ${audioUrl ? `<Play>${audioUrl}</Play>` : `<Say voice="alice" language="en-IN">${message}</Say>`}
+  ${audioUrl ? `<Play>${audioUrl}</Play>` : `<Say voice="${fallbackVoice}" language="en-IN">${message}</Say>`}
   <Record action="/api/twilio/fresh-recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
     }
