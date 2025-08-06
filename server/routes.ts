@@ -635,20 +635,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let greetingTwiml = '';
         try {
           console.log(`🎙️ [ELEVENLABS] Generating greeting voice for: "${scriptToSpeak}"`);
-          const audioUrl = await elevenLabsService.generateSpeech(scriptToSpeak);
+          const audioUrl = await elevenLabsService.textToSpeech(scriptToSpeak);
           console.log(`🎙️ [ELEVENLABS] Greeting audio generated: ${audioUrl}`);
           
           greetingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
-        <Pause length="6"/>
-        <Say voice="alice">Please tell me about your business</Say>
+    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
+        <Pause length="10"/>
     </Gather>
 </Response>`;
-        } catch (elevenLabsError) {
-          console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError.message}, using Twilio voice`);
-          greetingTwiml = await twilioService.generateSpeechTwiML(scriptToSpeak);
+        } catch (elevenLabsError: any) {
+          console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError?.message || elevenLabsError}, using Twilio voice`);
+          greetingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="alice">${scriptToSpeak.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
+    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
+        <Pause length="10"/>
+    </Gather>
+</Response>`;
         }
         
         res.type('text/xml').send(greetingTwiml);
@@ -699,8 +704,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversationContext = {
         campaignPrompt: campaign?.script || "You are Aavika from LabsCheck. Your goal is to recruit pathology labs as partners on our platform. We connect labs with patients and charge zero commission - labs keep 100% of payments. Ask about their lab, explain our partnership benefits, and try to get their contact details.",
         conversationHistory: [
-          { role: 'assistant', content: 'Hi this is Aavika from LabsCheck, how are you doing today' },
-          { role: 'user', content: customerInput }
+          { role: 'assistant' as const, content: 'Hi this is Aavika from LabsCheck, how are you doing today' },
+          { role: 'user' as const, content: customerInput }
         ],
         contactName: '',
         phoneNumber: ''
@@ -724,25 +729,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let responseTwiml = '';
       try {
         console.log(`🎙️ [ELEVENLABS] Generating voice for: "${response}"`);
-        const audioUrl = await elevenLabsService.generateSpeech(response);
+        const audioUrl = await elevenLabsService.textToSpeech(response);
         console.log(`🎙️ [ELEVENLABS] Audio generated: ${audioUrl}`);
         
         responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
-        <Pause length="4"/>
-        <Say voice="alice">Please tell me more</Say>
+    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
+        <Pause length="10"/>
     </Gather>
 </Response>`;
-      } catch (elevenLabsError) {
-        console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError.message}, using Twilio voice`);
+      } catch (elevenLabsError: any) {
+        console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError?.message || elevenLabsError}, using Twilio voice`);
         responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice">${response.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
-    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
-        <Pause length="4"/>
-        <Say voice="alice">Please tell me more</Say>
+    <Say voice="alice">${String(response).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
+    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
+        <Pause length="10"/>
     </Gather>
 </Response>`;
       }
