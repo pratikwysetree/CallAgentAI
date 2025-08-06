@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Dashboard from "@/pages/dashboard";
 import Contacts from "@/pages/contacts";
 import Campaigns from "@/pages/campaigns";
+import CampaignSettings from "@/pages/campaign-settings";
 import ContactCampaigns from "@/pages/contact-campaigns";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/contacts" component={Contacts} />
       <Route path="/campaigns" component={Campaigns} />
+      <Route path="/campaign-settings" component={CampaignSettings} />
       <Route path="/contact-campaigns" component={ContactCampaigns} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />

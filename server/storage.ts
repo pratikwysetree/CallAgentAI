@@ -32,6 +32,7 @@ export interface IStorage {
   getCampaigns(): Promise<Campaign[]>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign>;
+  deleteCampaign(id: string): Promise<boolean>;
 
   // Calls
   getCall(id: string): Promise<CallWithDetails | undefined>;
@@ -195,6 +196,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(campaigns.id, id))
       .returning();
     return campaign;
+  }
+
+  async deleteCampaign(id: string): Promise<boolean> {
+    const result = await db
+      .delete(campaigns)
+      .where(eq(campaigns.id, id));
+    return result.rowCount > 0;
   }
 
   // Calls

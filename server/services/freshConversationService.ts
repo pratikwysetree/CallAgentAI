@@ -41,6 +41,68 @@ export class FreshConversationService {
     console.log(`📡 [WEBSOCKET] Broadcasted ${eventType} for call ${callSid}`);
   }
 
+  // Get campaign-specific intro line and agent name
+  private async getCampaignConfig(callSid: string): Promise<{introLine: string, agentName: string}> {
+    try {
+      const call = await storage.getCallByTwilioSid(callSid);
+      if (call?.campaignId) {
+        const campaign = await storage.getCampaign(call.campaignId);
+        if (campaign?.introLine && campaign?.agentName) {
+          return {
+            introLine: campaign.introLine,
+            agentName: campaign.agentName
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching campaign config:', error);
+    }
+    
+    // Default values
+    return {
+      introLine: "Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?",
+      agentName: "Anvika"
+    };
+  }
+
+  private async getSystemPromptForCampaign(callSid: string): Promise<string> {
+    const { agentName } = await this.getCampaignConfig(callSid);
+    
+    return `You are ${agentName} from LabsCheck calling pathology labs for partnership.
+
+CRITICAL INSTRUCTION: Respond DIRECTLY to what the customer just said. DO NOT ignore their response.
+
+IMPORTANT: You must acknowledge and respond to the customer's actual words. If they are rude, acknowledge it professionally. If they ask questions, answer them. If they confirm ownership, move forward.
+
+CONVERSATION FLOW:
+1. OPENING: Use the configured intro line for this campaign
+
+2. IF OWNER CONFIRMS (yes/haan/ji/owner): "Great! LabsCheck is India's first diagnostic aggregator platform providing trusted diagnostics at affordable prices. We partner with NABL accredited labs for better visibility and business. Are you interested?"
+
+3. IF NOT OWNER: "Will it be possible for you to share the owner's email ID or WhatsApp number? Can I have your WhatsApp number? I will forward you details and you can share with the owner."
+
+4. IF INTERESTED: "Perfect! We offer trusted partner listing with our login portal access. Can I share our official information on WhatsApp or email?"
+
+5. CLOSING: Always ask for WhatsApp number or email to send official details.
+
+CRITICAL RULES:
+- Keep responses SHORT and conversational (max 25 words)
+- ALWAYS acknowledge what customer said first
+- Be polite but persistent 
+- If they're busy, offer to call back
+- If they hang up or are very rude, end call gracefully
+- Ask for contact details (WhatsApp/email) before ending
+
+RESPONSE FORMAT: Just provide your response naturally - no JSON formatting needed.`;
+  }
+
+  private async getGreetingMessage(isHindi: boolean): Promise<string> {
+    // For basic greetings, we'll use a default intro since we don't have call context
+    return isHindi ? 
+      "हैलो! मैं अन्विका हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : 
+      "Hi! This is Anvika from LabsCheck. Are you the owner or manager of the lab?";
+  }
+
   // Quick responses for common queries - no OpenAI needed
   private getQuickResponse(customerText: string): any | null {
     const text = customerText.toLowerCase().trim();
@@ -62,8 +124,7 @@ export class FreshConversationService {
     // Common greetings/responses - only for simple greetings without owner context
     if (/(^hello$|^hi$|^namaste$)/i.test(text)) {
       return {
-        message: isHindi ? "हैलो! मैं अन्विका हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : 
-                           "Hi! This is Anvika from LabsCheck. Are you the owner or manager of the lab?",
+        message: await this.getGreetingMessage(isHindi),
         collected_data: {},
         should_end: false
       };
@@ -175,14 +236,7 @@ export class FreshConversationService {
       const messages: Array<{role: "system" | "user" | "assistant", content: string}> = [
         {
           role: "system" as const,
-          content: `You are Anvika from LabsCheck calling pathology labs for partnership.
-
-CRITICAL INSTRUCTION: Respond DIRECTLY to what the customer just said. DO NOT ignore their response.
-
-IMPORTANT: You must acknowledge and respond to the customer's actual words. If they are rude, acknowledge it professionally. If they ask questions, answer them. If they confirm ownership, move forward.
-
-CONVERSATION FLOW:
-1. OPENING: "Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?"
+          content: await this.getSystemPromptForCampaign(callSid)
 
 2. IF OWNER CONFIRMS (yes/haan/ji/owner): "Great! LabsCheck is India's first diagnostic aggregator platform providing trusted diagnostics at affordable prices. We partner with NABL accredited labs for better visibility and business. Are you interested?"
 

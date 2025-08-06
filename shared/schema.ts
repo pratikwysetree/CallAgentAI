@@ -11,9 +11,10 @@ export const users = pgTable("users", {
 });
 
 export const contacts = pgTable("contacts", {
-  id: serial("id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  phone: text("phone").notNull(), // Changed from phoneNumber to phone for consistency
+  phone: text("phone").notNull(),
+  phoneNumber: text("phone_number"), // Keep both for compatibility
   email: text("email"),
   city: text("city"),
   state: text("state"),
@@ -31,6 +32,8 @@ export const campaigns = pgTable("campaigns", {
   description: text("description"),
   aiPrompt: text("ai_prompt").notNull(),
   script: text("script"), // Agent script
+  introLine: text("intro_line").default("Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?").notNull(),
+  agentName: text("agent_name").default("Anvika").notNull(),
   openaiModel: text("openai_model").default("gpt-4o").notNull(),
   voiceConfig: jsonb("voice_config"), // Open source voice configuration
   transcriberConfig: jsonb("transcriber_config"), // Open source transcriber configuration

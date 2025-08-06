@@ -213,6 +213,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update campaign
+  app.patch('/api/campaigns/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const campaign = await storage.updateCampaign(id, updates);
+      res.json(campaign);
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      res.status(500).json({ error: 'Failed to update campaign' });
+    }
+  });
+
+  // Delete campaign
+  app.delete('/api/campaigns/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteCampaign(id);
+      if (deleted) {
+        res.json({ success: true, message: 'Campaign deleted successfully' });
+      } else {
+        res.status(404).json({ error: 'Campaign not found' });
+      }
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      res.status(500).json({ error: 'Failed to delete campaign' });
+    }
+  });
+
   // Add multer for file uploads
   const multer = await import('multer');
   const upload = multer.default({ storage: multer.default.memoryStorage() });

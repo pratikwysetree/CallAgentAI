@@ -18,13 +18,14 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Campaigns', href: '/campaigns', icon: Phone },
+  { name: 'Campaign Settings', href: '/campaign-settings', icon: Settings },
   { name: 'Contact Campaigns', href: '/contact-campaigns', icon: Target },
   { name: 'WhatsApp Bulk', href: '/whatsapp-bulk', icon: MessageSquare },
   { name: 'WhatsApp Chats', href: '/whatsapp-chats', icon: MessageCircle },
   { name: 'Live Conversation', href: '/live-conversation', icon: Monitor },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'ElevenLabs Voice', href: '/elevenlabs-setup', icon: Volume2 },
-  { name: 'Settings', href: '/enhanced-settings', icon: Settings },
+  { name: 'App Settings', href: '/enhanced-settings', icon: Upload },
 ];
 
 export default function Sidebar() {
