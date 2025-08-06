@@ -670,7 +670,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process with OpenAI directly (no Whisper needed!)
       const modelStart = Date.now();
-      const responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
+      
+      // Use OpenAI service directly instead of CallManager for better reliability
+      const { campaignId } = req.query;
+      const campaign = await storage.getCampaign(campaignId as string);
+      
+      const conversationContext = {
+        campaignPrompt: campaign?.script || "You are Aavika from LabsCheck. Your goal is to recruit pathology labs as partners on our platform. We connect labs with patients and charge zero commission - labs keep 100% of payments. Ask about their lab, explain our partnership benefits, and try to get their contact details.",
+        conversationHistory: [
+          { role: 'assistant', content: 'Hi this is Aavika from LabsCheck, how are you doing today' },
+          { role: 'user', content: customerInput }
+        ],
+        contactName: '',
+        phoneNumber: ''
+      };
+      
+      const response = await openaiService.generateResponse(conversationContext, customerInput);
       
       const modelTime = Date.now() - modelStart;
       const totalTime = Date.now() - startTime;
@@ -683,6 +698,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         callSid: CallSid, 
         userInput: customerInput 
       });
+
+      // Generate TwiML for speech response
+      const responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="alice">${response.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
+    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
+        <Pause length="4"/>
+        <Say voice="alice">Please tell me more</Say>
+    </Gather>
+</Response>`;
 
       res.type('text/xml').send(responseTwiml);
 
