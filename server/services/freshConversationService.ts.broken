@@ -1,103 +1,83 @@
+import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
-import { WebSocketServer } from 'ws';
-import OpenAI from 'openai';
 
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export class FreshConversationService {
-  private wsServer: WebSocketServer;
-  private collectedData: Map<string, any> = new Map();
-
-  constructor(wsServer: WebSocketServer) {
-    this.wsServer = wsServer;
-  }
-
-  private broadcastConversationEvent(callSid: string, eventType: string, content: string, metadata: any = {}) {
-    if (!this.wsServer) return;
-
-    const eventData = {
-      type: 'live_conversation',
-      callSid,
-      eventType,
-      content,
-      metadata,
-      timestamp: new Date().toISOString()
-    };
-
-    // Broadcast to all connected WebSocket clients safely
-    this.wsServer.clients.forEach(client => {
-      try {
-        if (client && typeof client.send === 'function' && client.readyState === 1) { // WebSocket.OPEN = 1
-          client.send(JSON.stringify(eventData));
-        }
-      } catch (error) {
-        console.error('❌ [WEBSOCKET] Broadcast error:', error);
+  
+  private broadcastConversationEvent(callSid: string, eventType: string, content: string, metadata?: any) {
+    try {
+      const broadcastFunction = (global as any).broadcastToClients;
+      if (broadcastFunction) {
+        broadcastFunction({
+          type: 'live_conversation',
+          callSid,
+          eventType,
+          content,
+          metadata,
+          timestamp: new Date().toISOString()
+        });
+        console.log(`📡 [WEBSOCKET] Broadcasted ${eventType} for call ${callSid}`);
+      } else {
+        console.log('WebSocket broadcast not available: function not initialized');
       }
-    });
-
-    console.log(`📡 [WEBSOCKET] Broadcasted ${eventType} for call ${callSid}`);
+    } catch (error) {
+      console.log('WebSocket broadcast error:', (error as Error).message);
+    }
   }
-
-  // Quick responses for common queries - no OpenAI needed
-  private getQuickResponse(customerText: string): any | null {
-    const text = customerText.toLowerCase().trim();
-    
-    // Detect language
-    const isHindi = /[\u0900-\u097F]/.test(customerText) || 
-                   /(hai|hain|kya|kaise|kahan|nahin|nahi|acha|thik|lab|test)/i.test(customerText);
-    
-    // Common greetings/responses
-    if (/(hello|hi|haan|han|yes|ji)/i.test(text)) {
-      return {
-        message: isHindi ? "हैलो! मैं आविका हूँ LabsCheck से। क्या आप लैब के owner हैं?" : 
-                           "Hi! I am Aavika from LabsCheck. Are you the lab owner?",
-        collected_data: {},
-        should_end: false
-      };
-    }
-    
-    if (/(owner|malik|malkin)/i.test(text) && /(nahin|nahi|no)/i.test(text)) {
-      return {
-        message: isHindi ? "क्या आप owner का WhatsApp number share कर सकते हैं?" : 
-                           "Can you share the owner's WhatsApp number?",
-        collected_data: {},
-        should_end: false
-      };
-    }
-    
-    if (/(benefit|faayda|labh)/i.test(text)) {
-      return {
-        message: isHindi ? "आपको 100% payment मिलेगा, zero commission! अधिक visibility भी।" : 
-                           "You get 100% payment, zero commission! More visibility too.",
-        collected_data: {},
-        should_end: false
-      };
-    }
-    
-    return null; // Use OpenAI for complex queries
-  }
-
-  async processAudio(recordingUrl: string, callSid: string): Promise<string> {
+  
+  async processRecordedAudio(recordingUrl: string, callSid: string): Promise<string> {
     const startTime = Date.now();
+    console.log(`🎙️ [FRESH-SERVICE] Processing audio from: ${recordingUrl}`);
     
     try {
-      console.log(`🎙️ [FRESH-RECORDING] Call: ${callSid}, Recording: ${recordingUrl.split('/').pop()}, URL: ${recordingUrl}`);
-      console.log(`🎙️ [FRESH-SERVICE] Processing audio from: ${recordingUrl}`);
+      // 1. Download the audio file directly from Twilio 
+      // Try multiple formats that Twilio supports
+      let audioBuffer: Buffer;
+      let audioExtension = 'wav';
       
-      // 1. Download and save audio with proper extension detection
-      const audioBuffer = await this.downloadTwilioRecording(recordingUrl);
-      console.log(`📥 [FRESH-SERVICE] Downloaded ${audioBuffer.length} bytes`);
-      
-      // Auto-detect format based on buffer header
-      let audioExtension = 'wav'; // Default
-      if (audioBuffer.subarray(0, 4).toString('hex') === 'fff3') {
-        audioExtension = 'mp3';
-      } else if (audioBuffer.subarray(8, 12).toString('ascii') === 'WAVE') {
+      try {
+        // Use Twilio client to access authenticated recording
+        let twilioClient;
+        try {
+          const twilio = await import('twilio');
+          twilioClient = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        } catch (importError) {
+          console.error('❌ [TWILIO-IMPORT] Failed to import Twilio:', importError);
+          throw new Error('Twilio client initialization failed');
+        }
+        
+        // Extract recording SID from URL
+        const recordingSid = recordingUrl.split('/').pop()?.split('.')[0];
+        if (!recordingSid) {
+          throw new Error('Invalid recording URL format - cannot extract SID');
+        }
+        console.log(`📞 [TWILIO-AUTH] Getting recording: ${recordingSid}`);
+        
+        // Fetch authenticated recording
+        const recording = await twilioClient.recordings(recordingSid).fetch();
+        const authenticatedUrl = `https://api.twilio.com${recording.uri.replace('.json', '.wav')}`;
+        
+        // Download with authentication
+        const audioResponse = await fetch(authenticatedUrl, {
+          headers: {
+            'Authorization': `Basic ${Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')}`
+          }
+        });
+        
+        if (!audioResponse.ok) {
+          throw new Error(`Failed to download authenticated audio: ${audioResponse.status}`);
+        }
+        
+        audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
         audioExtension = 'wav';
+      } catch (fetchError) {
+        throw new Error(`Audio download failed: ${(fetchError as Error).message}`);
       }
+      
       console.log(`📥 [FRESH-SERVICE] Downloaded ${audioBuffer.length} bytes (${audioExtension} format)`);
       
       // 2. Save audio file with proper extension for OpenAI Whisper
@@ -240,6 +220,23 @@ Use JSON format for all responses.`
       if (typeof aiResponse.should_end !== 'boolean') aiResponse.should_end = false;
 
       console.log(`🤖 [AI] Response: "${aiResponse.message}"`);
+        };
+      }
+      
+      // Ensure required fields exist
+      if (!aiData.message || typeof aiData.message !== 'string') {
+        aiData.message = "Great! Can I get your WhatsApp number for partnership details?";
+      }
+      
+      if (typeof aiData.should_end !== 'boolean') {
+        aiData.should_end = false;
+      }
+      
+      if (!aiData.collected_data || typeof aiData.collected_data !== 'object') {
+        aiData.collected_data = {};
+      }
+
+      console.log(`🤖 [AI] Response: "${aiData.message}"`);
       
       // 5. Generate voice with ElevenLabs
       let audioUrl = null;
@@ -247,7 +244,7 @@ Use JSON format for all responses.`
         const { elevenLabsService } = await import('./elevenLabsService');
         
         const voiceSynthesisStart = Date.now();
-        const audioFilename = await elevenLabsService.generateAudioFile(aiResponse.message, {
+        const audioFilename = await elevenLabsService.generateAudioFile(aiData.message, {
           voiceId: '7w5JDCUNbeKrn4ySFgfu', // Aavika's voice
           model: 'eleven_multilingual_v2',
           stability: 0.5,
@@ -269,7 +266,7 @@ Use JSON format for all responses.`
         console.log(`🎵 [ELEVENLABS] Generated audio: ${audioUrl}`);
         
         // Broadcast voice synthesis event
-        this.broadcastConversationEvent(callSid, 'voice_synthesis', aiResponse.message, {
+        this.broadcastConversationEvent(callSid, 'voice_synthesis', aiData.message, {
           voiceId: '7w5JDCUNbeKrn4ySFgfu',
           model: 'eleven_multilingual_v2',
           processingTime: voiceProcessingTime,
@@ -285,12 +282,12 @@ Use JSON format for all responses.`
       }
       
       // 6. Store conversation data if collected
-      if (aiResponse.collected_data && Object.keys(aiResponse.collected_data).length > 0) {
-        await this.storeCollectedData(callSid, aiResponse.collected_data);
+      if (aiData.collected_data && Object.keys(aiData.collected_data).length > 0) {
+        await this.storeCollectedData(callSid, aiData.collected_data);
       }
       
       // 7. Generate TwiML response
-      const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid);
+      const twimlResponse = this.generateTwiMLResponse(audioUrl, aiData.message, aiData.should_end, callSid);
       
       // 8. Cleanup temp file
       try {
@@ -329,48 +326,36 @@ Use JSON format for all responses.`
 </Response>`;
     }
   }
-
-  private async downloadTwilioRecording(recordingUrl: string): Promise<Buffer> {
-    const recordingId = recordingUrl.split('/').pop();
-    console.log(`📞 [TWILIO-AUTH] Getting recording: ${recordingId}`);
-    
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    
-    if (!accountSid || !authToken) {
-      throw new Error('Twilio credentials not found');
+  
+  private async storeCollectedData(callSid: string, collectedData: any): Promise<void> {
+    try {
+      console.log(`💾 [STORE-DATA] Call: ${callSid}, Data:`, collectedData);
+      
+      // Store the collected contact data
+      const { storage } = await import('../storage');
+      
+      // Get call info
+      const call = await storage.getCallByTwilioSid(callSid);
+      if (call && call.contactId) {
+        // Update contact with collected data
+        const contact = await storage.getContact(call.contactId);
+        if (contact) {
+          const updatedContact = {
+            ...contact,
+            name: collectedData.contact_person || contact.name,
+            whatsappNumber: collectedData.whatsapp_number || contact.whatsappNumber,
+            email: collectedData.email || contact.email,
+          };
+          
+          await storage.updateContact(call.contactId, updatedContact);
+          console.log(`✅ [STORE-DATA] Updated contact: ${call.contactId}`);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ [STORE-DATA] Error:', error);
     }
-
-    const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-    
-    const response = await fetch(recordingUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to download recording: ${response.status} ${response.statusText}`);
-    }
-
-    return Buffer.from(await response.arrayBuffer());
-  }
-
-  private async storeCollectedData(callSid: string, data: any): Promise<void> {
-    // Merge with existing data for this call
-    const existingData = this.collectedData.get(callSid) || {};
-    const mergedData = { ...existingData, ...data };
-    this.collectedData.set(callSid, mergedData);
-    
-    console.log(`💾 [STORE-DATA] Call: ${callSid}, Data:`, mergedData);
-  }
-
-  getStoredData(callSid: string): any {
-    return this.collectedData.get(callSid) || {};
-  }
-
-  clearStoredData(callSid: string): void {
-    this.collectedData.delete(callSid);
   }
 }
+
+export const freshConversationService = new FreshConversationService();
