@@ -161,7 +161,7 @@ export class TwilioService {
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Record action="/api/twilio/recording/${callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
+    <Record action="/api/twilio/fresh-recording/${callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
@@ -175,7 +175,7 @@ export class TwilioService {
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice" language="en-IN" rate="medium">${message}</Say>
-    <Record action="/api/twilio/recording/${callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
+    <Record action="/api/twilio/fresh-recording/${callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
     } catch (error) {
       console.error('Error generating TwiML:', error);
@@ -183,7 +183,7 @@ export class TwilioService {
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice">${message}</Say>
-    <Record action="/api/twilio/recording/${callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
+    <Record action="/api/twilio/fresh-recording/${callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
     }
   }

@@ -693,47 +693,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Recording webhook to process audio with Simple Conversation Service
+  // NEW FRESH RECORDING WEBHOOK - Fixed audio format issues
+  app.post('/api/twilio/fresh-recording/:callSid', async (req, res) => {
+    const { callSid } = req.params;
+    const { RecordingUrl, RecordingSid } = req.body;
+    
+    console.log(`🎙️ [FRESH-RECORDING] Call: ${callSid}, Recording: ${RecordingSid}, URL: ${RecordingUrl}`);
+    
+    try {
+      // Use fresh conversation service with proper audio handling
+      const { freshConversationService } = await import('./services/freshConversationService');
+      const twimlResponse = await freshConversationService.processRecordedAudio(RecordingUrl, callSid);
+      
+      console.log(`✅ [FRESH-RECORDING] Generated response for call: ${callSid}`);
+      return res.type('text/xml').send(twimlResponse);
+      
+    } catch (error) {
+      console.error('❌ [FRESH-RECORDING] Error:', error);
+      res.type('text/xml').send(`
+        <Response>
+          <Say voice="alice" language="en-IN">Thank you for your time. We will contact you soon.</Say>
+          <Hangup/>
+        </Response>
+      `);
+    }
+  });
+
+  // LEGACY Recording webhook (keep for existing calls)
   app.post('/api/twilio/recording/:callSid', async (req, res) => {
     const { callSid } = req.params;
     const { RecordingUrl, RecordingSid } = req.body;
     
-    console.log(`🎙️ [RECORDING] Call: ${callSid}, Recording: ${RecordingSid}, URL: ${RecordingUrl}`);
+    console.log(`🎙️ [LEGACY-RECORDING] Call: ${callSid}, Recording: ${RecordingSid}, URL: ${RecordingUrl}`);
     
     try {
-      // Download audio file
-      const audioResponse = await fetch(RecordingUrl + '.mp3');
-      const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
-      
-      console.log(`🎙️ [RECORDING] Downloaded ${audioBuffer.length} bytes of audio`);
-      
-      // Get call info
-      const call = await storage.getCallByTwilioSid(callSid);
-      if (!call) {
-        console.error('❌ [RECORDING] Call not found:', callSid);
-        return res.type('text/xml').send(`
-          <Response>
-            <Say voice="alice">Thank you for calling.</Say>
-            <Hangup/>
-          </Response>
-        `);
-      }
-      
-      // Process with simple conversation service
-      const { simpleConversationService } = await import('./services/simpleConversationService');
-      const twimlResponse = await simpleConversationService.processCustomerAudio(
-        audioBuffer,
-        callSid,
-        call.campaignId || ''
-      );
+      // Use fresh conversation service instead of broken old service
+      const { freshConversationService } = await import('./services/freshConversationService');
+      const twimlResponse = await freshConversationService.processRecordedAudio(RecordingUrl, callSid);
       
       return res.type('text/xml').send(twimlResponse);
       
     } catch (error) {
-      console.error('❌ [RECORDING] Error processing recording:', error);
+      console.error('❌ [LEGACY-RECORDING] Error:', error);
       res.type('text/xml').send(`
         <Response>
-          <Say voice="alice">Thank you for your time.</Say>
+          <Say voice="alice" language="en-IN">Thank you for your time.</Say>
           <Hangup/>
         </Response>
       `);
