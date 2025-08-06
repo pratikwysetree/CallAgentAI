@@ -670,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const twimlResponse = await enhancedDirectAudioService.processDirectSpeech(
           SpeechResult,
           callSid,
-          call.campaignId
+          call.campaignId || ''
         );
         return res.type('text/xml').send(twimlResponse);
       }
@@ -724,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const twimlResponse = await simpleConversationService.processCustomerAudio(
         audioBuffer,
         callSid,
-        call.campaignId
+        call.campaignId || ''
       );
       
       return res.type('text/xml').send(twimlResponse);
@@ -808,7 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const responseTwiml = await enhancedDirectAudioService.processDirectSpeech(
         cleanedInput,
         CallSid,
-        call.campaignId
+        call.campaignId || ''
       );
       
       // Broadcast conversation update
