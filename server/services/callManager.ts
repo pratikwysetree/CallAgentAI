@@ -117,6 +117,31 @@ export class CallManager {
           aiResponseTime: aiResponse.responseTime,
           collectedData: aiResponse.extractedData,
         });
+        
+        // Immediately update contact record when we get WhatsApp or email
+        const extractedData = aiResponse.extractedData || {};
+        if (call.contactId && (extractedData.whatsapp_number || extractedData.email)) {
+          const updateData: any = {};
+          if (extractedData.whatsapp_number) {
+            updateData.whatsappNumber = extractedData.whatsapp_number;
+            console.log(`💾 [CONTACT UPDATE] Saving WhatsApp: ${extractedData.whatsapp_number}`);
+          }
+          if (extractedData.email) {
+            updateData.email = extractedData.email;
+            console.log(`💾 [CONTACT UPDATE] Saving Email: ${extractedData.email}`);
+          }
+          
+          await storage.updateContact(call.contactId, updateData);
+          
+          // Send immediate WhatsApp message when we get WhatsApp number
+          if (extractedData.whatsapp_number && !call.whatsappSent) {
+            await this.sendRealTimeWhatsAppMessage(extractedData.whatsapp_number, call.campaignId!);
+            await storage.updateCall(call.id, {
+              whatsappSent: true,
+            });
+            console.log(`📱 [WHATSAPP SENT] Real-time message sent to: ${extractedData.whatsapp_number}`);
+          }
+        }
       }
 
       // Check if AI wants to end call OR if we have collected both contact details
@@ -219,6 +244,33 @@ export class CallManager {
 
   getActiveCalls(): ActiveCall[] {
     return Array.from(this.activeCalls.values());
+  }
+
+  // Real-time WhatsApp messaging during call
+  async sendRealTimeWhatsAppMessage(whatsappNumber: string, campaignId: string): Promise<void> {
+    try {
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return;
+      
+      // Format WhatsApp number
+      const formattedNumber = whatsappNumber.startsWith('+') ? whatsappNumber : `+91${whatsappNumber}`;
+      const whatsappTo = `whatsapp:${formattedNumber}`;
+      
+      // Send immediate message with lab details
+      const message = `🔬 *LabsCheck Health Checkups*\n\nThank you for your interest! Here are our services:\n\n✅ Complete Blood Test - ₹299\n✅ Diabetes Check - ₹199\n✅ Thyroid Test - ₹399\n✅ Full Body Checkup - ₹999\n\n📍 We collect samples from your home\n⏰ Reports ready in 24 hours\n💻 Online reports via email\n\nBook now: https://labscheck.com\nCall: +91-9876543210`;
+      
+      const { TwilioService } = await import('./twilio.js');
+      const twilioService = new TwilioService();
+      const result = await twilioService.sendWhatsAppMessage(whatsappTo, message);
+      
+      if (result.success) {
+        console.log(`✅ [REAL-TIME WHATSAPP] Message sent successfully to ${formattedNumber}`);
+      } else {
+        console.log(`❌ [REAL-TIME WHATSAPP] Failed to send message to ${formattedNumber}`);
+      }
+    } catch (error) {
+      console.error('Error sending real-time WhatsApp message:', error);
+    }
   }
 
   async handleCallStatusUpdate(twilioCallSid: string, status: string): Promise<void> {

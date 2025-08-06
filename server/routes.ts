@@ -750,7 +750,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const testContext = {
         conversationHistory: [],
-        campaignPrompt: "Test prompt"
+        campaignPrompt: "Test prompt",
+        phoneNumber: "+19876543210"
       };
       
       const { OpenAIService } = await import('./services/openai.js');
@@ -1278,6 +1279,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         openai: 'unknown',
         timestamp: new Date().toISOString(),
       });
+    }
+  });
+
+  // Get call transcript (messages) for a specific call
+  app.get('/api/calls/:callId/transcript', async (req, res) => {
+    try {
+      const { callId } = req.params;
+      const messages = await storage.getCallMessages(callId);
+      res.json(messages);
+    } catch (error) {
+      console.error('Error fetching call transcript:', error);
+      res.status(500).json({ error: 'Failed to fetch call transcript' });
+    }
+  });
+
+  // Get all contacts with extracted WhatsApp/Email data
+  app.get('/api/contacts/collected-data', async (req, res) => {
+    try {
+      const contacts = await storage.getContacts();
+      const contactsWithData = contacts
+        .filter((contact: any) => contact.whatsappNumber || contact.email)
+        .map((contact: any) => ({
+          id: contact.id,
+          name: contact.name,
+          phone: contact.phone,
+          whatsappNumber: contact.whatsappNumber,
+          email: contact.email,
+          city: contact.city,
+          state: contact.state,
+          createdAt: contact.createdAt,
+        }));
+
+      console.log(`📊 [CONTACT DATA] Found ${contactsWithData.length} contacts with collected data`);
+      res.json(contactsWithData);
+    } catch (error) {
+      console.error('Error fetching contacts with collected data:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
     }
   });
 
