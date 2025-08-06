@@ -29,33 +29,36 @@ export default function LiveConversation() {
   useEffect(() => {
     if (lastMessage) {
       try {
-        // Validate message structure
-        if (!lastMessage) return;
+        console.log('📨 [WEBSOCKET] Received message:', lastMessage);
         
-        const messageContent = typeof lastMessage === 'string' ? lastMessage : lastMessage.data;
-        if (!messageContent || typeof messageContent !== 'string') return;
-        
-        const data = JSON.parse(messageContent);
+        // lastMessage is already parsed by useWebSocket hook
+        const data = lastMessage;
         
         // Validate parsed data structure
-        if (!data || typeof data !== 'object' || !data.type) return;
+        if (!data || typeof data !== 'object' || !data.type) {
+          console.log('⚠️ [WEBSOCKET] Invalid message structure:', data);
+          return;
+        }
+        
+        console.log('🎯 [WEBSOCKET] Message type:', data.type);
         
         // Handle live conversation events
         if (data.type === 'live_conversation') {
           const event: ConversationEvent = {
             id: `${data.callSid}-${Date.now()}`,
-            timestamp: new Date().toISOString(),
+            timestamp: data.timestamp || new Date().toISOString(),
             callSid: data.callSid,
             type: data.eventType,
             content: data.content,
             metadata: data.metadata || {}
           };
           
+          console.log('✅ [LIVE-CONVERSATION] Adding event:', event);
           setConversations(prev => [event, ...prev].slice(0, 100)); // Keep latest 100 events
           setActiveCallSid(data.callSid);
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('❌ [WEBSOCKET] Error processing message:', error);
       }
     }
   }, [lastMessage]);
