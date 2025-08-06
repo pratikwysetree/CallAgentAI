@@ -48,14 +48,17 @@ export default function WhatsAppChats() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch WhatsApp chats
+  // Fetch WhatsApp chats with auto-refresh
   const { data: chats = [], isLoading: chatsLoading } = useQuery<WhatsAppChat[]>({
     queryKey: ['/api/whatsapp/chats'],
+    refetchInterval: 3000, // Auto-refresh every 3 seconds
+    refetchIntervalInBackground: true,
   });
 
   // Fetch all contacts
   const { data: contacts = [], isLoading: contactsLoading } = useQuery<Contact[]>({
     queryKey: ['/api/contacts/enhanced'],
+    refetchInterval: 10000, // Auto-refresh every 10 seconds for contacts
   });
 
   // Filter contacts based on search term
@@ -361,7 +364,15 @@ export default function WhatsAppChats() {
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">{selectedChat.contactPhone}</p>
                   </div>
-                  <AlertDialog>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] })}
+                    >
+                      Refresh
+                    </Button>
+                    <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm">
                         <Trash2 className="w-4 h-4 mr-2" />
@@ -386,14 +397,17 @@ export default function WhatsAppChats() {
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
-                  </AlertDialog>
+                    </AlertDialog>
+                  </div>
                 </div>
               </CardHeader>
 
               {/* Messages */}
               <CardContent className="flex-1 p-4 overflow-y-auto">
                 <div className="space-y-4">
-                  {selectedChat.messages.map((message) => (
+                  {selectedChat.messages
+                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                    .map((message) => (
                     <div
                       key={message.id}
                       className={`flex ${message.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
