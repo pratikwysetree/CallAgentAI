@@ -79,13 +79,14 @@ export class CallManager {
       });
       console.log(`🎯 ===========================================\n`);
       
-      // Get AI response
-      console.log(`🧠 [AI REQUEST] Calling OpenAI with input: "${userInput}"`);
+      // DIRECT FLOW: Customer Speech → OpenAI → Customer Response
+      console.log(`🧠 [AI REQUEST] Sending EXACT customer speech to OpenAI: "${userInput}"`);
       const aiResponse = await openaiService.generateResponse(
         activeCall.conversationContext,
         userInput
       );
-      console.log(`🧠 [AI SUCCESS] OpenAI returned response`);
+      console.log(`🧠 [AI SUCCESS] OpenAI generated direct response`);
+      console.log(`🎯 [FLOW TRACE] Customer said: "${userInput}" → AI responds: "${aiResponse.message}"`);
       
       console.log(`🤖 [AI RESPONSE] "${aiResponse.message}"`);
       console.log(`📊 [EXTRACTED DATA]`, JSON.stringify(aiResponse.extractedData, null, 2));

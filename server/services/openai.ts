@@ -151,6 +151,7 @@ Respond with a JSON object:
       // Enhanced model selection for better Hinglish understanding
       const model = "gpt-4o"; // Full model for better language understanding
       console.log(`🧠 [AI MODEL] Using ${model} for Hinglish conversation`);
+      console.log(`🧠 [EXACT INPUT TO AI] Customer's exact words: "${userInput}"`);
       
       const response = await openai.chat.completions.create({
         model,
