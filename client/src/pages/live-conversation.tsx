@@ -10,7 +10,7 @@ interface ConversationEvent {
   id: string;
   timestamp: string;
   callSid: string;
-  type: 'customer_speech' | 'openai_request' | 'openai_response' | 'voice_synthesis' | 'error';
+  type: 'customer_speech' | 'openai_request' | 'openai_response' | 'voice_synthesis' | 'instant_response' | 'error';
   content: string;
   metadata?: {
     duration?: number;
@@ -18,6 +18,8 @@ interface ConversationEvent {
     model?: string;
     voiceId?: string;
     processingTime?: number;
+    responseType?: string;
+    audioUrl?: string;
   };
 }
 

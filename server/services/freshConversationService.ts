@@ -295,12 +295,7 @@ export class FreshConversationService {
         // Return TwiML immediately
         const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid, voiceConfig);
         
-        // Cleanup temp file
-        try {
-          fs.unlinkSync(audioPath);
-        } catch (cleanupError) {
-          console.log('🗑️ [CLEANUP] File already removed:', audioPath);
-        }
+        // No cleanup needed for instant responses - no temp file created
         
         return twimlResponse;
       }
@@ -588,18 +583,8 @@ Use JSON format for all responses.`
       }
     }
     
-    const response = await fetch(recordingUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to download recording: ${response.status} ${response.statusText}`);
-    }
-
-    return Buffer.from(await response.arrayBuffer());
+    // This should never be reached due to the retry loop above
+    throw new Error('Recording download failed after all attempts');
   }
 
   private async saveConversationMessage(callSid: string, userMessage: string, aiMessage: string) {
