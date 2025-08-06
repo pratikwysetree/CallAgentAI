@@ -616,13 +616,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🚫 [NO SCRIPTS] All campaign scripts ignored - using simple greeting only`);
 
       console.log(`🎙️ [FINAL SCRIPT] Speaking: "${scriptToSpeak}"`);
-      const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
       
-      res.type('text/xml').send(twiml);
+      // Use speech recognition instead of recordings for better reliability
+      const useSpeechMode = true; // Toggle this to switch between modes
+      
+      if (useSpeechMode) {
+        console.log(`🎤 [SPEECH MODE] Using Gather - No recordings needed!`);
+        const twiml = await twilioService.generateSpeechTwiML(scriptToSpeak);
+        res.type('text/xml').send(twiml);
+      } else {
+        const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
+        res.type('text/xml').send(twiml);
+      }
     } catch (error) {
       console.error('Error handling Twilio voice webhook:', error);
       const errorTwiml = await twilioService.generateHangupTwiML();
       res.type('text/xml').send(errorTwiml);
+    }
+  });
+
+  // Alternative speech endpoint (bypasses recordings completely)
+  app.post('/api/twilio/speech-result', async (req, res) => {
+    try {
+      const { CallSid, SpeechResult, Confidence } = req.body;
+      const startTime = Date.now();
+      
+      console.log(`🎤 [SPEECH GATHER] Call: ${CallSid} - No recordings needed!`);
+      console.log(`🎤 [SPEECH TEXT] "${SpeechResult}"`);
+      console.log(`🎤 [CONFIDENCE] ${Confidence || 'N/A'}`);
+      
+      if (!SpeechResult || SpeechResult.trim() === '') {
+        console.log('❌ [NO SPEECH] Using partnership-focused response');
+        const partnershipTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="alice">Do you operate a pathology lab?</Say>
+    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
+        <Pause length="5"/>
+        <Say voice="alice">Please tell me about your business</Say>
+    </Gather>
+</Response>`;
+        return res.type('text/xml').send(partnershipTwiml);
+      }
+
+      const customerInput = SpeechResult.trim();
+      console.log(`🗣️ [CUSTOMER SAID] "${customerInput}"`);
+
+      // Process with OpenAI directly (no Whisper needed!)
+      const modelStart = Date.now();
+      const responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
+      
+      const modelTime = Date.now() - modelStart;
+      const totalTime = Date.now() - startTime;
+      
+      console.log(`🧠 [AI] OpenAI response generated (${modelTime}ms)`);
+      console.log(`⚡ [TOTAL] Speech processing: ${totalTime}ms - Much faster!`);
+      
+      broadcast({ 
+        type: 'conversation_update', 
+        callSid: CallSid, 
+        userInput: customerInput 
+      });
+
+      res.type('text/xml').send(responseTwiml);
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ [SPEECH ERROR] ${errorMsg}`);
+      
+      const continueTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
+        <Say voice="alice">Are you interested in lab partnerships?</Say>
+    </Gather>
+</Response>`;
+      
+      res.type('text/xml').send(continueTwiml);
     }
   });
 

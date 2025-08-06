@@ -126,6 +126,24 @@ export class TwilioService {
     }
   }
 
+  /**
+   * Generate TwiML with speech recognition (no recordings)
+   */
+  async generateSpeechTwiML(message: string): Promise<string> {
+    console.log(`🎤 [SPEECH MODE] Using Gather instead of Record - No delays!`);
+    
+    const voice = "alice";
+    
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="${voice}">${this.escapeXML(message)}</Say>
+    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
+        <Pause length="6"/>
+        <Say voice="${voice}">Please tell me about your business</Say>
+    </Gather>
+</Response>`;
+  }
+
   async generateTwiML(message: string, campaignId?: string): Promise<string> {
     try {
       // Detect language of AI response to match customer's language for ElevenLabs
