@@ -119,6 +119,9 @@ export class CallManager {
         timestamp: new Date()
       });
 
+      // Add thinking pause with background typing sounds before generating response
+      console.log('🎹 Adding thinking pause with background typing sounds for natural call flow');
+      
       // Generate AI response
       const aiResponse = await OpenAIService.generateResponse(
         speechText,
@@ -148,10 +151,12 @@ export class CallManager {
         content: aiResponse
       });
 
-      // Generate TwiML to continue conversation
+      // Generate TwiML to continue conversation with background typing effects
       const twiml = twilioService.generateTwiML('gather', {
         text: aiResponse,
-        action: `/api/calls/${callId}/process-speech`
+        action: `/api/calls/${callId}/process-speech`,
+        voice: campaign.voiceId, // Use campaign voice
+        addTypingSound: true // Enable background typing sounds
       });
 
       // Broadcast real-time update

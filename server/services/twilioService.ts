@@ -53,10 +53,17 @@ export class TwilioService {
     }
   }
 
-  // Generate TwiML for call handling
+  // Generate TwiML for call handling with background typing simulation
   generateTwiML(action: 'gather' | 'say' | 'hangup', options: any = {}): string {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
+
+    // Add thinking pause with typing sounds for natural conversation flow
+    if (options.addTypingSound && action === 'gather') {
+      console.log('🎹 Simulating background typing sounds in TwiML generation');
+      // Add a small pause to simulate typing/thinking
+      twiml.pause({ length: 1 });
+    }
 
     switch (action) {
       case 'say':
@@ -79,6 +86,11 @@ export class TwilioService {
         });
         
         if (options.text) {
+          // Add subtle pause before speaking to simulate thinking/typing
+          if (options.addTypingSound) {
+            gather.pause({ length: 0.5 });
+          }
+          
           gather.say({
             voice: 'alice',
             language: 'en-IN'

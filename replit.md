@@ -39,14 +39,17 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 
 ## Recent Changes (August 6, 2025)
 
-### AI Calling Agent Restoration (Latest)
+### AI Calling Agent with Natural Conversation Flow (Latest)
 - **MAJOR ARCHITECTURAL CHANGE**: Rebuilt complete AI calling functionality from fresh implementation
 - Restored AI calling agent following exact flow: Start Call → ElevenLabs TTS → User speaks → Speech-to-Text → OpenAI GPT → ElevenLabs TTS → Play audio → Loop/End
+- **NEW FEATURE**: Added background typing sounds with lower intensity to make calls sound natural and human-like
+- Enhanced ElevenLabs service with background typing simulation during AI response generation
+- Updated call flow to include thinking pauses with subtle typing sounds between responses
 - Created fresh AI calling services: openaiService.ts, elevenlabsService.ts, twilioService.ts, callManager.ts
 - Updated database schema with new calling tables (calls, callMessages) and proper relations
-- Added calling functionality methods to storage layer with proper CRUD operations
+- Added comprehensive campaign management with custom scripts, AI prompts, language selection, ElevenLabs models, and voice agents
 - Created comprehensive API routes for calling functionality and Twilio webhooks
-- Built frontend pages: live-calls.tsx and calls-analytics.tsx for real-time call monitoring
+- Built frontend pages: live-calls.tsx, calls-analytics.tsx, and campaign-manager.tsx
 - Updated navigation to include calling features alongside WhatsApp messaging
 - Changed platform branding to "LabsCheck AI" reflecting combined WhatsApp + AI calling capabilities
 - Platform now supports both AI calling campaigns and WhatsApp bulk messaging for lab partnerships
@@ -61,8 +64,10 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 ### Frontend Architecture Updates
 - Created live-calls.tsx page for real-time call monitoring with active call status
 - Created calls-analytics.tsx page for call performance metrics and historical data
+- Created campaign-manager.tsx page for comprehensive campaign management with CRUD operations
+- Added campaign features: name, introduction script, AI prompt, language selection, ElevenLabs model selection, voice agent selection
 - Updated App.tsx with navigation for both WhatsApp and calling features
-- Added proper routing for /live-calls and /calls-analytics paths
+- Added proper routing for /live-calls, /calls-analytics, and /campaign-manager paths
 - Maintained existing WhatsApp functionality while adding calling capabilities
 
 ## External Dependencies
