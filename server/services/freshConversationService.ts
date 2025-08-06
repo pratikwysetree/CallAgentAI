@@ -10,17 +10,22 @@ export class FreshConversationService {
   
   private broadcastConversationEvent(callSid: string, eventType: string, content: string, metadata?: any) {
     try {
-      const { broadcastToClients } = require('../websocket');
-      broadcastToClients({
-        type: 'live_conversation',
-        callSid,
-        eventType,
-        content,
-        metadata,
-        timestamp: new Date().toISOString()
-      });
+      const broadcastFunction = (global as any).broadcastToClients;
+      if (broadcastFunction) {
+        broadcastFunction({
+          type: 'live_conversation',
+          callSid,
+          eventType,
+          content,
+          metadata,
+          timestamp: new Date().toISOString()
+        });
+        console.log(`📡 [WEBSOCKET] Broadcasted ${eventType} for call ${callSid}`);
+      } else {
+        console.log('WebSocket broadcast not available: function not initialized');
+      }
     } catch (error) {
-      console.log('WebSocket broadcast not available:', (error as Error).message);
+      console.log('WebSocket broadcast error:', (error as Error).message);
     }
   }
   
@@ -35,27 +40,31 @@ export class FreshConversationService {
       let audioExtension = 'wav';
       
       try {
-        // First try WAV format (best for Whisper)
-        const audioResponse = await fetch(recordingUrl + '.wav');
-        if (audioResponse.ok) {
-          audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
-          audioExtension = 'wav';
-        } else {
-          // Fallback to MP3 format
-          const mp3Response = await fetch(recordingUrl + '.mp3');
-          if (mp3Response.ok) {
-            audioBuffer = Buffer.from(await mp3Response.arrayBuffer());
-            audioExtension = 'mp3';
-          } else {
-            // Try without extension (Twilio default)
-            const defaultResponse = await fetch(recordingUrl);
-            if (!defaultResponse.ok) {
-              throw new Error(`Failed to download audio: ${defaultResponse.status}`);
-            }
-            audioBuffer = Buffer.from(await defaultResponse.arrayBuffer());
-            audioExtension = 'wav'; // Default assumption
+        // Use Twilio client to access authenticated recording
+        const twilio = await import('twilio');
+        const twilioClient = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        
+        // Extract recording SID from URL
+        const recordingSid = recordingUrl.split('/').pop();
+        console.log(`📞 [TWILIO-AUTH] Getting recording: ${recordingSid}`);
+        
+        // Fetch authenticated recording
+        const recording = await twilioClient.recordings(recordingSid).fetch();
+        const authenticatedUrl = `https://api.twilio.com${recording.uri.replace('.json', '.wav')}`;
+        
+        // Download with authentication
+        const audioResponse = await fetch(authenticatedUrl, {
+          headers: {
+            'Authorization': `Basic ${Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')}`
           }
+        });
+        
+        if (!audioResponse.ok) {
+          throw new Error(`Failed to download authenticated audio: ${audioResponse.status}`);
         }
+        
+        audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+        audioExtension = 'wav';
       } catch (fetchError) {
         throw new Error(`Audio download failed: ${(fetchError as Error).message}`);
       }
