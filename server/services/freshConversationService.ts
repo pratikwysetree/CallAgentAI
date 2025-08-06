@@ -321,8 +321,8 @@ Use JSON format for all responses.`
         await this.storeCollectedData(callSid, aiResponse.collected_data);
       }
       
-      // 8. Generate TwiML response with consistent voice settings
-      const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid, voiceConfig);
+      // 8. Generate TwiML response with typing sound and consistent voice settings
+      const twimlResponse = this.generateTwiMLResponseWithTyping(audioUrl, aiResponse.message, aiResponse.should_end, callSid, voiceConfig);
       
       // 9. Cleanup temp file
       try {
@@ -346,6 +346,32 @@ Use JSON format for all responses.`
     }
   }
   
+  private generateTwiMLResponseWithTyping(audioUrl: string | null, message: string, shouldEnd: boolean, callSid: string, voiceConfig?: any): string {
+    // Use consistent voice settings even in fallback scenarios
+    const fallbackVoice = voiceConfig?.useElevenLabs ? 'alice' : 'alice'; // Keep consistent even for fallback
+    
+    // Generate typing sound URL
+    const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+    const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+    const typingUrl = `${protocol}://${baseUrl}/api/typing-sound`;
+    
+    if (shouldEnd) {
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${typingUrl}</Play>
+  ${audioUrl ? `<Play>${audioUrl}</Play>` : `<Say voice="${fallbackVoice}" language="en-IN">${message}</Say>`}
+  <Hangup/>
+</Response>`;
+    } else {
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${typingUrl}</Play>
+  ${audioUrl ? `<Play>${audioUrl}</Play>` : `<Say voice="${fallbackVoice}" language="en-IN">${message}</Say>`}
+  <Record action="/api/twilio/fresh-recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
+</Response>`;
+    }
+  }
+
   private generateTwiMLResponse(audioUrl: string | null, message: string, shouldEnd: boolean, callSid: string, voiceConfig?: any): string {
     // Use consistent voice settings even in fallback scenarios
     const fallbackVoice = voiceConfig?.useElevenLabs ? 'alice' : 'alice'; // Keep consistent even for fallback

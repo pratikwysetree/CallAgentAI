@@ -1491,6 +1491,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { setupDirectAudioAPI } = await import('./routes/directAudioAPI');
   setupDirectAudioAPI(app);
 
+  // Serve typing sound effect (generates once and caches)
+  let cachedTypingAudioPath: string | null = null;
+  app.get('/api/typing-sound', async (req, res) => {
+    try {
+      // Check if we have a cached typing sound
+      if (!cachedTypingAudioPath || !fs.existsSync(cachedTypingAudioPath)) {
+        console.log('🎵 [TYPING-SOUND] Generating typing effect audio...');
+        
+        // Generate a very subtle typing sound using ElevenLabs
+        const { ElevenLabsService } = await import('./services/elevenLabsService');
+        const elevenLabsService = new ElevenLabsService();
+        
+        // Use minimal settings for very subtle typing effect
+        const typingSettings = {
+          voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam - neutral voice
+          model: 'eleven_turbo_v2',
+          stability: 0.9,
+          similarityBoost: 0.2,
+          style: 0,
+          useSpeakerBoost: false
+        };
+        
+        // Generate a very short "..." sound for typing effect
+        const audioFilename = await elevenLabsService.generateAudioFile('...', typingSettings);
+        const tempPath = path.join(__dirname, '../temp', audioFilename);
+        
+        // Move to permanent location for caching
+        const staticAudioDir = path.join(__dirname, '../temp/static-audio');
+        if (!fs.existsSync(staticAudioDir)) {
+          fs.mkdirSync(staticAudioDir, { recursive: true });
+        }
+        
+        cachedTypingAudioPath = path.join(staticAudioDir, 'typing-sound.mp3');
+        fs.copyFileSync(tempPath, cachedTypingAudioPath);
+        fs.unlinkSync(tempPath); // Remove temp file
+        
+        console.log('🎵 [TYPING-SOUND] Cached typing effect audio');
+      }
+      
+      // Serve the cached typing sound
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
+        'Content-Length': fs.statSync(cachedTypingAudioPath).size
+      });
+      
+      const stream = fs.createReadStream(cachedTypingAudioPath);
+      stream.pipe(res);
+      
+      stream.on('error', (err) => {
+        console.error('Typing sound stream error:', err);
+        res.status(404).send('Typing sound not available');
+      });
+      
+    } catch (error) {
+      console.error('Error serving typing sound:', error);
+      // Fallback: return minimal silent response
+      res.status(204).send(); // No content - Twilio will skip this
+    }
+  });
+
   // Serve OpenAI TTS audio files
   app.get('/api/audio/:filename', (req, res) => {
     const filename = req.params.filename;
@@ -1509,6 +1570,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Audio stream error:', err);
         res.status(404).send('Audio file not found');
       });
+      
+      console.log(`Successfully served audio file: ${filename}`);
     } else {
       res.status(404).send('Audio file not found');
     }
