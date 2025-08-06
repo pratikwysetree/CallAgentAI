@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Save, Settings, MessageSquare } from "lucide-react";
+import { Trash2, Save, Settings, MessageSquare, Volume2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +21,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+interface VoiceConfig {
+  model?: string;
+  voiceId?: string;
+  stability?: number;
+  similarityBoost?: number;
+  style?: number;
+  useSpeakerBoost?: boolean;
+  useElevenLabs?: boolean;
+}
+
 interface Campaign {
   id: string;
   name: string;
@@ -28,7 +40,7 @@ interface Campaign {
   introLine: string;
   agentName: string;
   openaiModel: string;
-  voiceConfig: any;
+  voiceConfig: VoiceConfig | null;
   transcriberConfig: any;
   isActive: boolean;
   createdAt: string;
@@ -44,7 +56,16 @@ export default function CampaignSettings() {
     name: "",
     description: "",
     aiPrompt: "",
-    script: ""
+    script: "",
+    voiceConfig: {
+      model: "eleven_turbo_v2",
+      voiceId: "Z6TUNPsOxhTPtqLx81EX", // Aavika voice
+      stability: 0.5,
+      similarityBoost: 0.75,
+      style: 0,
+      useSpeakerBoost: true,
+      useElevenLabs: true
+    }
   });
 
   const { data: campaigns, isLoading, error } = useQuery({
@@ -105,7 +126,16 @@ export default function CampaignSettings() {
         name: "",
         description: "",
         aiPrompt: "",
-        script: ""
+        script: "",
+        voiceConfig: {
+          model: "eleven_turbo_v2",
+          voiceId: "Z6TUNPsOxhTPtqLx81EX",
+          stability: 0.5,
+          similarityBoost: 0.75,
+          style: 0,
+          useSpeakerBoost: true,
+          useElevenLabs: true
+        }
       });
     },
     onError: (error: any) => {
@@ -126,7 +156,16 @@ export default function CampaignSettings() {
         name: selectedCampaign.name || "",
         description: selectedCampaign.description || "",
         aiPrompt: selectedCampaign.aiPrompt || "",
-        script: selectedCampaign.script || ""
+        script: selectedCampaign.script || "",
+        voiceConfig: selectedCampaign.voiceConfig || {
+          model: "eleven_turbo_v2",
+          voiceId: "Z6TUNPsOxhTPtqLx81EX",
+          stability: 0.5,
+          similarityBoost: 0.75,
+          style: 0,
+          useSpeakerBoost: true,
+          useElevenLabs: true
+        }
       });
     }
   }, [selectedCampaign]);
@@ -267,6 +306,130 @@ export default function CampaignSettings() {
                       onChange={(e) => setFormData({ ...formData, script: e.target.value })}
                       rows={3}
                     />
+                  </div>
+                </div>
+
+                {/* Voice Configuration */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Volume2 className="h-5 w-5" />
+                    <h3 className="text-lg font-semibold">Voice Configuration</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="voiceModel">Voice Model</Label>
+                      <Select
+                        value={formData.voiceConfig.model}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          voiceConfig: { ...formData.voiceConfig, model: value }
+                        })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select voice model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="eleven_turbo_v2">ElevenLabs Turbo v2</SelectItem>
+                          <SelectItem value="eleven_multilingual_v2">ElevenLabs Multilingual v2</SelectItem>
+                          <SelectItem value="eleven_monolingual_v1">ElevenLabs Monolingual v1</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="voiceId">Agent Voice</Label>
+                      <Select
+                        value={formData.voiceConfig.voiceId}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          voiceConfig: { ...formData.voiceConfig, voiceId: value }
+                        })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select agent voice" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Z6TUNPsOxhTPtqLx81EX">Aavika (Female, Indian)</SelectItem>
+                          <SelectItem value="pNInz6obpgDQGcFmaJgB">Adam (Male, Professional)</SelectItem>
+                          <SelectItem value="EXAVITQu4vr4xnSDxMaL">Bella (Female, Friendly)</SelectItem>
+                          <SelectItem value="VR6AewLTigWG4xSOukaG">Josh (Male, Confident)</SelectItem>
+                          <SelectItem value="AZnzlk1XvdvUeBnXmlld">Domi (Female, Natural)</SelectItem>
+                          <SelectItem value="MF3mGyEYCl7XYWbV9V6O">Elli (Female, Expressive)</SelectItem>
+                          <SelectItem value="TxGEqnHWrfWFTfGW9XjX">Josh (Male, Deep)</SelectItem>
+                          <SelectItem value="rQ4WfvUDcRjgGrfWnO3s">Priya (Female, Hindi/English)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Choose the voice that matches your agent name
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Voice Stability: {formData.voiceConfig.stability}</Label>
+                      <Slider
+                        value={[formData.voiceConfig.stability]}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          voiceConfig: { ...formData.voiceConfig, stability: value[0] }
+                        })}
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        className="mt-2"
+                      />
+                      <p className="text-sm text-muted-foreground">Higher values = more stable voice</p>
+                    </div>
+
+                    <div>
+                      <Label>Similarity Boost: {formData.voiceConfig.similarityBoost}</Label>
+                      <Slider
+                        value={[formData.voiceConfig.similarityBoost]}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          voiceConfig: { ...formData.voiceConfig, similarityBoost: value[0] }
+                        })}
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        className="mt-2"
+                      />
+                      <p className="text-sm text-muted-foreground">Higher values = more similar to original voice</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Voice Style: {formData.voiceConfig.style}</Label>
+                      <Slider
+                        value={[formData.voiceConfig.style]}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          voiceConfig: { ...formData.voiceConfig, style: value[0] }
+                        })}
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        className="mt-2"
+                      />
+                      <p className="text-sm text-muted-foreground">Adjusts voice expressiveness</p>
+                    </div>
+
+                    <div className="flex items-center space-x-3 pt-6">
+                      <input
+                        type="checkbox"
+                        id="useSpeakerBoost"
+                        checked={formData.voiceConfig.useSpeakerBoost}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          voiceConfig: { ...formData.voiceConfig, useSpeakerBoost: e.target.checked }
+                        })}
+                        className="rounded"
+                      />
+                      <Label htmlFor="useSpeakerBoost">Enable Speaker Boost</Label>
+                    </div>
                   </div>
                 </div>
 
