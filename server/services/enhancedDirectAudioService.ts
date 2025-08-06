@@ -121,7 +121,7 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "voic
             fs.unlinkSync(audioPath);
             console.log(`🗑️ [CLEANUP] Removed audio file: ${audioFilename}`);
           } catch (e) {
-            console.log('Audio cleanup:', e.message);
+            console.log('Audio cleanup:', (e as Error).message);
           }
         }, 60000);
         
@@ -168,7 +168,7 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "voic
         try {
           fs.unlinkSync(tempAudioPath);
         } catch (e) {
-          console.log('Temp file cleanup:', e.message);
+          console.log('Temp file cleanup:', (e as Error).message);
         }
       }, 10000);
       
@@ -284,7 +284,7 @@ RESPONSE FORMAT: {"message": "your response matching customer's language exactly
             fs.unlinkSync(audioPath);
             console.log(`🗑️ [CLEANUP] Removed audio file: ${audioFilename}`);
           } catch (e) {
-            console.log('Audio cleanup:', e.message);
+            console.log('Audio cleanup:', (e as Error).message);
           }
         }, 60000);
         

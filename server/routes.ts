@@ -717,7 +717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Recording webhook to process audio with OpenAI
+  // Recording webhook to process audio with Simple Conversation Service
   app.post('/api/twilio/recording/:callSid', async (req, res) => {
     const { callSid } = req.params;
     const { RecordingUrl, RecordingSid } = req.body;
@@ -725,33 +725,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🎙️ [RECORDING] Call: ${callSid}, Recording: ${RecordingSid}, URL: ${RecordingUrl}`);
     
     try {
-      // Download and process recording with Enhanced OpenAI Whisper + TTS
-      const { enhancedDirectAudioService } = await import('./services/enhancedDirectAudioService');
-      
       // Download audio file
       const audioResponse = await fetch(RecordingUrl + '.mp3');
       const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
       
       console.log(`🎙️ [RECORDING] Downloaded ${audioBuffer.length} bytes of audio`);
       
-      // Process with direct audio service
+      // Get call info
       const call = await storage.getCallByTwilioSid(callSid);
-      if (call) {
-        const twimlResponse = await enhancedDirectAudioService.processRecordedAudio(
-          audioBuffer,
-          callSid,
-          call.campaignId
-        );
-        return res.type('text/xml').send(twimlResponse);
+      if (!call) {
+        console.error('❌ [RECORDING] Call not found:', callSid);
+        return res.type('text/xml').send(`
+          <Response>
+            <Say voice="alice">Thank you for calling.</Say>
+            <Hangup/>
+          </Response>
+        `);
       }
       
-      // Fallback response
-      res.type('text/xml').send(`
-        <Response>
-          <Say voice="alice">Thank you for calling.</Say>
-          <Hangup/>
-        </Response>
-      `);
+      // Process with simple conversation service
+      const { simpleConversationService } = await import('./services/simpleConversationService');
+      const twimlResponse = await simpleConversationService.processCustomerAudio(
+        audioBuffer,
+        callSid,
+        call.campaignId
+      );
+      
+      return res.type('text/xml').send(twimlResponse);
       
     } catch (error) {
       console.error('❌ [RECORDING] Error processing recording:', error);
