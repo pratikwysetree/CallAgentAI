@@ -305,7 +305,8 @@ export class FreshConversationService {
       let openaiRequestStart = Date.now();
       
       console.log('🧠 [OPENAI] Using OpenAI for complex query');
-        
+      
+      try {
         const requestPayload = {
           model: "gpt-4o" as const,
           messages: [
@@ -380,6 +381,13 @@ Use JSON format for all responses.`
             collected_data: {}
           };
         }
+      } catch (openaiError) {
+        console.error('❌ [OPENAI-ERROR]:', openaiError);
+        aiResponse = {
+          message: "I understand. Could you please share your WhatsApp number for partnership details?",
+          should_end: false,
+          collected_data: {}
+        };
       }
 
       // Validate aiResponse structure to prevent crashes
