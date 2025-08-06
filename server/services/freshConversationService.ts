@@ -309,14 +309,14 @@ RESPONSE FORMAT: Respond in JSON format with the structure: {"message": "your re
       try {
         // Use campaign voice settings or fallback to default
         const voiceSettings = voiceConfig && voiceConfig.useElevenLabs ? {
-          voiceId: voiceConfig.voiceId || '7w5JDCUNbeKrn4ySFgfu', // Use selected voice or Aavika default
+          voiceId: voiceConfig.voiceId || 'Z6TUNPsOxhTPtqLx81EX', // Use selected voice or valid default
           model: voiceConfig.model || 'eleven_multilingual_v2',
           stability: voiceConfig.stability || 0.5,
           similarityBoost: voiceConfig.similarityBoost || 0.75,
           style: voiceConfig.style || 0,
           useSpeakerBoost: voiceConfig.useSpeakerBoost || true,
         } : {
-          voiceId: '7w5JDCUNbeKrn4ySFgfu', // Default Aavika voice
+          voiceId: 'Z6TUNPsOxhTPtqLx81EX', // Valid default voice from account
           model: 'eleven_multilingual_v2',
           stability: 0.5,
           similarityBoost: 0.75,
