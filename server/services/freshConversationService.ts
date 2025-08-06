@@ -8,7 +8,24 @@ const openai = new OpenAI({
 
 export class FreshConversationService {
   
+  private broadcastConversationEvent(callSid: string, eventType: string, content: string, metadata?: any) {
+    try {
+      const { broadcastToClients } = require('../websocket');
+      broadcastToClients({
+        type: 'live_conversation',
+        callSid,
+        eventType,
+        content,
+        metadata,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.log('WebSocket broadcast not available:', (error as Error).message);
+    }
+  }
+  
   async processRecordedAudio(recordingUrl: string, callSid: string): Promise<string> {
+    const startTime = Date.now();
     console.log(`🎙️ [FRESH-SERVICE] Processing audio from: ${recordingUrl}`);
     
     try {
@@ -62,12 +79,20 @@ export class FreshConversationService {
       const customerText = transcription.text.trim();
       console.log(`🎤 [CUSTOMER] Said: "${customerText}"`);
       
+      // Broadcast customer speech event
+      this.broadcastConversationEvent(callSid, 'customer_speech', customerText, {
+        confidence: 0.95, // Whisper doesn't provide confidence, using default
+        processingTime: Date.now() - startTime
+      });
+      
       // 4. Generate AI response with language matching
-      const aiResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const openaiRequestStart = Date.now();
+      
+      const requestPayload = {
+        model: "gpt-4o" as const,
         messages: [
           {
-            role: "system",
+            role: "system" as const,
             content: `You are Aavika from LabsCheck calling pathology labs for partnership.
 
 LabsCheck connects 500+ labs to 100k+ users. Zero commission - labs keep 100% payments.
@@ -84,18 +109,36 @@ Keep responses brief, warm, natural. Maximum 15 words.
 RESPONSE FORMAT: {"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}`
           },
           {
-            role: "user",
+            role: "user" as const,
             content: customerText
           }
         ],
-        max_tokens: 120,
-        temperature: 0.1,
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" as const },
+        temperature: 0.3
+      };
+      
+      // Broadcast OpenAI request
+      this.broadcastConversationEvent(callSid, 'openai_request', JSON.stringify(requestPayload, null, 2), {
+        model: "gpt-4o",
+        temperature: 0.3
       });
       
+      const aiResponse = await openai.chat.completions.create(requestPayload);
+      
+      const openaiProcessingTime = Date.now() - openaiRequestStart;
+      const aiResponseContent = aiResponse.choices[0].message.content || '{}';
+      
+      // Broadcast OpenAI response
+      this.broadcastConversationEvent(callSid, 'openai_response', aiResponseContent, {
+        model: "gpt-4o",
+        processingTime: openaiProcessingTime,
+        tokens: aiResponse.usage?.total_tokens || 0
+      });
+      
+      // Parse AI response for processing
       let aiData;
       try {
-        aiData = JSON.parse(aiResponse.choices[0].message.content || '{}');
+        aiData = JSON.parse(aiResponseContent);
       } catch (parseError) {
         console.error('❌ [AI PARSE ERROR]:', parseError);
         aiData = {
@@ -104,7 +147,7 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "coll
           collected_data: {}
         };
       }
-      
+
       console.log(`🤖 [AI] Response: "${aiData.message}"`);
       
       // 5. Generate voice with ElevenLabs
@@ -112,6 +155,7 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "coll
       try {
         const { elevenLabsService } = await import('./elevenLabsService');
         
+        const voiceSynthesisStart = Date.now();
         const audioFilename = await elevenLabsService.generateAudioFile(aiData.message, {
           voiceId: '7w5JDCUNbeKrn4ySFgfu', // Aavika's voice
           model: 'eleven_multilingual_v2',
@@ -125,10 +169,20 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "coll
         const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
         audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
         
+        const voiceProcessingTime = Date.now() - voiceSynthesisStart;
         console.log(`🎵 [ELEVENLABS] Generated audio: ${audioUrl}`);
+        
+        // Broadcast voice synthesis event
+        this.broadcastConversationEvent(callSid, 'voice_synthesis', aiData.message, {
+          voiceId: '7w5JDCUNbeKrn4ySFgfu',
+          model: 'eleven_multilingual_v2',
+          processingTime: voiceProcessingTime,
+          audioUrl
+        });
         
       } catch (ttsError) {
         console.error('❌ [ELEVENLABS] Error:', ttsError);
+        this.broadcastConversationEvent(callSid, 'error', `Voice synthesis failed: ${(ttsError as Error).message}`);
       }
       
       // 6. Store conversation data if collected
@@ -150,6 +204,7 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "coll
       
     } catch (error) {
       console.error('❌ [FRESH-SERVICE] Error:', error);
+      this.broadcastConversationEvent(callSid, 'error', `Processing failed: ${(error as Error).message}`);
       
       // Return safe fallback TwiML
       return `<?xml version="1.0" encoding="UTF-8"?>

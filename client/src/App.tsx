@@ -12,6 +12,7 @@ import EnhancedSettings from "@/pages/enhanced-settings";
 import ElevenLabsSetup from "@/pages/elevenlabs-setup";
 import WhatsAppBulk from "@/pages/whatsapp-bulk";
 import WhatsAppChats from "@/pages/whatsapp-chats";
+import LiveConversation from "@/pages/live-conversation";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/elevenlabs-setup" component={ElevenLabsSetup} />
       <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
       <Route path="/whatsapp-chats" component={WhatsAppChats} />
+      <Route path="/live-conversation" component={LiveConversation} />
       <Route component={NotFound} />
     </Switch>
   );

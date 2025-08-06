@@ -10,7 +10,8 @@ import {
   Upload,
   Target,
   MessageCircle,
-  Volume2
+  Volume2,
+  Monitor
 } from 'lucide-react';
 
 const navigation = [
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Contact Campaigns', href: '/contact-campaigns', icon: Target },
   { name: 'WhatsApp Bulk', href: '/whatsapp-bulk', icon: MessageSquare },
   { name: 'WhatsApp Chats', href: '/whatsapp-chats', icon: MessageCircle },
+  { name: 'Live Conversation', href: '/live-conversation', icon: Monitor },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'ElevenLabs Voice', href: '/elevenlabs-setup', icon: Volume2 },
   { name: 'Settings', href: '/enhanced-settings', icon: Settings },
