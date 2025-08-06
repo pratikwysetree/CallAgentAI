@@ -69,6 +69,7 @@ export default function LiveConversation() {
       case 'openai_request': return '📤';
       case 'openai_response': return '🤖';
       case 'voice_synthesis': return '🎵';
+      case 'instant_response': return '⚡';
       case 'error': return '❌';
       default: return '📝';
     }
@@ -80,6 +81,7 @@ export default function LiveConversation() {
       case 'openai_request': return 'bg-yellow-500';
       case 'openai_response': return 'bg-green-500';
       case 'voice_synthesis': return 'bg-purple-500';
+      case 'instant_response': return 'bg-orange-500';
       case 'error': return 'bg-red-500';
       default: return 'bg-gray-500';
     }

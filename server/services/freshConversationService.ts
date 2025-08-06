@@ -234,16 +234,82 @@ export class FreshConversationService {
         processingTime: Date.now() - startTime
       });
       
-      // 4. Check for quick responses first, then use OpenAI for complex queries
+      // 4. Check for quick responses first - BYPASS EVERYTHING ELSE FOR INSTANT RESPONSE
       const quickResult = this.getQuickResponse(customerText, voiceConfig);
+      
+      if (quickResult) {
+        console.log('⚡ [INSTANT-BYPASS] Using predefined response - skipping OpenAI completely');
+        
+        // IMMEDIATE RETURN - True instant response
+        const aiResponse = quickResult.response;
+        let audioUrl: string | null = null;
+        const instantStart = Date.now();
+        
+        // Broadcast instant response event immediately
+        this.broadcastConversationEvent(callSid, 'instant_response', aiResponse.message, {
+          processingTime: 0,
+          responseType: 'instant'
+        });
+        
+        try {
+          const voiceSettings = {
+            voiceId: voiceConfig?.voiceId || 'Z6TUNPsOxhTPtqLx81EX',
+            model: voiceConfig?.model || 'eleven_turbo_v2',
+            stability: voiceConfig?.stability || 0.5,
+            similarityBoost: voiceConfig?.similarityBoost || 0.75,
+            style: voiceConfig?.style || 0,
+            useSpeakerBoost: voiceConfig?.useSpeakerBoost || true,
+          };
+          
+          const { elevenLabsService } = await import('./elevenLabsService');
+          const audioFilename = await elevenLabsService.generateAudioFile(aiResponse.message, voiceSettings);
+          
+          if (audioFilename && typeof audioFilename === 'string') {
+            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+            audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          }
+          
+          const instantTime = Date.now() - instantStart;
+          console.log(`🚀 [INSTANT-COMPLETE] Audio generated in ${instantTime}ms`);
+          
+          // Broadcast voice synthesis complete
+          this.broadcastConversationEvent(callSid, 'voice_synthesis', aiResponse.message, {
+            processingTime: instantTime,
+            audioUrl,
+            voiceId: voiceConfig?.voiceId
+          });
+          
+        } catch (error) {
+          console.error('❌ [INSTANT-ERROR]:', error);
+          audioUrl = null;
+        }
+        
+        // Save conversation and return immediately
+        await this.saveConversationMessage(callSid, customerText, aiResponse.message);
+        
+        if (aiResponse.collected_data && Object.keys(aiResponse.collected_data).length > 0) {
+          await this.storeCollectedData(callSid, aiResponse.collected_data);
+        }
+        
+        // Return TwiML immediately
+        const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid, voiceConfig);
+        
+        // Cleanup temp file
+        try {
+          fs.unlinkSync(audioPath);
+        } catch (cleanupError) {
+          console.log('🗑️ [CLEANUP] File already removed:', audioPath);
+        }
+        
+        return twimlResponse;
+      }
+      
+      // Continue with OpenAI for complex queries
       let aiResponse: any;
       let openaiRequestStart = Date.now();
       
-      if (quickResult) {
-        console.log('⚡ [INSTANT-RESPONSE] Using predefined response for common query');
-        aiResponse = quickResult.response;
-      } else {
-        console.log('🧠 [OPENAI] Using OpenAI for complex query');
+      console.log('🧠 [OPENAI] Using OpenAI for complex query');
         
         const requestPayload = {
           model: "gpt-4o" as const,
