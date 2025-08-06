@@ -705,8 +705,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Use fresh conversation service with proper audio handling
-      const { freshConversationService } = await import('./services/freshConversationService');
-      const twimlResponse = await freshConversationService.processRecordedAudio(RecordingUrl, callSid);
+      const { FreshConversationService } = await import('./services/freshConversationService');
+      const freshConversationService = new FreshConversationService(wss);
+      const twimlResponse = await freshConversationService.processAudio(RecordingUrl, callSid);
       
       console.log(`✅ [FRESH-RECORDING] Generated response for call: ${callSid}`);
       return res.type('text/xml').send(twimlResponse);
@@ -731,8 +732,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Use fresh conversation service instead of broken old service
-      const { freshConversationService } = await import('./services/freshConversationService');
-      const twimlResponse = await freshConversationService.processRecordedAudio(RecordingUrl, callSid);
+      const { FreshConversationService } = await import('./services/freshConversationService');
+      const freshConversationService = new FreshConversationService(wss);
+      const twimlResponse = await freshConversationService.processAudio(RecordingUrl, callSid);
       
       return res.type('text/xml').send(twimlResponse);
       
