@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/file-upload";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/sidebar";
 
 export default function Settings() {
@@ -25,18 +26,38 @@ export default function Settings() {
     transcriberConfig: "",
   });
 
+  const [whatsappConfig, setWhatsappConfig] = useState({
+    accessToken: "",
+    businessAccountId: "",
+    phoneNumberId: "",
+    verifyToken: "",
+  });
+
   const [voiceConfigFile, setVoiceConfigFile] = useState<File | null>(null);
   const [transcriberConfigFile, setTranscriberConfigFile] = useState<File | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch system status
   const { data: systemStatus } = useQuery<{
     database: string;
     twilio: string;
     openai: string;
+    whatsapp: string;
     timestamp: string;
   }>({
     queryKey: ['/api/system/status'],
+    refetchInterval: 30000,
+  });
+
+  // Fetch WhatsApp status
+  const { data: whatsappStatus } = useQuery<{
+    configured: boolean;
+    connected: boolean;
+    phoneNumber?: string;
+    businessAccount?: string;
+  }>({
+    queryKey: ['/api/whatsapp/status'],
     refetchInterval: 30000,
   });
 
