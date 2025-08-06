@@ -162,8 +162,8 @@ export class TwilioService {
 <Response>
     <Play>${audioUrl}</Play>
     <Pause length="1"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="6" timeout="15" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
-        <Say voice="alice" language="hi-IN">Boliye...</Say>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="8" timeout="20" language="en-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="I am great,I am fine,hello,hi,yes,no,ok,okay,good,lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,business,labscheck,diagnostic,test,my name is,thank you,thanks,bye,goodbye">
+        <Say voice="alice" language="en-IN">Please speak...</Say>
     </Gather>
 </Response>`;
         } catch (error) {
@@ -179,8 +179,8 @@ export class TwilioService {
 <Response>
     <Say voice="alice" language="en-IN" rate="medium">${message}</Say>
     <Pause length="1"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="6" timeout="15" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
-        <Say voice="alice" language="hi-IN">Boliye...</Say>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="8" timeout="20" language="en-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="I am great,I am fine,hello,hi,yes,no,ok,okay,good,lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,business,labscheck,diagnostic,test,my name is,thank you,thanks,bye,goodbye">
+        <Say voice="alice" language="en-IN">Please speak...</Say>
     </Gather>
 </Response>`;
     } catch (error) {
@@ -189,8 +189,8 @@ export class TwilioService {
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice">${message}</Say>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="6" timeout="15" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
-        <Say voice="alice" language="hi-IN">Kuch boliye...</Say>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="8" timeout="20" language="en-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="I am great,I am fine,hello,hi,yes,no,ok,okay,good,lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,business,labscheck,diagnostic,test,my name is,thank you,thanks,bye,goodbye">
+        <Say voice="alice" language="en-IN">Please speak...</Say>
     </Gather>
 </Response>`;
     }

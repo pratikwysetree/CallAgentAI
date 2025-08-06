@@ -642,6 +642,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🎤 [SPEECH INPUT] Call: ${CallSid}`);
       console.log(`🎤 [SPEECH] "${SpeechResult}" | Confidence: ${Confidence || 'N/A'}`);
+      console.log(`🔍 [SPEECH DEBUG] Raw SpeechResult length: ${SpeechResult?.length || 0}`);
+      console.log(`🔍 [SPEECH DEBUG] Detected language pattern:`, SpeechResult?.match(/[\u0900-\u097F]/g) ? 'Contains Hindi/Devanagari' : 'English/Latin');
       
       // Handle empty or low-confidence speech with more detailed logging
       if (!SpeechResult || SpeechResult.trim() === '' || SpeechResult.toLowerCase() === 'timeout') {

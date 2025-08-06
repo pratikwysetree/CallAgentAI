@@ -89,6 +89,8 @@ Respond with a JSON object:
       // Use fast model for sub-2s response time
       const model = "gpt-4o-mini"; // Fastest model for under 2s response
       console.log(`🧠 [AI] Model: ${model} | Input: "${userInput}"`);
+      console.log(`🔍 [AI DEBUG] Input contains Hindi:`, userInput.match(/[\u0900-\u097F]/g) ? 'YES' : 'NO');
+      console.log(`🔍 [AI DEBUG] Input phonetic analysis:`, userInput.replace(/कम रेट/g, '🚨[KAM RATE]🚨').replace(/I am great/gi, '✅[I AM GREAT]✅'));
       
       const response = await openai.chat.completions.create({
         model,
@@ -100,6 +102,9 @@ Respond with a JSON object:
 
       const responseTime = Date.now() - startTime;
       const aiResponse = JSON.parse(response.choices[0].message.content || '{}');
+
+      console.log(`🧠 [AI DONE] ${responseTime}ms | "${aiResponse.message}"`);
+      console.log(`🔍 [AI RESPONSE DEBUG] Input was: "${userInput}" → Output: "${aiResponse.message}"`);
 
       return {
         message: aiResponse.message || "I'm sorry, could you repeat that?",
