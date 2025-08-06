@@ -740,6 +740,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test OpenAI quota endpoint
+  app.post('/api/test/openai', async (req, res) => {
+    try {
+      const { message } = req.body;
+      console.log('🧪 [OPENAI TEST] Testing OpenAI API with message:', message);
+      
+      const testContext = {
+        conversationHistory: [],
+        campaignPrompt: "Test prompt"
+      };
+      
+      const { OpenAIService } = await import('./services/openai.js');
+      const openaiService = new OpenAIService();
+      const response = await openaiService.generateResponse(testContext, message || "Hello");
+      
+      console.log('✅ [OPENAI SUCCESS] API working, response:', response.message);
+      res.json({ 
+        success: true, 
+        response: response.message,
+        quota_status: "working"
+      });
+    } catch (error: any) {
+      console.log('❌ [OPENAI ERROR]', error.message);
+      res.json({ 
+        success: false, 
+        error: error.message,
+        quota_status: error.status === 429 ? "quota_exceeded" : "other_error"
+      });
+    }
+  });
+
   // Test WhatsApp messaging endpoint
   app.post('/api/test/whatsapp', async (req, res) => {
     try {
