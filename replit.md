@@ -39,7 +39,14 @@ This is a comprehensive AI-powered calling platform built with a modern full-sta
 
 **Twilio Speech Recognition:** OPTIMIZED for Indian languages - Enhanced with hi-IN language setting, extended timeouts (4s speech, 12s total), and comprehensive hints including common Hindi-English mixed terms (kya, theek, accha, matlab, etc.).
 
-**Ready for Testing:** All core functionality working with enhanced language understanding. System now better processes unclear/mixed Hindi-English speech from Indian customers.
+**Ready for Testing:** All core functionality working with enhanced language understanding and comprehensive LabsCheck knowledge base. System now better processes unclear/mixed Hindi-English speech from Indian customers.
+
+**LabsCheck Website Integration (January 6, 2025):** Complete website content from labscheck.com integrated into AI model memory including:
+- Current pricing: Blood Glucose ₹180, CBC ₹400, Thyroid ₹350, Vitamin D ₹800
+- 20+ partner labs: Dr Lal PathLabs, Thyrocare, Metropolis, Apollo Diagnostics, Redcliffe Labs, Pathkind
+- Service features: Transparent pricing, home collection, 12-72 hour reports, location-based filtering
+- Platform mission: "Blood Tests & Radiology made SEAMLESS" - compare, choose, book from NABL-accredited partners
+- WhatsApp messages now include comprehensive service details with accurate pricing and partner information
 
 ## User Preferences
 

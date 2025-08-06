@@ -256,8 +256,8 @@ export class CallManager {
       const formattedNumber = whatsappNumber.startsWith('+') ? whatsappNumber : `+91${whatsappNumber}`;
       const whatsappTo = `whatsapp:${formattedNumber}`;
       
-      // Send immediate message with lab details
-      const message = `🔬 *LabsCheck Health Checkups*\n\nThank you for your interest! Here are our services:\n\n✅ Complete Blood Test - ₹299\n✅ Diabetes Check - ₹199\n✅ Thyroid Test - ₹399\n✅ Full Body Checkup - ₹999\n\n📍 We collect samples from your home\n⏰ Reports ready in 24 hours\n💻 Online reports via email\n\nBook now: https://labscheck.com\nCall: +91-9876543210`;
+      // Send comprehensive LabsCheck service details
+      const message = `🔬 *LabsCheck - Blood Tests Made SEAMLESS*\n\nधन्यवाद for your interest! LabsCheck helps you compare, choose & book reliable lab tests from NABL-accredited partners across India.\n\n🩸 *Popular Tests & Starting Prices:*\n• Blood Glucose (Fasting) - ₹180\n• Hemoglobin Test - ₹200\n• ESR Test - ₹250\n• Thyroid (TSH) - ₹350\n• Complete Blood Count (CBC) - ₹400\n• Vitamin D - ₹800\n\n📋 *Health Packages Available:*\n• Basic Health Checkups\n• Heart, Liver & Kidney Health\n• Women's Wellness Tests\n• Full Body Comprehensive\n\n🏥 *Partner Labs:* Dr Lal PathLabs, Thyrocare, Metropolis, Apollo, Redcliffe & 20+ more\n\n✅ *Why Choose LabsCheck:*\n• Transparent pricing (no hidden fees)\n• Home collection & lab visits\n• Reports in 12-72 hours\n• Direct lab communication\n• Location-based filtering\n\n🌐 Book Now: labscheck.com\n📞 Available across India\n\nCompare prices & book your health checkup today! 🌟`;
       
       const { TwilioService } = await import('./twilio.js');
       const twilioService = new TwilioService();
