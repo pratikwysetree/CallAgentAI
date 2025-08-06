@@ -128,14 +128,27 @@ export class WhisperService {
     try {
       console.log(`🎙️ [WHISPER] Downloading audio from URL: ${recordingUrl}`);
       
-      // Download audio from URL
-      const response = await fetch(recordingUrl);
+      // Add Twilio authentication for downloading recordings
+      const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+      
+      const response = await fetch(recordingUrl, {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'User-Agent': 'LabsCheck-Whisper/1.0'
+        }
+      });
+      
       if (!response.ok) {
+        console.error(`🎙️ [WHISPER] Download failed: ${response.status} ${response.statusText}`);
         throw new Error(`Failed to download audio: ${response.statusText}`);
       }
       
       const audioBuffer = Buffer.from(await response.arrayBuffer());
       console.log(`🎙️ [WHISPER] Downloaded ${audioBuffer.length} bytes`);
+      
+      if (audioBuffer.length === 0) {
+        throw new Error('Downloaded audio file is empty');
+      }
       
       // Determine format from URL
       const format = recordingUrl.includes('.mp3') ? 'mp3' : 
@@ -148,7 +161,8 @@ export class WhisperService {
       
     } catch (error) {
       console.error('🎙️ [WHISPER] Error downloading and transcribing:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Whisper download failed: ${errorMessage}`);
     }
   }
 }

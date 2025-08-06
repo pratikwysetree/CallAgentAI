@@ -642,42 +642,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.type('text/xml').send(twiml);
       }
 
-      // Use Whisper for better transcription
-      const { whisperService } = await import('./services/whisperService');
-      const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
-        language: 'hi', // Hindi with auto-detection
-        prompt: "Phone call about pathology lab business partnership in Hindi, English, or mixed Hinglish"
-      });
+      // Use Whisper for better transcription with fallback
+      try {
+        const { whisperService } = await import('./services/whisperService');
+        const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
+          language: 'hi', // Hindi with auto-detection
+          prompt: "Phone call about pathology lab business partnership in Hindi, English, or mixed Hinglish"
+        });
 
-      console.log(`🎙️ [WHISPER RESULT] "${transcription.text}"`);
-      console.log(`🎙️ [WHISPER LANGUAGE] ${transcription.language}`);
-      console.log(`🎙️ [WHISPER CONFIDENCE] ${transcription.confidence}`);
+        console.log(`🎙️ [WHISPER RESULT] "${transcription.text}"`);
+        console.log(`🎙️ [WHISPER LANGUAGE] ${transcription.language}`);
+        console.log(`🎙️ [WHISPER CONFIDENCE] ${transcription.confidence}`);
 
-      // Check transcription quality
-      if (!transcription.text || transcription.text.trim() === '' || transcription.confidence < 0.3) {
-        console.log('❌ [LOW QUALITY] Poor transcription quality');
-        const retryPrompt = "Samjha nahi. Dobara boliye please.";
-        const twiml = await twilioService.generateTwiML(retryPrompt);
-        return res.type('text/xml').send(twiml);
+        // Check transcription quality
+        if (!transcription.text || transcription.text.trim() === '' || transcription.confidence < 0.3) {
+          console.log('❌ [LOW QUALITY] Poor transcription quality');
+          const retryPrompt = "Samjha nahi. Dobara boliye please.";
+          const twiml = await twilioService.generateTwiML(retryPrompt);
+          return res.type('text/xml').send(twiml);
+        }
+
+        const cleanedInput = transcription.text.trim();
+        console.log(`✅ [WHISPER SUCCESS] Clean customer input: "${cleanedInput}"`);
+        console.log(`🗣️ [SPEECH-TO-TEXT] Exact customer speech via Whisper: "${cleanedInput}"`);
+        console.log(`🔄 [STEP 1] Sending exact Whisper speech to AI model...`);
+
+        const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
+        
+        console.log(`🔄 [STEP 2] CallManager returned TwiML length: ${responseTwiml.length}`);
+        
+        // Broadcast real-time update
+        broadcast({ 
+          type: 'conversation_update', 
+          callSid: CallSid, 
+          userInput: cleanedInput 
+        });
+
+        res.type('text/xml').send(responseTwiml);
+        
+      } catch (whisperError) {
+        console.error('🎙️ [WHISPER FALLBACK] Whisper failed, using fallback response:', whisperError);
+        
+        // Fallback: Ask customer to repeat with clear message
+        const fallbackPrompt = "Main samjha nahi. Thoda dhire aur saaf boliye please. Could you speak more clearly?";
+        const twiml = await twilioService.generateTwiML(fallbackPrompt);
+        res.type('text/xml').send(twiml);
       }
-      
-      const cleanedInput = transcription.text.trim();
-      console.log(`✅ [WHISPER SUCCESS] Clean customer input: "${cleanedInput}"`);
-      console.log(`🗣️ [SPEECH-TO-TEXT] Exact customer speech via Whisper: "${cleanedInput}"`);
-      console.log(`🔄 [STEP 1] Sending exact Whisper speech to AI model...`);
 
-      const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
-      
-      console.log(`🔄 [STEP 2] CallManager returned TwiML length: ${responseTwiml.length}`);
-      
-      // Broadcast real-time update
-      broadcast({ 
-        type: 'conversation_update', 
-        callSid: CallSid, 
-        userInput: cleanedInput 
-      });
-
-      res.type('text/xml').send(responseTwiml);
     } catch (error) {
       console.error('Error handling Twilio recording webhook:', error);
       const errorTwiml = await twilioService.generateHangupTwiML();
