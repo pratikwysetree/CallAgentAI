@@ -88,52 +88,36 @@ export class CallManager {
         { role: 'assistant', content: aiResponse.message }
       );
 
-      // Store message in database
-      const call = await storage.getCallByTwilioSid(twilioCallSid);
-      if (call) {
-        await storage.createCallMessage({
-          callId: call.id,
-          role: 'user',
-          content: userInput,
-        });
-
-        await storage.createCallMessage({
-          callId: call.id,
-          role: 'assistant',
-          content: aiResponse.message,
-        });
-
-        // Update call with AI metrics and extracted data
-        await storage.updateCall(call.id, {
-          aiResponseTime: aiResponse.responseTime,
-          collectedData: aiResponse.extractedData,
-        });
-        
-        // Immediately update contact record when we get WhatsApp or email
-        const extractedData = aiResponse.extractedData || {};
-        if (call.contactId && (extractedData.whatsapp_number || extractedData.email)) {
-          const updateData: any = {};
-          if (extractedData.whatsapp_number) {
-            updateData.whatsappNumber = extractedData.whatsapp_number;
-            console.log(`💾 [CONTACT UPDATE] Saving WhatsApp: ${extractedData.whatsapp_number}`);
+      // Async database operations to not block response
+      setImmediate(async () => {
+        try {
+          const call = await storage.getCallByTwilioSid(twilioCallSid);
+          if (call) {
+            await Promise.all([
+              storage.createCallMessage({ callId: call.id, role: 'user', content: userInput }),
+              storage.createCallMessage({ callId: call.id, role: 'assistant', content: aiResponse.message }),
+              storage.updateCall(call.id, { aiResponseTime: aiResponse.responseTime, collectedData: aiResponse.extractedData })
+            ]);
+            
+            // Handle contact updates and WhatsApp async
+            const extractedData = aiResponse.extractedData || {};
+            if (call.contactId && (extractedData.whatsapp_number || extractedData.email)) {
+              const updateData: any = {};
+              if (extractedData.whatsapp_number) updateData.whatsappNumber = extractedData.whatsapp_number;
+              if (extractedData.email) updateData.email = extractedData.email;
+              
+              await storage.updateContact(call.contactId, updateData);
+              
+              if (extractedData.whatsapp_number && !call.whatsappSent) {
+                await this.sendRealTimeWhatsAppMessage(extractedData.whatsapp_number, call.campaignId!);
+                await storage.updateCall(call.id, { whatsappSent: true });
+              }
+            }
           }
-          if (extractedData.email) {
-            updateData.email = extractedData.email;
-            console.log(`💾 [CONTACT UPDATE] Saving Email: ${extractedData.email}`);
-          }
-          
-          await storage.updateContact(call.contactId, updateData);
-          
-          // Send immediate WhatsApp message when we get WhatsApp number
-          if (extractedData.whatsapp_number && !call.whatsappSent) {
-            await this.sendRealTimeWhatsAppMessage(extractedData.whatsapp_number, call.campaignId!);
-            await storage.updateCall(call.id, {
-              whatsappSent: true,
-            });
-            console.log(`📱 [WHATSAPP SENT] Real-time message sent to: ${extractedData.whatsapp_number}`);
-          }
+        } catch (error) {
+          console.error('Background DB operations error:', error);
         }
-      }
+      });
 
       // Check if AI wants to end call OR if we have collected both contact details
       const extractedData = aiResponse.extractedData || {};
@@ -149,9 +133,8 @@ export class CallManager {
         return hangupTwiml;
       }
 
-      // Get campaign ID for voice synthesis
-      const callRecord = await storage.getCallByTwilioSid(twilioCallSid);
-      const campaignId = callRecord?.campaignId;
+      // Get campaign ID from active call context
+      const campaignId = activeCall.conversationContext.campaignPrompt.split(' ')[0] || undefined;
 
       const audioStart = Date.now();
       console.log(`🗣️ [AUDIO START] Generating: "${aiResponse.message}"`);

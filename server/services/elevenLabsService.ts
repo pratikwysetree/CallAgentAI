@@ -116,7 +116,7 @@ export class ElevenLabsService {
     }
 
     const voiceId = config.voiceId || 'pNInz6obpgDQGcFmaJgB'; // Default: Adam voice
-    const model = config.model || 'eleven_turbo_v2'; // Fastest model available
+    const model = config.model || 'eleven_turbo_v2'; // Fastest stable model
     
     console.log(`🎙️ [ELEVENLABS] Synthesizing speech with voice: ${voiceId}`);
     console.log(`🎙️ [ELEVENLABS] Text: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`);
@@ -133,12 +133,13 @@ export class ElevenLabsService {
           text: text,
           model_id: model,
           voice_settings: {
-            stability: config.stability ?? 0.4, // Slightly lower for speed
-            similarity_boost: config.similarityBoost ?? 0.7, // Reduced for speed
+            stability: config.stability ?? 0.3, // Minimum for speed
+            similarity_boost: config.similarityBoost ?? 0.6, // Minimum for speed
             style: config.style ?? 0.0,
             use_speaker_boost: config.useSpeakerBoost ?? false, // Disabled for speed
           },
           optimize_streaming_latency: 4, // Maximum speed optimization
+          output_format: "mp3_22050_32" // Lower quality for speed
         }),
       });
 
