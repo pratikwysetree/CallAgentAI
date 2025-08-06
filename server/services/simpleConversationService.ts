@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
+import { storage } from '../storage';
 import fs from 'fs';
 import path from 'path';
-import { storage } from '../storage';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -68,19 +68,43 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
       
       console.log(`🧠 [AI] Response: "${aiData.message}"`);
       
-      // 4. Generate voice with ElevenLabs
+      // 4. Generate voice with ElevenLabs using campaign settings
       let audioUrl = null;
       try {
         const { elevenLabsService } = await import('../services/elevenLabsService');
         
-        const audioFilename = await elevenLabsService.generateAudioFile(aiData.message, {
-          voiceId: '7w5JDCUNbeKrn4ySFgfu', // Aavika's voice
-          model: 'eleven_multilingual_v2',
+        // Get campaign voice configuration
+        let voiceConfig = {
+          voiceId: 'Z6TUNPsOxhTPtqLx81EX', // Default Aavika
+          model: 'eleven_turbo_v2',
           stability: 0.5,
           similarityBoost: 0.75,
           style: 0,
           useSpeakerBoost: true,
-        });
+        };
+        
+        // Try to get campaign-specific voice config
+        try {
+          const call = await storage.getCallByTwilioSid(callSid);
+          if (call?.campaignId) {
+            const campaign = await storage.getCampaign(call.campaignId);
+            if (campaign?.voiceConfig) {
+              const campaignVoice = campaign.voiceConfig as any;
+              voiceConfig = {
+                voiceId: campaignVoice.voiceId || voiceConfig.voiceId,
+                model: campaignVoice.model || voiceConfig.model,
+                stability: campaignVoice.stability ?? voiceConfig.stability,
+                similarityBoost: campaignVoice.similarityBoost ?? voiceConfig.similarityBoost,
+                style: campaignVoice.style ?? voiceConfig.style,
+                useSpeakerBoost: campaignVoice.useSpeakerBoost ?? voiceConfig.useSpeakerBoost,
+              };
+            }
+          }
+        } catch (configError) {
+          console.error('Error fetching campaign voice config:', configError);
+        }
+        
+        const audioFilename = await elevenLabsService.generateAudioFile(aiData.message, voiceConfig);
         
         const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
         const protocol = baseUrl.includes('localhost') ? 'http' : 'https';

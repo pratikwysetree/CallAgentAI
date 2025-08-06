@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { WebSocketServer } from 'ws';
 import OpenAI from 'openai';
+import { storage } from '../storage';
 
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY 
@@ -66,8 +67,20 @@ export class FreshConversationService {
   }
 
   private async getSystemPromptForCampaign(callSid: string): Promise<string> {
+    try {
+      const call = await storage.getCallByTwilioSid(callSid);
+      if (call?.campaignId) {
+        const campaign = await storage.getCampaign(call.campaignId);
+        if (campaign?.aiPrompt && campaign?.agentName) {
+          return campaign.aiPrompt.replace(/{{agentName}}/g, campaign.agentName);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching campaign prompt:', error);
+    }
+
+    // Fallback to default prompt
     const { agentName } = await this.getCampaignConfig(callSid);
-    
     return `You are ${agentName} from LabsCheck calling pathology labs for partnership.
 
 CRITICAL INSTRUCTION: Respond DIRECTLY to what the customer just said. DO NOT ignore their response.
@@ -96,8 +109,17 @@ CRITICAL RULES:
 RESPONSE FORMAT: Just provide your response naturally - no JSON formatting needed.`;
   }
 
-  private async getGreetingMessage(isHindi: boolean): Promise<string> {
-    // For basic greetings, we'll use a default intro since we don't have call context
+  private async getGreetingMessage(isHindi: boolean, callSid?: string): Promise<string> {
+    if (callSid) {
+      const { introLine, agentName } = await this.getCampaignConfig(callSid);
+      if (isHindi) {
+        // Convert to Hindi/Hinglish version
+        return introLine.replace(/Anvika|Aavika/gi, agentName).replace(/Hi/gi, 'हैलो');
+      }
+      return introLine;
+    }
+    
+    // Fallback for cases without call context
     return isHindi ? 
       "हैलो! मैं अन्विका हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : 
       "Hi! This is Anvika from LabsCheck. Are you the owner or manager of the lab?";
