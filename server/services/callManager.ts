@@ -34,12 +34,14 @@ export class CallManager {
         contactId: contact?.id,
       });
 
-      // Set up conversation context
+      // Set up conversation context with full campaign script for AI reference
       const conversationContext: ConversationContext = {
         campaignPrompt: campaign.aiPrompt,
         conversationHistory: [],
         contactName: contact?.name,
         phoneNumber,
+        campaignScript: campaign.script, // Include full script for AI to follow conversation flow
+        campaignScript: campaign.script, // Include full script for AI to follow conversation flow
       };
 
       // Store active call

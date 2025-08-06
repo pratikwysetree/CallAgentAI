@@ -15,6 +15,7 @@ export interface ConversationContext {
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   contactName?: string;
   phoneNumber: string;
+  campaignScript?: string; // Full script for AI to reference conversation flow
 }
 
 export interface AIResponse {
@@ -29,9 +30,32 @@ export class OpenAIService {
     const startTime = Date.now();
 
     try {
+      // Build conversational system prompt with proper flow guidance
+      let conversationGuidance = '';
+      if (context.campaignScript) {
+        conversationGuidance = `\n\nCampaign Script for Reference:
+${context.campaignScript}
+
+IMPORTANT CONVERSATION FLOW:
+- Do NOT read the entire script at once
+- Use the script as a GUIDE for conversation topics and questions
+- Ask ONE question at a time and wait for response
+- Progress through conversation naturally based on user responses
+- If they don't answer a question, gently redirect or try a different approach
+- Keep responses SHORT (1-2 sentences max) to maintain conversation flow`;
+      }
+
       const systemPrompt = `You are an AI calling agent from a pathology lab conducting outbound calls to Indian customers. You must speak in natural Indian Hinglish style - mixing Hindi and English naturally as Indians do in daily conversation.
 
 Campaign Instructions: ${context.campaignPrompt}
+${conversationGuidance}
+
+CRITICAL CONVERSATION RULES:
+1. Ask ONE question at a time - never multiple questions in one response
+2. Keep responses SHORT (maximum 2 sentences)
+3. Wait for user response before proceeding to next topic
+4. Respond naturally to what the user actually says
+5. Progress through conversation based on their interest level
 
 CRITICAL: You MUST speak in Indian Hinglish style with these characteristics:
 - Mix Hindi and English words naturally (e.g., "Aap kaise hain? How are you feeling today?")

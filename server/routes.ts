@@ -615,11 +615,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📋 [SCRIPT DEBUG] Script exists: ${!!campaign.script}, length: ${campaign.script?.length || 0}`);
         console.log(`📋 [PROMPT DEBUG] AI Prompt exists: ${!!campaign.aiPrompt}, length: ${campaign.aiPrompt?.length || 0}`);
         
-        // Use campaign script if available, otherwise use AI prompt, otherwise fallback
+        // Extract opening line from script for conversational flow, not full script
         if (campaign.script && campaign.script.trim()) {
-          scriptToSpeak = campaign.script;
-          console.log(`🎯 [CAMPAIGN SCRIPT] Using full campaign script (${campaign.script.length} chars)`);
-          console.log(`🎯 [SCRIPT PREVIEW] "${campaign.script.substring(0, 200)}..."`);
+          // Parse script to get just the opening question/greeting
+          const lines = campaign.script.split('\n').filter(line => line.trim());
+          const firstMeaningfulLine = lines.find(line => 
+            line.includes('?') || 
+            line.toLowerCase().includes('hello') || 
+            line.toLowerCase().includes('hi') ||
+            line.toLowerCase().includes('speaking')
+          ) || lines[0] || campaign.script;
+          
+          scriptToSpeak = firstMeaningfulLine.replace(/^\d+\.\s*/, '').trim();
+          console.log(`🎯 [CONVERSATION START] Using opening line: "${scriptToSpeak}"`);
+          console.log(`🎯 [FULL SCRIPT AVAILABLE] Will use AI for conversation flow based on ${campaign.script.length} char script`);
         } else if (campaign.aiPrompt && campaign.aiPrompt.trim()) {
           // Extract speaking content from AI prompt - convert to first person speech
           let speakingScript = campaign.aiPrompt;

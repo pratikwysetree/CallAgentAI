@@ -161,9 +161,8 @@ export class TwilioService {
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Pause length="1"/>
-    <Say voice="alice" language="en-US">Please respond when you're ready.</Say>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="10"/>
+    <Pause length="2"/>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="auto" timeout="8" language="en-IN"/>
 </Response>`;
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
@@ -173,13 +172,12 @@ export class TwilioService {
         console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in English voice - ElevenLabs not configured`);
       }
 
-      // Use Twilio's built-in voice with better configuration  
+      // Fallback to Twilio's built-in voice synthesis for conversational flow
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice" language="en-US">${message}</Say>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="15">
-        <Say voice="alice" language="en-US">Please respond when you're ready.</Say>
-    </Gather>
+    <Say voice="alice" language="en-IN" rate="medium">${message}</Say>
+    <Pause length="2"/>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="auto" timeout="8" language="en-IN"/>
 </Response>`;
     } catch (error) {
       console.error('Error generating TwiML:', error);
