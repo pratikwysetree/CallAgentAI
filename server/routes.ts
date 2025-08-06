@@ -8,6 +8,7 @@ import { contacts } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import { callManager } from "./services/callManager";
 import { twilioService } from "./services/twilio";
+import { openaiService } from "./services/openai";
 import { 
   insertContactSchema, 
   insertCampaignSchema, 
@@ -629,8 +630,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (useSpeechMode) {
         console.log(`🎤 [SPEECH MODE] Using Gather - No recordings needed!`);
-        const twiml = await twilioService.generateSpeechTwiML(scriptToSpeak);
-        res.type('text/xml').send(twiml);
+        
+        // Use ElevenLabs for initial greeting too
+        let greetingTwiml = '';
+        try {
+          console.log(`🎙️ [ELEVENLABS] Generating greeting voice for: "${scriptToSpeak}"`);
+          const audioUrl = await elevenLabsService.generateSpeech(scriptToSpeak);
+          console.log(`🎙️ [ELEVENLABS] Greeting audio generated: ${audioUrl}`);
+          
+          greetingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
+        <Pause length="6"/>
+        <Say voice="alice">Please tell me about your business</Say>
+    </Gather>
+</Response>`;
+        } catch (elevenLabsError) {
+          console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError.message}, using Twilio voice`);
+          greetingTwiml = await twilioService.generateSpeechTwiML(scriptToSpeak);
+        }
+        
+        res.type('text/xml').send(greetingTwiml);
       } else {
         const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
         res.type('text/xml').send(twiml);
@@ -690,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const modelTime = Date.now() - modelStart;
       const totalTime = Date.now() - startTime;
       
-      console.log(`🧠 [AI] OpenAI response generated (${modelTime}ms)`);
+      console.log(`🧠 [AI] OpenAI response generated (${modelTime}ms): "${response}"`);
       console.log(`⚡ [TOTAL] Speech processing: ${totalTime}ms - Much faster!`);
       
       broadcast({ 
@@ -699,8 +720,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userInput: customerInput 
       });
 
-      // Generate TwiML for speech response
-      const responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+      // Use ElevenLabs for better voice quality
+      let responseTwiml = '';
+      try {
+        console.log(`🎙️ [ELEVENLABS] Generating voice for: "${response}"`);
+        const audioUrl = await elevenLabsService.generateSpeech(response);
+        console.log(`🎙️ [ELEVENLABS] Audio generated: ${audioUrl}`);
+        
+        responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
+        <Pause length="4"/>
+        <Say voice="alice">Please tell me more</Say>
+    </Gather>
+</Response>`;
+      } catch (elevenLabsError) {
+        console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError.message}, using Twilio voice`);
+        responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice">${response.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
     <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
@@ -708,6 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <Say voice="alice">Please tell me more</Say>
     </Gather>
 </Response>`;
+      }
 
       res.type('text/xml').send(responseTwiml);
 
