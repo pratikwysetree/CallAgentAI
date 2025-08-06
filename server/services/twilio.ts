@@ -136,7 +136,7 @@ export class TwilioService {
     
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="${voice}">${this.escapeXML(message)}</Say>
+    <Say voice="${voice}">${message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
     <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
         <Pause length="6"/>
         <Say voice="${voice}">Please tell me about your business</Say>
