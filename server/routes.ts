@@ -626,14 +626,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Twilio partial results endpoint for better speech recognition
-  app.post('/api/twilio/partial', (req, res) => {
-    const { SpeechResult, Confidence, CallSid } = req.body;
-    console.log(`🎯 [PARTIAL SPEECH] Call ${CallSid}: "${SpeechResult}" (confidence: ${Confidence})`);
-    
-    // Send empty TwiML to continue gathering
-    res.set('Content-Type', 'text/xml');
-    res.send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+  // Twilio recording endpoint with Whisper transcription
+  app.post('/api/twilio/record', async (req, res) => {
+    try {
+      const { CallSid, RecordingUrl, RecordingDuration } = req.body;
+      
+      console.log(`🎙️ [RECORDING] Call: ${CallSid}`);
+      console.log(`🎙️ [RECORDING URL] ${RecordingUrl}`);
+      console.log(`🎙️ [DURATION] ${RecordingDuration} seconds`);
+      
+      if (!RecordingUrl || !RecordingDuration || parseFloat(RecordingDuration) < 0.5) {
+        console.log('❌ [NO RECORDING] No recording or too short');
+        const retryPrompt = "Kuch nahi suna. Please speak clearly.";
+        const twiml = await twilioService.generateTwiML(retryPrompt);
+        return res.type('text/xml').send(twiml);
+      }
+
+      // Use Whisper for better transcription
+      const { whisperService } = await import('../services/whisperService');
+      const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
+        language: 'hi', // Hindi with auto-detection
+        prompt: "Phone call about pathology lab business partnership in Hindi, English, or mixed Hinglish"
+      });
+
+      console.log(`🎙️ [WHISPER RESULT] "${transcription.text}"`);
+      console.log(`🎙️ [WHISPER LANGUAGE] ${transcription.language}`);
+      console.log(`🎙️ [WHISPER CONFIDENCE] ${transcription.confidence}`);
+
+      // Check transcription quality
+      if (!transcription.text || transcription.text.trim() === '' || transcription.confidence < 0.3) {
+        console.log('❌ [LOW QUALITY] Poor transcription quality');
+        const retryPrompt = "Samjha nahi. Dobara boliye please.";
+        const twiml = await twilioService.generateTwiML(retryPrompt);
+        return res.type('text/xml').send(twiml);
+      }
+      
+      const cleanedInput = transcription.text.trim();
+      console.log(`✅ [WHISPER SUCCESS] Clean customer input: "${cleanedInput}"`);
+      console.log(`🗣️ [SPEECH-TO-TEXT] Exact customer speech via Whisper: "${cleanedInput}"`);
+      console.log(`🔄 [STEP 1] Sending exact Whisper speech to AI model...`);
+
+      const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
+      
+      console.log(`🔄 [STEP 2] CallManager returned TwiML length: ${responseTwiml.length}`);
+      
+      // Broadcast real-time update
+      broadcast({ 
+        type: 'conversation_update', 
+        callSid: CallSid, 
+        userInput: cleanedInput 
+      });
+
+      res.type('text/xml').send(responseTwiml);
+    } catch (error) {
+      console.error('Error handling Twilio recording webhook:', error);
+      const errorTwiml = await twilioService.generateHangupTwiML();
+      res.type('text/xml').send(errorTwiml);
+    }
+  });
+
+  // Recording status callback
+  app.post('/api/twilio/recording-status', (req, res) => {
+    const { CallSid, RecordingStatus } = req.body;
+    console.log(`🎙️ [RECORDING STATUS] Call ${CallSid}: ${RecordingStatus}`);
+    res.status(200).send('OK');
   });
 
   app.post('/api/twilio/gather', async (req, res) => {

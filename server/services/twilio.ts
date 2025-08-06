@@ -175,9 +175,7 @@ export class TwilioService {
 <Response>
     <Play>${audioUrl}</Play>
     <Pause length="0.1"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="2" timeout="6" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
-        <Say voice="alice" language="hi-IN">Boliye...</Say>
-    </Gather>
+    <Record action="/api/twilio/record" maxLength="10" timeout="2" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
 </Response>`;
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
@@ -187,24 +185,21 @@ export class TwilioService {
         console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in English voice - ElevenLabs not configured`);
       }
 
-      // Fallback to Twilio's built-in voice synthesis for conversational flow
+      // Fallback to Twilio's built-in voice synthesis with Whisper recording
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice" language="en-IN" rate="fast">${message}</Say>
     <Pause length="0.1"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="2" timeout="6" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
-        <Say voice="alice" language="hi-IN">Boliye...</Say>
-    </Gather>
+    <Record action="/api/twilio/record" maxLength="10" timeout="2" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
 </Response>`;
     } catch (error) {
       console.error('Error generating TwiML:', error);
-      // Fallback to simple TwiML
+      // Fallback to simple TwiML with recording
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice" rate="fast">${message}</Say>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="2" timeout="6" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
-        <Say voice="alice" language="hi-IN">Kuch boliye...</Say>
-    </Gather>
+    <Pause length="0.1"/>
+    <Record action="/api/twilio/record" maxLength="10" timeout="2" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
 </Response>`;
     }
   }
