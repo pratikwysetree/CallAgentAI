@@ -313,15 +313,18 @@ Use JSON format for all responses.`
         audioUrl = null; // This will use the same voice settings in TwiML generation
       }
       
-      // 6. Store conversation data if collected
+      // 6. Store conversation message history
+      await this.saveConversationMessage(callSid, userTranscription, aiResponse.message);
+      
+      // 7. Store conversation data if collected
       if (aiResponse.collected_data && Object.keys(aiResponse.collected_data).length > 0) {
         await this.storeCollectedData(callSid, aiResponse.collected_data);
       }
       
-      // 7. Generate TwiML response with consistent voice settings
+      // 8. Generate TwiML response with consistent voice settings
       const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid, voiceConfig);
       
-      // 8. Cleanup temp file
+      // 9. Cleanup temp file
       try {
         fs.unlinkSync(audioPath);
       } catch (cleanupError) {
@@ -386,6 +389,36 @@ Use JSON format for all responses.`
     }
 
     return Buffer.from(await response.arrayBuffer());
+  }
+
+  private async saveConversationMessage(callSid: string, userMessage: string, aiMessage: string) {
+    try {
+      const { storage } = await import('../storage');
+      const calls = await storage.getCalls();
+      const call = calls.find(c => c.twilioCallSid === callSid);
+      
+      if (call) {
+        // Save user message
+        await storage.createCallMessage({
+          callId: call.id,
+          role: 'user',
+          content: userMessage,
+        });
+        
+        // Save AI response
+        await storage.createCallMessage({
+          callId: call.id,
+          role: 'assistant',
+          content: aiMessage,
+        });
+        
+        console.log(`💾 [CONVERSATION-HISTORY] Saved messages for call: ${callSid}`);
+      } else {
+        console.warn(`⚠️ [CONVERSATION-HISTORY] Call not found for SID: ${callSid}`);
+      }
+    } catch (error) {
+      console.error('❌ [CONVERSATION-HISTORY] Error saving messages:', error);
+    }
   }
 
   private async storeCollectedData(callSid: string, data: any): Promise<void> {

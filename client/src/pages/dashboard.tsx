@@ -7,8 +7,7 @@ import ActiveCalls from "@/components/active-calls";
 import QuickCall from "@/components/quick-call";
 import CallHistory from "@/components/call-history";
 import CallDetailModal from "@/components/call-detail-modal";
-import { LiveTranscript } from "@/components/LiveTranscript";
-import { DirectAudioToggle } from "@/components/DirectAudioToggle";
+
 import { useState } from "react";
 import type { CallWithDetails, DashboardStats } from "@shared/schema";
 
@@ -164,10 +163,9 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Live Transcript & Direct Audio */}
+            {/* Reserved Space */}
             <div className="space-y-4">
-              <DirectAudioToggle />
-              <LiveTranscript />
+              {/* Direct Audio and Live Script removed per user request */}
             </div>
 
             {/* Quick Actions & AI Status */}
