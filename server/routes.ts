@@ -604,6 +604,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, contactId } = req.query;
       console.log(`🔥 [WEBHOOK START] Campaign ID: ${campaignId}, Contact ID: ${contactId}`);
       
+      // Create call record first
+      const { CallSid, From, To } = req.body;
+      console.log(`📞 [CALL DETAILS] SID: ${CallSid}, From: ${From}, To: ${To}`);
+      
+      if (CallSid) {
+        const callId = await callManager.createCall(CallSid, From, To, campaignId as string, contactId as string);
+        console.log(`📞 [CALL CREATED] Call ID: ${callId}`);
+      }
+      
       // Get campaign to use actual script content
       const campaign = await storage.getCampaign(campaignId as string);
       console.log(`📋 [CAMPAIGN FOUND] Campaign exists: ${!!campaign}, Name: ${campaign?.name || 'null'}`);
