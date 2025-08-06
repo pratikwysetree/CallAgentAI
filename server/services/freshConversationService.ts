@@ -106,7 +106,7 @@ CRITICAL RULES:
 - If they hang up or are very rude, end call gracefully
 - Ask for contact details (WhatsApp/email) before ending
 
-RESPONSE FORMAT: Respond in JSON format with the structure: {"message": "your response", "collected_data": {}, "should_end": false}.`;
+RESPONSE FORMAT: You must respond in JSON format with this exact structure: {"message": "your response", "collected_data": {}, "should_end": false}. Always use valid JSON formatting.`;
   }
 
   private async getGreetingMessage(isHindi: boolean, callSid?: string): Promise<string> {
