@@ -608,10 +608,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { CallSid, From, To } = req.body;
       console.log(`📞 [CALL DETAILS] SID: ${CallSid}, From: ${From}, To: ${To}`);
       
-      if (CallSid) {
-        const callId = await callManager.createCall(CallSid, From, To, campaignId as string, contactId as string);
-        console.log(`📞 [CALL CREATED] Call ID: ${callId}`);
-      }
+      // Skip call creation for now - focus on speech generation
+      console.log(`📞 [CALL PROCESSING] SID: ${CallSid}, proceeding with speech generation`)
       
       // Get campaign to use actual script content
       const campaign = await storage.getCampaign(campaignId as string);
