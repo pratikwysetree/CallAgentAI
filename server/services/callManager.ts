@@ -34,9 +34,9 @@ export class CallManager {
         contactId: contact?.id?.toString(),
       });
 
-      // Set up conversation context for natural conversation (no script reading)
+      // Set up simple conversation context
       const conversationContext: ConversationContext = {
-        campaignPrompt: "Natural conversation to collect WhatsApp and email",
+        campaignPrompt: "Hi this is Aavika from LabsCheck, how are you doing today",
         conversationHistory: [],
         contactName: contact?.name,
         phoneNumber,

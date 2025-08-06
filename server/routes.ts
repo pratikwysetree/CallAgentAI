@@ -610,18 +610,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let scriptToSpeak = "Hello! How are you today?";
       
-      if (campaign) {
-        console.log(`📋 [CAMPAIGN DEBUG] Campaign: ${campaign.name}`);
-        console.log(`📋 [SCRIPT DEBUG] Script exists: ${!!campaign.script}, length: ${campaign.script?.length || 0}`);
-        console.log(`📋 [PROMPT DEBUG] AI Prompt exists: ${!!campaign.aiPrompt}, length: ${campaign.aiPrompt?.length || 0}`);
-        
-        // Always use natural conversational opening - NEVER read scripts
-        scriptToSpeak = "Hi! Aavika speaking from LabsCheck. Aap kaise hain?";
-        console.log(`🎯 [NATURAL CONVERSATION] Using simple Hinglish greeting`);
-        console.log(`🎯 [NO SCRIPTS] AI will respond naturally to customer words only`);
-      } else {
-        console.log(`❌ [NO CAMPAIGN] Campaign ${campaignId} not found, using generic greeting`);
-      }
+      // Always use the same simple greeting - ignore all campaign scripts
+      scriptToSpeak = "Hi this is Aavika from LabsCheck, how are you doing today";
+      console.log(`🎯 [SIMPLE GREETING] Using exact prompt: "${scriptToSpeak}"`);
+      console.log(`🚫 [NO SCRIPTS] All campaign scripts ignored - using simple greeting only`);
 
       console.log(`🎙️ [FINAL SCRIPT] Speaking: "${scriptToSpeak}"`);
       const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
