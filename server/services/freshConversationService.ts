@@ -42,70 +42,85 @@ export class FreshConversationService {
   }
 
   // Quick responses for common queries with accurate LabsCheck information
-  private getQuickResponse(customerText: string): any | null {
+  private getQuickResponse(customerText: string, voiceConfig?: any): { response: any, needsAudio: boolean } | null {
     const text = customerText.toLowerCase().trim();
     
     // Detect language for proper response
     const isHindi = /[\u0900-\u097F]/.test(customerText) || 
                    /(hai|hain|kya|kaise|kahan|nahin|nahi|acha|thik|lab|test)/i.test(customerText);
     
-    // Professional opening - LabsCheck introduction
+    // Professional opening - LabsCheck introduction (INSTANT)
     if (/(hello|hi|haan|han|yes|ji|namaste)/i.test(text)) {
-      console.log('⚡ [QUICK-RESPONSE] Professional LabsCheck introduction');
+      console.log('⚡ [INSTANT-RESPONSE] Professional LabsCheck introduction');
       return {
-        message: isHindi ? 
-          "नमस्ते! मैं आविका हूं LabsCheck से - India का पहला diagnostic aggregator platform। मैं आपकी pathology lab के साथ partnership के बारे में बात करने के लिए कॉल कर रही हूं। क्या मैं lab owner से बात कर रही हूं?" :
-          "Hello! This is Aavika calling from LabsCheck - India's first diagnostic aggregator platform. I'm calling to discuss a partnership opportunity with your pathology lab. Am I speaking with the lab owner?",
-        collected_data: {},
-        should_end: false
+        response: {
+          message: isHindi ? 
+            "नमस्ते! मैं आविका हूं LabsCheck से - India का पहला diagnostic aggregator platform। मैं आपकी pathology lab के साथ partnership के बारे में बात करने के लिए कॉल कर रही हूं। क्या मैं lab owner से बात कर रही हूं?" :
+            "Hello! This is Aavika calling from LabsCheck - India's first diagnostic aggregator platform. I'm calling to discuss a partnership opportunity with your pathology lab. Am I speaking with the lab owner?",
+          collected_data: {},
+          should_end: false
+        },
+        needsAudio: true // Generate audio immediately
       };
     }
     
-    // Owner confirmation - LabsCheck mission explanation
+    // Owner confirmation - LabsCheck mission explanation (INSTANT)
     if (/(yes|haan|main hoon|owner|mein owner)/i.test(text) && !/(nahi|no)/i.test(text)) {
-      console.log('⚡ [QUICK-RESPONSE] Owner confirmed - LabsCheck mission explanation');
+      console.log('⚡ [INSTANT-RESPONSE] Owner confirmed - LabsCheck mission explanation');
       return {
-        message: isHindi ?
-          "बहुत बढ़िया! LabsCheck एक revolutionary platform है जो trusted NABL accredited labs को patients के साथ जोड़ता है। हमारा zero-commission model आपकी lab को enhanced visibility और direct patient access देता है। क्या आप जानना चाहेंगे कि यह partnership आपके business को कैसे बढ़ा सकती है?" :
-          "Excellent! LabsCheck is revolutionizing diagnostic testing in India by connecting trusted NABL accredited labs with patients seeking affordable, reliable testing. We're building a zero-commission platform that gives labs like yours enhanced visibility and direct patient access. Would you be interested in learning how this partnership can grow your business?",
-        collected_data: { lab_owner_confirmed: true },
-        should_end: false
+        response: {
+          message: isHindi ?
+            "बहुत बढ़िया! LabsCheck एक revolutionary platform है जो trusted NABL accredited labs को patients के साथ जोड़ता है। हमारा zero-commission model आपकी lab को enhanced visibility और direct patient access देता है। क्या आप जानना चाहेंगे कि यह partnership आपके business को कैसे बढ़ा सकती है?" :
+            "Excellent! LabsCheck is revolutionizing diagnostic testing in India by connecting trusted NABL accredited labs with patients seeking affordable, reliable testing. We're building a zero-commission platform that gives labs like yours enhanced visibility and direct patient access. Would you be interested in learning how this partnership can grow your business?",
+          collected_data: { lab_owner_confirmed: true },
+          should_end: false
+        },
+        needsAudio: true
       };
     }
     
-    // Non-owner scenario - Request owner contact
+    // Non-owner scenario - Request owner contact (INSTANT)
     if (/(no|nahi|owner nahi|not owner|main nahi)/i.test(text)) {
-      console.log('⚡ [QUICK-RESPONSE] Non-owner scenario - requesting owner contact');
+      console.log('⚡ [INSTANT-RESPONSE] Non-owner scenario - requesting owner contact');
       return {
-        message: isHindi ?
-          "समझ गया। क्या आप मुझे lab owner से मिला सकते हैं या उनका WhatsApp number share कर सकते हैं? मैं उन्हें बताना चाहूंगी कि LabsCheck कैसे आपकी lab की reach को बढ़ा सकता है। यह zero-commission partnership opportunity के बारे में है।" :
-          "I understand. Could you please connect me with the lab owner, or share their WhatsApp number? I'd like to discuss how LabsCheck can help expand your lab's reach through our trusted partner network. This is regarding a zero-commission partnership opportunity.",
-        collected_data: { non_owner_contact_requested: true },
-        should_end: false
+        response: {
+          message: isHindi ?
+            "समझ गया। क्या आप मुझे lab owner से मिला सकते हैं या उनका WhatsApp number share कर सकते हैं? मैं उन्हें बताना चाहूंगी कि LabsCheck कैसे आपकी lab की reach को बढ़ा सकता है। यह zero-commission partnership opportunity के बारे में है।" :
+            "I understand. Could you please connect me with the lab owner, or share their WhatsApp number? I'd like to discuss how LabsCheck can help expand your lab's reach through our trusted partner network. This is regarding a zero-commission partnership opportunity.",
+          collected_data: { non_owner_contact_requested: true },
+          should_end: false
+        },
+        needsAudio: true
       };
     }
     
-    // Benefits inquiry - Detailed LabsCheck value proposition
+    // Benefits inquiry - Detailed LabsCheck value proposition (INSTANT)  
     if (/(benefit|faayda|kya milega|what will get|partnership|details|interested)/i.test(text)) {
-      console.log('⚡ [QUICK-RESPONSE] LabsCheck benefits explanation');
+      console.log('⚡ [INSTANT-RESPONSE] LabsCheck benefits explanation');
       return {
-        message: isHindi ?
-          "LabsCheck partner के रूप में आपको मिलता है: पूरे India में enhanced online visibility, direct patient bookings transparent pricing के साथ, आपके test menu और rates पर पूरा control, NABL accreditation verification trust के लिए, Zero commission - 100% earnings retention, और easy management के लिए partner portal access। हम quality labs और trusted diagnostics चाहने वाले patients के बीच gap को भर रहे हैं।" :
-          "As a LabsCheck partner, you get: Enhanced online visibility across India, Direct patient bookings with transparent pricing, Full control over your test menu and rates, NABL accreditation verification for trust, Zero commission - 100% earnings retention, and access to our partner portal for easy management. We're bridging the gap between quality labs and patients seeking trusted diagnostics.",
-        collected_data: { benefits_explained: true },
-        should_end: false
+        response: {
+          message: isHindi ?
+            "LabsCheck partner के रूप में आपको मिलता है: पूरे India में enhanced online visibility, direct patient bookings transparent pricing के साथ, आपके test menu और rates पर पूरा control, NABL accreditation verification trust के लिए, Zero commission - 100% earnings retention, और easy management के लिए partner portal access। हम quality labs और trusted diagnostics चाहने वाले patients के बीच gap को भर रहे हैं।" :
+            "As a LabsCheck partner, you get: Enhanced online visibility across India, Direct patient bookings with transparent pricing, Full control over your test menu and rates, NABL accreditation verification for trust, Zero commission - 100% earnings retention, and access to our partner portal for easy management. We're bridging the gap between quality labs and patients seeking trusted diagnostics.",
+          collected_data: { benefits_explained: true },
+          should_end: false
+        },
+        needsAudio: true
       };
     }
     
-    // Interest confirmation and next steps
+    // Interest confirmation and next steps (INSTANT)
     if (/(interested|yes|haan|tell me|batao|more|partner portal)/i.test(text) && /(portal|login|details|information)/i.test(text)) {
-      console.log('⚡ [QUICK-RESPONSE] Interest confirmed - next steps');
+      console.log('⚡ [INSTANT-RESPONSE] Interest confirmed - next steps');
       return {
-        message: isHindi ?
-          "बहुत अच्छा! मैं आपको partner portal login details provide करूंगी जहां आप अपना test menu और pricing upload कर सकते हैं। हम आपको WhatsApp के जरिए official partnership information भी भेजेंगे। क्या आप अपना WhatsApp number और email documentation के लिए share कर सकते हैं?" :
-          "Wonderful! I'll provide you with our partner portal login details where you can upload your test menu and pricing. We'll also send you official partnership information via WhatsApp. Can you please share your WhatsApp number and email for the documentation?",
-        collected_data: { interest_confirmed: true, contact_requested: true },
-        should_end: false
+        response: {
+          message: isHindi ?
+            "बहुत अच्छा! मैं आपको partner portal login details provide करूंगी जहां आप अपना test menu और pricing upload कर सकते हैं। हम आपको WhatsApp के जरिए official partnership information भी भेजेंगे। क्या आप अपना WhatsApp number और email documentation के लिए share कर सकते हैं?" :
+            "Wonderful! I'll provide you with our partner portal login details where you can upload your test menu and pricing. We'll also send you official partnership information via WhatsApp. Can you please share your WhatsApp number and email for the documentation?",
+          collected_data: { interest_confirmed: true, contact_requested: true },
+          should_end: false
+        },
+        needsAudio: true
       };
     }
     
@@ -220,13 +235,13 @@ export class FreshConversationService {
       });
       
       // 4. Check for quick responses first, then use OpenAI for complex queries
-      const quickResponse = this.getQuickResponse(customerText);
+      const quickResult = this.getQuickResponse(customerText, voiceConfig);
       let aiResponse: any;
       let openaiRequestStart = Date.now();
       
-      if (quickResponse) {
-        console.log('⚡ [QUICK-RESPONSE] Using predefined response for common query');
-        aiResponse = quickResponse;
+      if (quickResult) {
+        console.log('⚡ [INSTANT-RESPONSE] Using predefined response for common query');
+        aiResponse = quickResult.response;
       } else {
         console.log('🧠 [OPENAI] Using OpenAI for complex query');
         
@@ -323,10 +338,13 @@ Use JSON format for all responses.`
 
       console.log(`🤖 [AI] Response: "${aiResponse.message}"`);
       
-      // 5. Generate voice with ElevenLabs using campaign voice config
+      // 5. Generate voice with ElevenLabs using campaign voice config (INSTANT for quick responses)
       let audioUrl = null;
+      const voiceProcessingStart = Date.now();
+      const responseType = quickResult ? 'instant' : 'openai';
+      
       try {
-        // Use campaign voice settings or fallback to default
+        // Use campaign voice settings or fallback to default  
         const voiceSettings = voiceConfig && voiceConfig.useElevenLabs ? {
           voiceId: voiceConfig.voiceId || '7w5JDCUNbeKrn4ySFgfu', // Use selected voice or Aavika default
           model: voiceConfig.model || 'eleven_multilingual_v2',
@@ -358,8 +376,8 @@ Use JSON format for all responses.`
         const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
         audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
         
-        const voiceProcessingTime = Date.now() - voiceSynthesisStart;
-        console.log(`🎵 [ELEVENLABS] Generated audio: ${audioUrl}`);
+        const voiceProcessingTime = Date.now() - voiceProcessingStart;
+        console.log(`🎵 [ELEVENLABS] Generated ${responseType} audio: ${audioUrl} (${voiceProcessingTime}ms)`);
         
         // Broadcast voice synthesis event with actual voice settings used
         this.broadcastConversationEvent(callSid, 'voice_synthesis', aiResponse.message, {
@@ -367,7 +385,8 @@ Use JSON format for all responses.`
           model: voiceSettings.model,
           processingTime: voiceProcessingTime,
           audioUrl,
-          campaignVoice: voiceConfig ? 'selected' : 'default'
+          campaignVoice: voiceConfig ? 'selected' : 'default',
+          responseType: responseType
         });
         
       } catch (ttsError) {
