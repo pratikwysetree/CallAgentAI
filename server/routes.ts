@@ -636,6 +636,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
   });
 
+  // Direct audio processing endpoint for faster response times
+  app.post('/api/twilio/direct-audio/:callSid', async (req, res) => {
+    const { callSid } = req.params;
+    const { SpeechResult, Confidence } = req.body;
+    
+    console.log(`⚡ [DIRECT-AUDIO] Call: ${callSid}, Speech: "${SpeechResult}", Confidence: ${Confidence}`);
+    
+    try {
+      // Import direct audio service
+      const { directAudioService } = await import('./services/directAudioService');
+      
+      // Get call info
+      const call = await storage.getCallByTwilioSid(callSid);
+      if (!call) {
+        console.error('❌ [DIRECT-AUDIO] Call not found:', callSid);
+        return res.status(404).type('text/xml').send(`
+          <Response>
+            <Say voice="alice">Thank you for your time.</Say>
+            <Hangup/>
+          </Response>
+        `);
+      }
+      
+      // Process with direct audio service (using speech result for now)
+      const mockAudioBuffer = Buffer.from(SpeechResult || 'hello', 'utf8');
+      const twimlResponse = await directAudioService.processAudioRealtime(
+        mockAudioBuffer,
+        callSid,
+        call.campaignId
+      );
+      
+      console.log(`✅ [DIRECT-AUDIO] Response generated for call: ${callSid}`);
+      return res.type('text/xml').send(twimlResponse);
+      
+    } catch (error) {
+      console.error('❌ [DIRECT-AUDIO] Error:', error);
+      return res.type('text/xml').send(`
+        <Response>
+          <Say voice="alice">Thank you for calling. Have a great day!</Say>
+          <Hangup/>
+        </Response>
+      `);
+    }
+  });
+
   app.post('/api/twilio/gather', async (req, res) => {
     try {
       const { CallSid, SpeechResult, Confidence } = req.body;
