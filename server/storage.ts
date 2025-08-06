@@ -1,13 +1,15 @@
 import { 
-  users, contacts, campaigns, whatsappTemplates, bulkMessageJobs,
+  users, contacts, campaigns, calls, callMessages, whatsappTemplates, bulkMessageJobs,
   contactEngagement, campaignMetrics,
   type User, type InsertUser, 
   type Contact, type InsertContact,
   type Campaign, type InsertCampaign,
+  type Call, type InsertCall,
+  type CallMessage, type InsertCallMessage,
   type WhatsAppTemplate, type InsertWhatsAppTemplate,
   type BulkMessageJob, type InsertBulkMessageJob,
   type ContactEngagement, type CampaignMetrics,
-  type DashboardStats
+  type DashboardStats, type CallWithDetails
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, avg, sum } from "drizzle-orm";
@@ -32,6 +34,21 @@ export interface IStorage {
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign>;
   deleteCampaign(id: string): Promise<boolean>;
+
+  // Calls
+  createCall(call: InsertCall): Promise<Call>;
+  getCall(id: string): Promise<Call | undefined>;
+  getCalls(limit?: number): Promise<CallWithDetails[]>;
+  updateCall(id: string, call: Partial<InsertCall>): Promise<Call>;
+  deleteCall(id: string): Promise<boolean>;
+  getCallsByCampaign(campaignId: string): Promise<Call[]>;
+  getCallsByContact(contactId: string): Promise<Call[]>;
+  getActiveCalls(): Promise<Call[]>;
+
+  // Call Messages
+  createCallMessage(message: InsertCallMessage): Promise<CallMessage>;
+  getCallMessages(callId: string): Promise<CallMessage[]>;
+  deleteCallMessage(id: string): Promise<boolean>;
 
   // Dashboard Stats
   getDashboardStats(): Promise<DashboardStats>;
@@ -255,19 +272,107 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(bulkMessageJobs).orderBy(desc(bulkMessageJobs.createdAt));
   }
 
+  // Calls
+  async createCall(call: InsertCall): Promise<Call> {
+    const [newCall] = await db.insert(calls).values(call).returning();
+    return newCall;
+  }
+
+  async getCall(id: string): Promise<Call | undefined> {
+    const [call] = await db.select().from(calls).where(eq(calls.id, id));
+    return call || undefined;
+  }
+
+  async getCalls(limit?: number): Promise<CallWithDetails[]> {
+    const query = db
+      .select({
+        call: calls,
+        contact: contacts,
+        campaign: campaigns,
+      })
+      .from(calls)
+      .leftJoin(contacts, eq(calls.contactId, contacts.id))
+      .leftJoin(campaigns, eq(calls.campaignId, campaigns.id))
+      .orderBy(desc(calls.startTime));
+
+    if (limit) {
+      query.limit(limit);
+    }
+
+    const results = await query;
+    return results.map(result => ({
+      ...result.call,
+      contact: result.contact || undefined,
+      campaign: result.campaign || undefined,
+    }));
+  }
+
+  async updateCall(id: string, call: Partial<InsertCall>): Promise<Call> {
+    const [updatedCall] = await db
+      .update(calls)
+      .set(call)
+      .where(eq(calls.id, id))
+      .returning();
+    return updatedCall;
+  }
+
+  async deleteCall(id: string): Promise<boolean> {
+    const result = await db.delete(calls).where(eq(calls.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getCallsByCampaign(campaignId: string): Promise<Call[]> {
+    return await db.select().from(calls).where(eq(calls.campaignId, campaignId));
+  }
+
+  async getCallsByContact(contactId: string): Promise<Call[]> {
+    return await db.select().from(calls).where(eq(calls.contactId, contactId));
+  }
+
+  async getActiveCalls(): Promise<Call[]> {
+    return await db.select().from(calls).where(eq(calls.status, 'active'));
+  }
+
+  // Call Messages
+  async createCallMessage(message: InsertCallMessage): Promise<CallMessage> {
+    const [newMessage] = await db.insert(callMessages).values(message).returning();
+    return newMessage;
+  }
+
+  async getCallMessages(callId: string): Promise<CallMessage[]> {
+    return await db
+      .select()
+      .from(callMessages)
+      .where(eq(callMessages.callId, callId))
+      .orderBy(desc(callMessages.timestamp));
+  }
+
+  async deleteCallMessage(id: string): Promise<boolean> {
+    const result = await db.delete(callMessages).where(eq(callMessages.id, id));
+    return result.rowCount > 0;
+  }
+
   // Dashboard Stats
   async getDashboardStats(): Promise<DashboardStats> {
     const [contactCount] = await db.select({ count: count() }).from(contacts);
     const [campaignCount] = await db.select({ count: count() }).from(campaigns);
+    const [callCount] = await db.select({ count: count() }).from(calls);
+    const [activeCallCount] = await db.select({ count: count() }).from(calls).where(eq(calls.status, 'active'));
     const [jobCount] = await db.select({ totalSent: sum(bulkMessageJobs.sentMessages) }).from(bulkMessageJobs);
+    const [completedCalls] = await db.select({ count: count() }).from(calls).where(eq(calls.status, 'completed'));
     
     return {
       totalContacts: contactCount.count || 0,
       totalCampaigns: campaignCount.count || 0,
+      totalCalls: callCount.count || 0,
+      activeCalls: activeCallCount.count || 0,
       totalMessages: jobCount.totalSent || 0,
-      deliveryRate: 95, // Mock for now - calculate from actual delivery data
-      engagementRate: 12, // Mock for now - calculate from engagement data
-      averageResponseTime: 24, // Mock for now - calculate from response times
+      deliveryRate: 95, // Calculate from actual delivery data
+      engagementRate: 12, // Calculate from engagement data
+      averageResponseTime: 24, // Calculate from response times
+      successRate: completedCalls.count && callCount.count 
+        ? Math.round((completedCalls.count / callCount.count) * 100)
+        : 0,
     };
   }
 }

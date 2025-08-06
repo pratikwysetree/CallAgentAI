@@ -1,7 +1,7 @@
 # WhatsApp Messaging Platform
 
 ## Overview
-This project is a WhatsApp bulk messaging platform designed for pathology lab partnerships with the LabsCheck platform. The system focuses exclusively on WhatsApp messaging, contact management, and messaging templates. It serves as a communication tool for building partnerships with laboratories across India, using a zero-commission model to foster transparency and bridge the gap between people seeking tests and labs offering diagnostics. The platform enables businesses to conduct WhatsApp campaigns, manage contacts, and track engagement metrics.
+This project is a comprehensive AI-powered communication platform designed for pathology lab partnerships with the LabsCheck platform. The system combines AI calling capabilities with WhatsApp bulk messaging to create a complete outreach solution. It features an AI calling agent that follows a specific flow (Start Call → ElevenLabs TTS → Speech-to-Text → OpenAI GPT → ElevenLabs TTS → Loop/End) alongside robust WhatsApp messaging functionality. The platform serves as a dual-channel communication tool for building partnerships with laboratories across India, using a zero-commission model to foster transparency and bridge the gap between people seeking tests and labs offering diagnostics.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -17,6 +17,14 @@ The backend is powered by Node.js with the Express.js framework, written in Type
 ### Database & ORM
 PostgreSQL is the chosen database, hosted on Neon for serverless capabilities. Drizzle ORM provides type-safe schema definitions and is used with Drizzle Kit for migrations and schema management. Connection pooling is managed by `@neondatabase/serverless`. The schema includes tables for users, contacts, campaigns, WhatsApp templates, bulk message jobs, contact engagement tracking, and campaign metrics.
 
+### AI Calling Integration
+The platform features a comprehensive AI calling system powered by multiple services:
+- **Twilio Integration**: Manages voice calls, call routing, and webhook handling for real-time call events
+- **OpenAI Integration**: Provides conversational AI using GPT models for natural, context-aware responses
+- **ElevenLabs Integration**: Delivers high-quality text-to-speech conversion for natural-sounding AI voice
+- **Call Management**: Orchestrates the complete call flow from initiation to completion with conversation tracking
+- **Real-time Monitoring**: Live call status updates and conversation history tracking
+
 ### WhatsApp Integration
 Meta Business API is integrated for WhatsApp messaging capabilities. The system manages bulk messaging campaigns, template management, and contact engagement tracking. Messages are sent using Meta's WhatsApp Business API with proper formatting and delivery tracking. The platform supports template-based messaging with dynamic variables for personalization.
 
@@ -31,29 +39,31 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 
 ## Recent Changes (August 6, 2025)
 
-### Complete Platform Transformation
-- **MAJOR ARCHITECTURAL CHANGE**: Completely removed all calling functionality due to persistent technical issues
-- Transformed from AI calling agent to WhatsApp messaging platform exclusively
-- Deleted all calling-related services: callManager, twilio, elevenLabs, conversation services, and OpenAI integration
-- Removed calling-related database tables: calls, callMessages, and all related schemas
-- Cleaned up frontend by removing calling components, pages, and routes
-- Updated navigation and branding from "AI Caller" to "WhatsApp Messenger"
-- Preserved WhatsApp messaging functionality, contact management, and template system
-- Platform now focuses solely on bulk WhatsApp messaging for lab partnerships
+### AI Calling Agent Restoration (Latest)
+- **MAJOR ARCHITECTURAL CHANGE**: Rebuilt complete AI calling functionality from fresh implementation
+- Restored AI calling agent following exact flow: Start Call → ElevenLabs TTS → User speaks → Speech-to-Text → OpenAI GPT → ElevenLabs TTS → Play audio → Loop/End
+- Created fresh AI calling services: openaiService.ts, elevenlabsService.ts, twilioService.ts, callManager.ts
+- Updated database schema with new calling tables (calls, callMessages) and proper relations
+- Added calling functionality methods to storage layer with proper CRUD operations
+- Created comprehensive API routes for calling functionality and Twilio webhooks
+- Built frontend pages: live-calls.tsx and calls-analytics.tsx for real-time call monitoring
+- Updated navigation to include calling features alongside WhatsApp messaging
+- Changed platform branding to "LabsCheck AI" reflecting combined WhatsApp + AI calling capabilities
+- Platform now supports both AI calling campaigns and WhatsApp bulk messaging for lab partnerships
 
-### Database Schema Cleanup
-- Removed all calling-related tables and relationships
-- Simplified schema to focus on WhatsApp messaging: contacts, campaigns, templates, bulk jobs
-- Added contact engagement tracking and campaign metrics for messaging analytics
-- Maintained backward compatibility for existing contact and campaign data
-- Updated storage layer to remove all calling functionality
+### Database Schema Restoration
+- Added calls table with comprehensive call tracking fields (duration, status, recordings, etc.)
+- Added call_messages table for conversation history tracking
+- Implemented proper foreign key relationships with contacts and campaigns
+- Added AI-specific fields: conversation_summary, extracted_whatsapp, ai_response_time, success_score
+- Storage layer updated with full calling CRUD operations alongside existing WhatsApp functionality
 
-### Frontend Simplification
-- Removed calling-related pages: analytics, live-conversation, elevenlabs-setup
-- Simplified navigation to focus on WhatsApp functionality
-- Updated app branding and icons to reflect messaging focus
-- Set WhatsApp Bulk as the default home page
-- Preserved essential pages: contact campaigns, WhatsApp chats, settings
+### Frontend Architecture Updates
+- Created live-calls.tsx page for real-time call monitoring with active call status
+- Created calls-analytics.tsx page for call performance metrics and historical data
+- Updated App.tsx with navigation for both WhatsApp and calling features
+- Added proper routing for /live-calls and /calls-analytics paths
+- Maintained existing WhatsApp functionality while adding calling capabilities
 
 ## External Dependencies
 

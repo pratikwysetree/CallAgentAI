@@ -9,12 +9,16 @@ import { contacts } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import { 
   insertContactSchema, 
-  insertCampaignSchema
+  insertCampaignSchema,
+  insertCallSchema,
+  insertWhatsAppTemplateSchema, 
+  insertBulkMessageJobSchema
 } from "@shared/schema";
 import { MessagingService } from "./services/messagingService";
 import { WhatsAppTemplateService } from "./services/whatsappTemplateService";
 import { WhatsAppService } from "./services/whatsappService";
-import { insertWhatsAppTemplateSchema, insertBulkMessageJobSchema } from "@shared/schema";
+import { callManager } from "./services/callManager";
+import { twilioService } from "./services/twilioService";
 import express from "express";  
 import multer from "multer";
 
@@ -244,6 +248,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to create bulk message job' });
     }
   });
+
+  // ===================
+  // AI CALLING ROUTES
+  // ===================
+  
+  // Start a new call
+  app.post("/api/calls", async (req, res) => {
+    try {
+      const { contactId, campaignId, phoneNumber } = req.body;
+      
+      if (!contactId || !campaignId || !phoneNumber) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const result = await callManager.startCall(contactId, campaignId, phoneNumber);
+      
+      if (result.success) {
+        broadcast({
+          type: 'call_started',
+          callId: result.callId,
+          phoneNumber
+        });
+        
+        res.json({ success: true, callId: result.callId });
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error) {
+      console.error('Error starting call:', error);
+      res.status(500).json({ error: "Failed to start call" });
+    }
+  });
+
+  // Get all calls
+  app.get("/api/calls", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const calls = await storage.getCalls(limit);
+      res.json(calls);
+    } catch (error) {
+      console.error('Error fetching calls:', error);
+      res.status(500).json({ error: "Failed to fetch calls" });
+    }
+  });
+
+  // Get active calls
+  app.get("/api/calls/active", async (req, res) => {
+    try {
+      const activeCalls = callManager.getActiveCalls();
+      res.json(activeCalls);
+    } catch (error) {
+      console.error('Error fetching active calls:', error);
+      res.status(500).json({ error: "Failed to fetch active calls" });
+    }
+  });
+
+  // Get call by ID
+  app.get("/api/calls/:id", async (req, res) => {
+    try {
+      const call = await storage.getCall(req.params.id);
+      if (!call) {
+        return res.status(404).json({ error: "Call not found" });
+      }
+      res.json(call);
+    } catch (error) {
+      console.error('Error fetching call:', error);
+      res.status(500).json({ error: "Failed to fetch call" });
+    }
+  });
+
+  // Get call messages
+  app.get("/api/calls/:id/messages", async (req, res) => {
+    try {
+      const messages = await storage.getCallMessages(req.params.id);
+      res.json(messages);
+    } catch (error) {
+      console.error('Error fetching call messages:', error);
+      res.status(500).json({ error: "Failed to fetch call messages" });
+    }
+  });
+
+  // ===========================
+  // TWILIO WEBHOOK ROUTES
+  // ===========================
+
+  // Main webhook for call handling
+  app.post("/api/calls/webhook", async (req, res) => {
+    try {
+      const { callId, campaignId } = req.query;
+      
+      if (!callId || !campaignId) {
+        return res.status(400).send('Missing callId or campaignId');
+      }
+
+      // Get campaign for initial script
+      const campaign = await storage.getCampaign(campaignId as string);
+      if (!campaign) {
+        return res.status(404).send('Campaign not found');
+      }
+
+      // Generate initial TwiML with campaign script
+      const twiml = twilioService.generateTwiML('gather', {
+        text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
+        action: `/api/calls/${callId}/process-speech`
+      });
+
+      res.type('text/xml').send(twiml);
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(500).send('Internal server error');
+    }
+  });
+
+  // Process speech input during call
+  app.post("/api/calls/:callId/process-speech", async (req, res) => {
+    try {
+      const { callId } = req.params;
+      const speechText = req.body.SpeechResult || "I didn't catch that";
+
+      const result = await callManager.processSpeechInput(callId, speechText);
+      
+      res.type('text/xml').send(result.twiml);
+    } catch (error) {
+      console.error('Speech processing error:', error);
+      const twiml = twilioService.generateTwiML('hangup', {
+        text: 'Thank you for your time. Goodbye.'
+      });
+      res.type('text/xml').send(twiml);
+    }
+  });
+
+  // Call status webhook
+  app.post("/api/calls/webhook/status", async (req, res) => {
+    try {
+      const { callId } = req.query;
+      const { CallStatus, CallDuration } = req.body;
+
+      if (callId && (CallStatus === 'completed' || CallStatus === 'failed')) {
+        await callManager.completeCall(
+          callId as string, 
+          CallDuration ? parseInt(CallDuration) : undefined
+        );
+        
+        broadcast({
+          type: 'call_ended',
+          callId,
+          status: CallStatus
+        });
+      }
+
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error('Status webhook error:', error);
+      res.status(500).send('Error');
+    }
+  });
+
+  // Recording webhook
+  app.post("/api/calls/webhook/recording", async (req, res) => {
+    try {
+      const { callId } = req.query;
+      const { RecordingUrl } = req.body;
+
+      if (callId && RecordingUrl) {
+        await storage.updateCall(callId as string, { recordingUrl: RecordingUrl });
+      }
+
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error('Recording webhook error:', error);
+      res.status(500).send('Error');
+    }
+  });
+
+  // Global reference for broadcasting
+  (global as any).broadcastToClients = broadcast;
 
   return httpServer;
 }

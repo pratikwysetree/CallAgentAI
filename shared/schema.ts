@@ -31,11 +31,42 @@ export const campaigns = pgTable("campaigns", {
   name: text("name").notNull(),
   description: text("description"),
   aiPrompt: text("ai_prompt").notNull(),
-  script: text("script"), // Agent script for messaging
-  introLine: text("intro_line").default("Hi, this is a message from our team").notNull(),
-  agentName: text("agent_name").default("Assistant").notNull(),
+  script: text("script"), // Agent script for calling
+  introLine: text("intro_line").default("Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?").notNull(),
+  agentName: text("agent_name").default("Anvika").notNull(),
+  openaiModel: text("openai_model").default("gpt-4o").notNull(),
+  voiceConfig: jsonb("voice_config"), // ElevenLabs voice configuration
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const calls = pgTable("calls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: varchar("contact_id").references(() => contacts.id),
+  campaignId: varchar("campaign_id").references(() => campaigns.id),
+  phoneNumber: text("phone_number").notNull(),
+  status: text("status").notNull(), // 'active', 'completed', 'failed', 'abandoned'
+  duration: integer("duration"), // in seconds
+  startTime: timestamp("start_time").defaultNow().notNull(),
+  endTime: timestamp("end_time"),
+  twilioCallSid: text("twilio_call_sid"),
+  recordingUrl: text("recording_url"),
+  conversationSummary: text("conversation_summary"),
+  extractedWhatsapp: text("extracted_whatsapp"), // WhatsApp number extracted from call
+  extractedEmail: text("extracted_email"), // Email extracted from call
+  whatsappSent: boolean("whatsapp_sent").default(false),
+  emailSent: boolean("email_sent").default(false),
+  collectedData: jsonb("collected_data"),
+  aiResponseTime: integer("ai_response_time"), // in milliseconds
+  successScore: integer("success_score"), // 1-100
+});
+
+export const callMessages = pgTable("call_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callId: varchar("call_id").references(() => calls.id),
+  role: text("role").notNull(), // 'user', 'assistant'
+  content: text("content").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
 export const whatsappTemplates = pgTable("whatsapp_templates", {
@@ -97,10 +128,12 @@ export const usersRelations = relations(users, ({ many }) => ({
 }));
 
 export const contactsRelations = relations(contacts, ({ many }) => ({
+  calls: many(calls),
   engagements: many(contactEngagement),
 }));
 
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
+  calls: many(calls),
   engagements: many(contactEngagement),
   metrics: many(campaignMetrics),
 }));
@@ -127,6 +160,25 @@ export const contactEngagementRelations = relations(contactEngagement, ({ one })
   }),
 }));
 
+export const callsRelations = relations(calls, ({ one, many }) => ({
+  contact: one(contacts, {
+    fields: [calls.contactId],
+    references: [contacts.id],
+  }),
+  campaign: one(campaigns, {
+    fields: [calls.campaignId],
+    references: [campaigns.id],
+  }),
+  messages: many(callMessages),
+}));
+
+export const callMessagesRelations = relations(callMessages, ({ one }) => ({
+  call: one(calls, {
+    fields: [callMessages.callId],
+    references: [calls.id],
+  }),
+}));
+
 export const campaignMetricsRelations = relations(campaignMetrics, ({ one }) => ({
   campaign: one(campaigns, {
     fields: [campaignMetrics.campaignId],
@@ -144,6 +196,12 @@ export type InsertContact = typeof contacts.$inferInsert;
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = typeof campaigns.$inferInsert;
 
+export type Call = typeof calls.$inferSelect;
+export type InsertCall = typeof calls.$inferInsert;
+
+export type CallMessage = typeof callMessages.$inferSelect;
+export type InsertCallMessage = typeof callMessages.$inferInsert;
+
 export type WhatsAppTemplate = typeof whatsappTemplates.$inferSelect;
 export type InsertWhatsAppTemplate = typeof whatsappTemplates.$inferInsert;
 
@@ -156,15 +214,26 @@ export type CampaignMetrics = typeof campaignMetrics.$inferSelect;
 export interface DashboardStats {
   totalContacts: number;
   totalCampaigns: number;
+  totalCalls: number;
+  activeCalls: number;
   totalMessages: number;
   deliveryRate: number;
   engagementRate: number;
   averageResponseTime: number;
+  successRate: number;
+}
+
+// Call with joined data for detailed views
+export interface CallWithDetails extends Call {
+  contact?: Contact;
+  campaign?: Campaign;
 }
 
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertContactSchema = createInsertSchema(contacts);
 export const insertCampaignSchema = createInsertSchema(campaigns);
+export const insertCallSchema = createInsertSchema(calls);
+export const insertCallMessageSchema = createInsertSchema(callMessages);
 export const insertWhatsAppTemplateSchema = createInsertSchema(whatsappTemplates);
 export const insertBulkMessageJobSchema = createInsertSchema(bulkMessageJobs);
