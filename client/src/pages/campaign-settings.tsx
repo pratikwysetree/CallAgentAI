@@ -46,10 +46,18 @@ interface Campaign {
   createdAt: string;
 }
 
+interface ElevenLabsVoice {
+  voice_id: string;
+  name: string;
+  category: string;
+  description?: string;
+}
+
 export default function CampaignSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [elevenLabsVoices, setElevenLabsVoices] = useState<ElevenLabsVoice[]>([]);
   const [formData, setFormData] = useState({
     introLine: "",
     agentName: "",
@@ -78,6 +86,23 @@ export default function CampaignSettings() {
       return response.json();
     }
   });
+
+  // Fetch ElevenLabs voices on component mount
+  useEffect(() => {
+    const fetchElevenLabsVoices = async () => {
+      try {
+        const response = await fetch('/api/elevenlabs/voices');
+        if (response.ok) {
+          const voices = await response.json();
+          setElevenLabsVoices(voices);
+        }
+      } catch (error) {
+        console.error('Failed to fetch ElevenLabs voices:', error);
+      }
+    };
+    
+    fetchElevenLabsVoices();
+  }, []);
 
   const updateCampaignMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Campaign> }) => {
@@ -157,14 +182,14 @@ export default function CampaignSettings() {
         description: selectedCampaign.description || "",
         aiPrompt: selectedCampaign.aiPrompt || "",
         script: selectedCampaign.script || "",
-        voiceConfig: selectedCampaign.voiceConfig || {
-          model: "eleven_turbo_v2",
-          voiceId: "Z6TUNPsOxhTPtqLx81EX",
-          stability: 0.5,
-          similarityBoost: 0.75,
-          style: 0,
-          useSpeakerBoost: true,
-          useElevenLabs: true
+        voiceConfig: {
+          model: selectedCampaign.voiceConfig?.model || "eleven_turbo_v2",
+          voiceId: selectedCampaign.voiceConfig?.voiceId || "Z6TUNPsOxhTPtqLx81EX",
+          stability: selectedCampaign.voiceConfig?.stability || 0.5,
+          similarityBoost: selectedCampaign.voiceConfig?.similarityBoost || 0.75,
+          style: selectedCampaign.voiceConfig?.style || 0,
+          useSpeakerBoost: selectedCampaign.voiceConfig?.useSpeakerBoost || true,
+          useElevenLabs: selectedCampaign.voiceConfig?.useElevenLabs || true
         }
       });
     }
@@ -350,6 +375,7 @@ export default function CampaignSettings() {
                           <SelectValue placeholder="Select agent voice" />
                         </SelectTrigger>
                         <SelectContent>
+                          {/* Default voices */}
                           <SelectItem value="Z6TUNPsOxhTPtqLx81EX">Aavika (Female, Indian)</SelectItem>
                           <SelectItem value="pNInz6obpgDQGcFmaJgB">Adam (Male, Professional)</SelectItem>
                           <SelectItem value="EXAVITQu4vr4xnSDxMaL">Bella (Female, Friendly)</SelectItem>
@@ -358,6 +384,13 @@ export default function CampaignSettings() {
                           <SelectItem value="MF3mGyEYCl7XYWbV9V6O">Elli (Female, Expressive)</SelectItem>
                           <SelectItem value="TxGEqnHWrfWFTfGW9XjX">Josh (Male, Deep)</SelectItem>
                           <SelectItem value="rQ4WfvUDcRjgGrfWnO3s">Priya (Female, Hindi/English)</SelectItem>
+                          
+                          {/* Custom ElevenLabs voices */}
+                          {elevenLabsVoices.map((voice) => (
+                            <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                              {voice.name} ({voice.category})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <p className="text-sm text-muted-foreground mt-1">

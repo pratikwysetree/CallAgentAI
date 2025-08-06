@@ -226,6 +226,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get ElevenLabs voices
+  app.get('/api/elevenlabs/voices', async (req, res) => {
+    try {
+      if (!process.env.ELEVENLABS_API_KEY) {
+        return res.status(500).json({ error: 'ElevenLabs API key not configured' });
+      }
+
+      const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: {
+          'xi-api-key': process.env.ELEVENLABS_API_KEY,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch ElevenLabs voices');
+      }
+
+      const data = await response.json();
+      res.json(data.voices || []);
+    } catch (error) {
+      console.error('Error fetching ElevenLabs voices:', error);
+      res.status(500).json({ error: 'Failed to fetch voices' });
+    }
+  });
+
   // Delete campaign
   app.delete('/api/campaigns/:id', async (req, res) => {
     try {
