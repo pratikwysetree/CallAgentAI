@@ -772,10 +772,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error('❌ [FRESH-RECORDING] Error:', error);
+      
+      // CRITICAL FIX: Continue conversation even if OpenAI has temporary issues
+      // Don't hang up - ask customer to repeat and keep recording
       res.type('text/xml').send(`
         <Response>
-          <Say voice="alice" language="en-IN">Thank you for your time. We will contact you soon.</Say>
-          <Hangup/>
+          <Say voice="alice" language="en-IN">I didn't catch that. Could you please repeat what you said?</Say>
+          <Record action="/api/twilio/fresh-recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
         </Response>
       `);
     }
@@ -798,10 +801,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error('❌ [LEGACY-RECORDING] Error:', error);
+      
+      // CRITICAL FIX: Continue conversation even if OpenAI has temporary issues
+      // Don't hang up - ask customer to repeat and keep recording
       res.type('text/xml').send(`
         <Response>
-          <Say voice="alice" language="en-IN">Thank you for your time.</Say>
-          <Hangup/>
+          <Say voice="alice" language="en-IN">I didn't catch that. Could you please repeat?</Say>
+          <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
         </Response>
       `);
     }

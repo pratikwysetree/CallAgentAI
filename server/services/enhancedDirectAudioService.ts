@@ -52,7 +52,7 @@ LANGUAGE MATCHING:
 
 STYLE: Warm, brief, natural conversation. Max 15 words. Say key benefit upfront.
 
-RESPONSE FORMAT: {"message": "your response in same language as customer", "voice_language": "detected language (hindi/english/hinglish)", "collected_data": {"contact_person": "name", "whatsapp_number": "number", "email": "email", "lab_name": "name"}, "should_end": false}`
+RESPONSE FORMAT: Return your response as a json object with this structure: {"message": "your response in same language as customer", "voice_language": "detected language (hindi/english/hinglish)", "collected_data": {"contact_person": "name", "whatsapp_number": "number", "email": "email", "lab_name": "name"}, "should_end": false}`
           },
           {
             role: "user", 
@@ -216,7 +216,7 @@ EXAMPLES:
 
 STYLE: Warm, brief, natural conversation. Max 15 words. Say key benefit upfront.
 
-RESPONSE FORMAT: {"message": "your response matching customer's language exactly", "voice_language": "hindi/english/hinglish based on input", "collected_data": {"contact_person": "name", "whatsapp_number": "number", "email": "email", "lab_name": "name"}, "should_end": false}`
+RESPONSE FORMAT: Return your response as a json object with this structure: {"message": "your response matching customer's language exactly", "voice_language": "hindi/english/hinglish based on input", "collected_data": {"contact_person": "name", "whatsapp_number": "number", "email": "email", "lab_name": "name"}, "should_end": false}`
           },
           {
             role: "user", 
