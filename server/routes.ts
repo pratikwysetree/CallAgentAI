@@ -12,7 +12,8 @@ import {
   insertCampaignSchema,
   insertCallSchema,
   insertWhatsAppTemplateSchema, 
-  insertBulkMessageJobSchema
+  insertBulkMessageJobSchema,
+  campaigns
 } from "@shared/schema";
 import { MessagingService } from "./services/messagingService";
 import { WhatsAppTemplateService } from "./services/whatsappTemplateService";
@@ -246,6 +247,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error creating bulk message job:', error);
       res.status(500).json({ error: 'Failed to create bulk message job' });
+    }
+  });
+
+  // ===================
+  // CAMPAIGN MANAGEMENT ROUTES
+  // ===================
+  
+  // Get all campaigns
+  app.get("/api/campaigns", async (req, res) => {
+    try {
+      const allCampaigns = await storage.getCampaigns();
+      res.json(allCampaigns);
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+      res.status(500).json({ error: "Failed to fetch campaigns" });
+    }
+  });
+
+  // Create new campaign
+  app.post("/api/campaigns", async (req, res) => {
+    try {
+      const campaignData = {
+        ...req.body,
+        script: req.body.introLine, // Use introLine as script for compatibility
+      };
+      
+      const campaign = await storage.createCampaign(campaignData);
+      res.status(201).json(campaign);
+    } catch (error) {
+      console.error('Error creating campaign:', error);
+      res.status(500).json({ error: "Failed to create campaign" });
+    }
+  });
+
+  // Update campaign
+  app.put("/api/campaigns/:id", async (req, res) => {
+    try {
+      const campaignData = {
+        ...req.body,
+        script: req.body.introLine, // Use introLine as script for compatibility
+      };
+      
+      const campaign = await storage.updateCampaign(req.params.id, campaignData);
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      res.json(campaign);
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      res.status(500).json({ error: "Failed to update campaign" });
+    }
+  });
+
+  // Delete campaign
+  app.delete("/api/campaigns/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteCampaign(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      res.json({ message: "Campaign deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      res.status(500).json({ error: "Failed to delete campaign" });
     }
   });
 

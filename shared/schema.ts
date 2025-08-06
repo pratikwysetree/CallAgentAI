@@ -35,7 +35,10 @@ export const campaigns = pgTable("campaigns", {
   introLine: text("intro_line").default("Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?").notNull(),
   agentName: text("agent_name").default("Anvika").notNull(),
   openaiModel: text("openai_model").default("gpt-4o").notNull(),
-  voiceConfig: jsonb("voice_config"), // ElevenLabs voice configuration
+  language: text("language").default("en").notNull(), // Language for the campaign
+  elevenlabsModel: text("elevenlabs_model").default("eleven_multilingual_v2").notNull(), // ElevenLabs model selection
+  voiceId: text("voice_id").default("21m00Tcm4TlvDq8ikWAM").notNull(), // Voice agent selection
+  voiceConfig: jsonb("voice_config"), // ElevenLabs voice configuration (deprecated in favor of voiceId)
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

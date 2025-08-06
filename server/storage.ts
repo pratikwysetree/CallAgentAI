@@ -32,7 +32,7 @@ export interface IStorage {
   getCampaign(id: string): Promise<Campaign | undefined>;
   getCampaigns(): Promise<Campaign[]>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
-  updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign>;
+  updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
 
   // Calls
@@ -145,13 +145,13 @@ export class DatabaseStorage implements IStorage {
     return newCampaign;
   }
 
-  async updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign> {
+  async updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined> {
     const [updatedCampaign] = await db
       .update(campaigns)
       .set(campaign)
       .where(eq(campaigns.id, id))
       .returning();
-    return updatedCampaign;
+    return updatedCampaign || undefined;
   }
 
   async deleteCampaign(id: string): Promise<boolean> {

@@ -2,8 +2,9 @@ import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall } from "lucide-react";
+import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall, Megaphone } from "lucide-react";
 import ContactCampaigns from "@/pages/contact-campaigns";
+import CampaignManager from "@/pages/campaign-manager";
 import SettingsPage from "@/pages/settings";
 import EnhancedSettings from "@/pages/enhanced-settings";
 import WhatsAppBulk from "@/pages/whatsapp-bulk";
@@ -33,6 +34,12 @@ function Navigation() {
       href: "/calls-analytics",
       icon: BarChart3,
       current: location === "/calls-analytics",
+    },
+    {
+      name: "Campaign Manager",
+      href: "/campaign-manager",
+      icon: Megaphone,
+      current: location === "/campaign-manager",
     },
     {
       name: "Contact Campaigns",
@@ -101,6 +108,7 @@ function Router() {
           <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
           <Route path="/live-calls" component={LiveCalls} />
           <Route path="/calls-analytics" component={CallsAnalytics} />
+          <Route path="/campaign-manager" component={CampaignManager} />
           <Route path="/contact-campaigns" component={ContactCampaigns} />
           <Route path="/whatsapp-chats" component={WhatsAppChats} />
           <Route path="/settings" component={SettingsPage} />
