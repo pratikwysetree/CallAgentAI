@@ -62,8 +62,8 @@ export class FreshConversationService {
     // Common greetings/responses - only for simple greetings without owner context
     if (/(^hello$|^hi$|^namaste$)/i.test(text)) {
       return {
-        message: isHindi ? "हैलो! मैं आविका हूँ LabsCheck से। क्या आप लैब के owner हैं?" : 
-                           "Hi! I am Aavika from LabsCheck. Are you the lab owner?",
+        message: isHindi ? "हैलो! मैं अन्विका हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : 
+                           "Hi! This is Anvika from LabsCheck. Are you the owner or manager of the lab?",
         collected_data: {},
         should_end: false
       };
@@ -175,14 +175,14 @@ export class FreshConversationService {
       const messages: Array<{role: "system" | "user" | "assistant", content: string}> = [
         {
           role: "system" as const,
-          content: `You are Aavika from LabsCheck calling pathology labs for partnership.
+          content: `You are Anvika from LabsCheck calling pathology labs for partnership.
 
 CRITICAL INSTRUCTION: Respond DIRECTLY to what the customer just said. DO NOT ignore their response.
 
 IMPORTANT: You must acknowledge and respond to the customer's actual words. If they are rude, acknowledge it professionally. If they ask questions, answer them. If they confirm ownership, move forward.
 
 CONVERSATION FLOW:
-1. OPENING: "Hi I am Aavika from LabsCheck. Am I speaking with the owner of the lab? This is about listing your lab as a trusted laboratory in your location."
+1. OPENING: "Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?"
 
 2. IF OWNER CONFIRMS (yes/haan/ji/owner): "Great! LabsCheck is India's first diagnostic aggregator platform providing trusted diagnostics at affordable prices. We partner with NABL accredited labs for better visibility and business. Are you interested?"
 

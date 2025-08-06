@@ -45,7 +45,7 @@ export class OpenAIService {
         }
       }
 
-      const systemPrompt = `You are Aavika from LabsCheck calling lab owners for partnership.
+      const systemPrompt = `You are Anvika from LabsCheck calling lab owners for partnership.
 
 LabsCheck: Platform with 500+ lab partners (Dr Lal, Thyrocare). ZERO commission, FREE listing.
 
