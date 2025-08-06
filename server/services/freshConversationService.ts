@@ -65,12 +65,12 @@ export class FreshConversationService {
     }
     
     // Owner confirmation - LabsCheck mission explanation (INSTANT)
-    if (/(yes|haan|main hoon|owner|mein owner)/i.test(text) && !/(nahi|no)/i.test(text)) {
+    if (/(yes|haan|han|main hoon|mein hoon|i am|owner|main owner|mein owner|lab owner|owner hoon)/i.test(text) && !/(nahi|no|not)/i.test(text)) {
       console.log('⚡ [INSTANT-RESPONSE] Owner confirmed - LabsCheck mission explanation');
       return {
         response: {
           message: isHindi ?
-            "बहुत बढ़िया! LabsCheck एक revolutionary platform है जो trusted NABL accredited labs को patients के साथ जोड़ता है। हमारा zero-commission model आपकी lab को enhanced visibility और direct patient access देता है। क्या आप जानना चाहेंगे कि यह partnership आपके business को कैसे बढ़ा सकती है?" :
+            "बहुत बढ़िया! LabsCheck एक revolutionary platform है जो trusted NABL accredited labs को patients के साथ जोड़ता है। हमारा zero-commission model आपकी lab को enhanced visibility और direct patient access देता है। क्या आप जानना चाहेंगे कि यह partnership आपके business को कैसे बढ़ a सकती है?" :
             "Excellent! LabsCheck is revolutionizing diagnostic testing in India by connecting trusted NABL accredited labs with patients seeking affordable, reliable testing. We're building a zero-commission platform that gives labs like yours enhanced visibility and direct patient access. Would you be interested in learning how this partnership can grow your business?",
           collected_data: { lab_owner_confirmed: true },
           should_end: false
@@ -488,6 +488,39 @@ Use JSON format for all responses.`
     }
 
     const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+    
+    // Add retry logic for Twilio recording downloads
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📞 [TWILIO-RETRY] Attempt ${attempt} for recording: ${recordingId}`);
+        
+        const response = await fetch(recordingUrl, {
+          headers: {
+            'Authorization': `Basic ${credentials}`,
+            'User-Agent': 'LabsCheck-AI-Caller/1.0'
+          }
+        });
+        
+        if (response.status === 404 && attempt < 3) {
+          console.log(`⏱️ [TWILIO-DELAY] Recording not ready, waiting 2 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Failed to download recording: ${response.status} ${response.statusText}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        console.log(`✅ [TWILIO-SUCCESS] Downloaded recording on attempt ${attempt}: ${arrayBuffer.byteLength} bytes`);
+        return Buffer.from(arrayBuffer);
+        
+      } catch (error) {
+        console.error(`❌ [TWILIO-ATTEMPT-${attempt}] Error:`, error);
+        if (attempt === 3) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
     
     const response = await fetch(recordingUrl, {
       method: 'GET',
