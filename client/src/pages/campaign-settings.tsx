@@ -48,9 +48,12 @@ export default function CampaignSettings() {
     script: ""
   });
 
-  const { data: campaigns, isLoading } = useQuery({
+  const { data: campaigns, isLoading, error } = useQuery({
     queryKey: ['/api/campaigns'],
-    queryFn: () => apiRequest('/api/campaigns')
+    queryFn: async () => {
+      const response = await apiRequest('/api/campaigns');
+      return response;
+    }
   });
 
   const updateCampaignMutation = useMutation({
@@ -60,7 +63,8 @@ export default function CampaignSettings() {
       toast({ title: "Campaign updated successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Update error:', error);
       toast({ title: "Failed to update campaign", variant: "destructive" });
     }
   });
@@ -80,7 +84,8 @@ export default function CampaignSettings() {
         script: ""
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Delete error:', error);
       toast({ title: "Failed to delete campaign", variant: "destructive" });
     }
   });
@@ -140,7 +145,7 @@ export default function CampaignSettings() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {campaigns?.map((campaign: Campaign) => (
+              {Array.isArray(campaigns) && campaigns.map((campaign: Campaign) => (
                 <Button
                   key={campaign.id}
                   variant={selectedCampaign?.id === campaign.id ? "default" : "outline"}
@@ -151,6 +156,9 @@ export default function CampaignSettings() {
                   {campaign.name}
                 </Button>
               ))}
+              {!Array.isArray(campaigns) && !isLoading && (
+                <p className="text-sm text-muted-foreground">No campaigns found</p>
+              )}
             </div>
           </CardContent>
         </Card>
