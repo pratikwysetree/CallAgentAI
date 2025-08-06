@@ -138,6 +138,7 @@ export class ElevenLabsService {
             style: config.style ?? 0.0,
             use_speaker_boost: config.useSpeakerBoost ?? true,
           },
+          optimize_streaming_latency: 2, // Optimize for speed
         }),
       });
 

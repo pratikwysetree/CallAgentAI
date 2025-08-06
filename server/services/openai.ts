@@ -148,8 +148,8 @@ Respond with a JSON object:
         { role: "user" as const, content: userInput }
       ];
 
-      // Enhanced model selection for better Hinglish understanding
-      const model = "gpt-4o"; // Full model for better language understanding
+      // Use fast model for sub-2s response time
+      const model = "gpt-4o-mini"; // Fastest model for under 2s response
       console.log(`🧠 [AI MODEL] Using ${model} for Hinglish conversation`);
       console.log(`🧠 [EXACT INPUT TO AI] Customer's exact words: "${userInput}"`);
       
@@ -157,8 +157,8 @@ Respond with a JSON object:
         model,
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 200,
-        temperature: 0.3, // Lower temperature for more predictable responses
+        max_tokens: 150, // Reduced for faster response
+        temperature: 0.2, // Lower temperature for faster, more predictable responses
       });
 
       const responseTime = Date.now() - startTime;

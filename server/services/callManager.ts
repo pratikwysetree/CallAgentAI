@@ -69,15 +69,8 @@ export class CallManager {
       }
       console.log(`✅ [CALLMANAGER] Active call found, proceeding...`);
 
-      // Log customer input for debugging
-      console.log(`\n🎯 ===========================================`);
-      console.log(`👤 [CUSTOMER SAID] "${userInput}"`);
-      console.log(`📞 [CALL STATE] Total messages: ${activeCall.conversationContext.conversationHistory.length}`);
-      console.log(`🔄 [CONVERSATION HISTORY]`);
-      activeCall.conversationContext.conversationHistory.forEach((msg, i) => {
-        console.log(`   ${i+1}. ${msg.role}: "${msg.content}"`);
-      });
-      console.log(`🎯 ===========================================\n`);
+      // Minimal logging for faster processing
+      console.log(`👤 [CUSTOMER] "${userInput}" | Messages: ${activeCall.conversationContext.conversationHistory.length}`);
       
       // DIRECT FLOW: Customer Speech → OpenAI → Customer Response
       console.log(`🧠 [AI REQUEST] Sending EXACT customer speech to OpenAI: "${userInput}"`);
@@ -85,12 +78,7 @@ export class CallManager {
         activeCall.conversationContext,
         userInput
       );
-      console.log(`🧠 [AI SUCCESS] OpenAI generated direct response`);
-      console.log(`🎯 [FLOW TRACE] Customer said: "${userInput}" → AI responds: "${aiResponse.message}"`);
-      
-      console.log(`🤖 [AI RESPONSE] "${aiResponse.message}"`);
-      console.log(`📊 [EXTRACTED DATA]`, JSON.stringify(aiResponse.extractedData, null, 2));
-      console.log(`🎯 [END CALL FLAG] ${aiResponse.shouldEndCall}`);
+      console.log(`🤖 [AI] "${aiResponse.message}" | End: ${aiResponse.shouldEndCall} | Time: ${aiResponse.responseTime}ms`);
 
       // Update conversation history
       activeCall.conversationContext.conversationHistory.push(

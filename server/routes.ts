@@ -641,9 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { CallSid, SpeechResult, Confidence } = req.body;
       
       console.log(`🎤 [SPEECH INPUT] Call: ${CallSid}`);
-      console.log(`🎤 [SPEECH TEXT] "${SpeechResult}"`);
-      console.log(`🎤 [CONFIDENCE] ${Confidence || 'N/A'}`);
-      console.log(`🎤 [RAW REQUEST]`, JSON.stringify(req.body, null, 2));
+      console.log(`🎤 [SPEECH] "${SpeechResult}" | Confidence: ${Confidence || 'N/A'}`);
       
       // Handle empty or low-confidence speech with more detailed logging
       if (!SpeechResult || SpeechResult.trim() === '' || SpeechResult.toLowerCase() === 'timeout') {
@@ -667,13 +665,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Clean up speech result
       const cleanedInput = SpeechResult.trim();
-      console.log(`✅ [PROCESSING] Clean customer input: "${cleanedInput}"`);
-      console.log(`🔄 [STEP 1] About to call callManager.handleUserInput()...`);
-
+      console.log(`⚡ [PROCESSING] "${cleanedInput}"`);
       const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
-      
-      console.log(`🔄 [STEP 2] CallManager returned TwiML length: ${responseTwiml.length}`);
-      console.log(`🔄 [STEP 3] TwiML content: ${responseTwiml.substring(0, 200)}...`);
       
       // Broadcast real-time update
       broadcast({ 
