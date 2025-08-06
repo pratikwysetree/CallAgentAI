@@ -89,8 +89,16 @@ export class CallManager {
       console.log(`🎯 [FLOW TRACE] Customer said: "${userInput}" → AI responds: "${aiResponse.message}"`);
       
       console.log(`🤖 [AI RESPONSE] "${aiResponse.message}"`);
+      console.log(`⚡ [AI RESPONSE TIME] ${aiResponse.responseTime}ms`);
       console.log(`📊 [EXTRACTED DATA]`, JSON.stringify(aiResponse.extractedData, null, 2));
       console.log(`🎯 [END CALL FLAG] ${aiResponse.shouldEndCall}`);
+
+      // CRITICAL: Ensure AI response is NOT empty or undefined
+      if (!aiResponse.message || aiResponse.message.trim() === '') {
+        console.error(`❌ [AI ERROR] Empty AI response! Using fallback.`);
+        aiResponse.message = "Sorry, can you repeat that?";
+      }
+      console.log(`✅ [AI VALIDATION] Final AI message to deliver: "${aiResponse.message}"`);
 
       // Update conversation history
       activeCall.conversationContext.conversationHistory.push(
