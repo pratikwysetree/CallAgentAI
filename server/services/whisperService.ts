@@ -46,22 +46,23 @@ export class WhisperService {
       const transcriptionPrompt = options.prompt || 
         "Hindi English mixed pathology lab business call. Common: lab, pathology, partner, WhatsApp, email, haan, nahi, accha, kya, main, aap.";
       
-      // Ultra-fast Whisper transcription (optimized for speed)
+      // Ultra-fast Whisper transcription (maximum speed)
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(tempFilePath),
         model: 'whisper-1',
         language: options.language || 'hi',
-        prompt: transcriptionPrompt,
-        response_format: 'json', // Faster than verbose_json
-        temperature: 0, // More deterministic, faster
+        prompt: options.prompt || "lab business call", // Minimal prompt
+        response_format: 'text', // Fastest format
+        temperature: 0,
       }) as any;
       
       // Clean up temporary file
       fs.unlinkSync(tempFilePath);
       console.log(`🎙️ [WHISPER] Temporary file cleaned up`);
       
-      const transcribedText = transcription.text.trim();
-      const detectedLanguage = transcription.language || 'unknown';
+      // Handle both text and object responses
+      const transcribedText = typeof transcription === 'string' ? transcription.trim() : transcription.text?.trim() || '';
+      const detectedLanguage = typeof transcription === 'object' ? transcription.language || 'unknown' : 'unknown';
       
       // Calculate confidence based on text quality and length
       const confidence = this.calculateConfidence(transcribedText);

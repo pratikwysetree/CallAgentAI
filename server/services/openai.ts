@@ -127,7 +127,8 @@ CONVERSATION RULES:
 - BE NATURAL and conversational, not robotic
 - EXPLAIN clearly if they're confused about LabsCheck
 - PROGRESS the conversation toward getting their contact details
-- KEEP responses SHORT (1-2 sentences max)
+- KEEP responses ULTRA-SHORT (5-8 words max for speed)
+- SINGLE sentence only
 
 Extract any useful information mentioned during the conversation and format it as JSON in your response.
 
@@ -173,15 +174,27 @@ Respond with a JSON object:
       console.log(`🗣️ [DETECTED LANGUAGE] Customer language: ${customerLanguage.toUpperCase()}`);
       
       const response = await openai.chat.completions.create({
-        model,
+        model: "gpt-4o-mini", // Much faster than gpt-4o
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 120, // Further reduced for faster response
-        temperature: 0.1, // Minimal temperature for fastest processing
+        max_tokens: 50, // Ultra-minimal for <1s response
+        temperature: 0, // Zero for fastest processing
       });
 
       const responseTime = Date.now() - startTime;
-      const aiResponse = JSON.parse(response.choices[0].message.content || '{}');
+      
+      // Safe JSON parsing with fallback
+      let aiResponse;
+      try {
+        aiResponse = JSON.parse(response.choices[0].message.content || '{}');
+      } catch (parseError) {
+        console.error('🚨 [JSON ERROR] Invalid AI response, using fallback');
+        aiResponse = {
+          message: "Sorry, connection issue. Can you repeat?",
+          shouldEndCall: false,
+          extractedData: { notes: "JSON parse error" }
+        };
+      }
 
       return {
         message: aiResponse.message || "I'm sorry, could you repeat that?",
