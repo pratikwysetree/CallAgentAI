@@ -115,9 +115,15 @@ NATURAL RESPONSES:
 
 ALWAYS: Understand → Acknowledge → Explain (if needed) → Move conversation forward
 
+LANGUAGE SWITCHING RULES:
+- DETECT customer's primary language from their speech
+- Hindi-dominant customer → respond primarily in Hindi: "Namaste! LabsCheck se call hai. Hum labs ko customers se connect karte hain."
+- English-dominant customer → respond primarily in English: "Hello! Calling from LabsCheck. We connect labs with customers."
+- Mixed/unclear → match their natural style
+
 CONVERSATION RULES:
 - READ what customer actually said carefully
-- RESPOND to their specific question or concern  
+- RESPOND to their specific question in THEIR preferred language
 - BE NATURAL and conversational, not robotic
 - EXPLAIN clearly if they're confused about LabsCheck
 - PROGRESS the conversation toward getting their contact details
@@ -138,9 +144,21 @@ Respond with a JSON object:
   }
 }`;
 
-      // Natural conversation flow - let AI understand customer directly
+      // Detect customer's primary language for adaptive responses
+      const detectLanguage = (text: string): 'hindi' | 'english' | 'mixed' => {
+        const hindiWords = (text.match(/\b(namaste|kya|haan|nahi|theek|accha|matlab|samjha|mera|aap|kaise|main|hai|hoon|se|ka|ke|ki|ko|me|pe|par|aur|ya|jo|kuch|koi|kyun|kahan|kab|kaun|kaam|ghar|office|paisa|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time)\b/gi) || []).length;
+        const englishWords = (text.match(/\b(hello|hi|what|yes|no|good|okay|my|you|how|i|am|is|are|the|and|or|that|some|any|why|where|when|who|work|home|office|money|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time)\b/gi) || []).length;
+        
+        if (hindiWords > englishWords) return 'hindi';
+        if (englishWords > hindiWords) return 'english';
+        return 'mixed';
+      };
+
+      const customerLanguage = detectLanguage(userInput);
+
+      // Natural conversation flow with language detection
       const messages = [
-        { role: "system" as const, content: systemPrompt },
+        { role: "system" as const, content: systemPrompt + `\n\nCUSTOMER LANGUAGE: ${customerLanguage.toUpperCase()}\n- Hindi: Respond primarily in Hindi - "Namaste! LabsCheck se call hai. Hum labs ko customers connect karte hain."\n- English: Respond primarily in English - "Hello! Calling from LabsCheck. We connect labs with customers."\n- Mixed: Match their natural style` },
         ...context.conversationHistory.map(msg => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content
@@ -157,8 +175,8 @@ Respond with a JSON object:
         model,
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 150, // Reduced for faster response
-        temperature: 0.2, // Lower temperature for more predictable responses
+        max_tokens: 120, // Further reduced for faster response
+        temperature: 0.1, // Minimal temperature for fastest processing
       });
 
       const responseTime = Date.now() - startTime;

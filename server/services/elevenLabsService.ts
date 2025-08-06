@@ -133,8 +133,8 @@ export class ElevenLabsService {
           text: text,
           model_id: model,
           voice_settings: {
-            stability: config.stability ?? 0.4, // Reduced for faster generation
-            similarity_boost: config.similarityBoost ?? 0.6, // Reduced for speed
+            stability: config.stability ?? 0.3, // Further reduced for faster generation
+            similarity_boost: config.similarityBoost ?? 0.5, // Optimized for speed
             style: config.style ?? 0.0,
             use_speaker_boost: config.useSpeakerBoost ?? false, // Disabled for speed
           },
