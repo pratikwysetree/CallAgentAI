@@ -100,37 +100,54 @@ Respond with a JSON object:
       console.error('Error generating AI response:', error);
       const responseTime = Date.now() - startTime;
       
-      // Handle quota errors with Hinglish fallback responses
+      // Handle quota errors with contextual conversation system
       if (error.status === 429 || error.code === 'insufficient_quota') {
-        console.log('OpenAI quota exceeded - using Hinglish pathology lab fallback');
+        console.log('OpenAI quota exceeded - using contextual conversation logic');
         
-        // Provide contextual Hindi-English responses for pathology lab services
-        const hinglishFallbacks = [
-          "Namaste sir/madam, main SmallLabs se bol raha hun. Aap kaise hain? Aap ka health checkup due hai kya?",
-          "Ji haan, theek hai. Aap ko blood test ya koi aur medical test ki zarurat hai?",
-          "Bilkul sir, hum home collection bhi provide karte hain. Aap ka convenient time kya hai?",
-          "Accha, samjha. Aap ka phone number confirm kar dete hain? Reports ready hone par call kar denge.",
-          "Dhanyawad sir, aap ki health ke liye hum yahan hain. Lab visit ya home collection - jo convenient ho.",
-          "Sorry sir, thoda connection problem ho raha hai. Main dubara call karunga, theek hai? Dhanyawad!"
-        ];
+        // CONTEXTUAL CONVERSATION SYSTEM - responds based on what customer actually said
+        const customerSaid = userInput.toLowerCase();
+        let response = "";
+        let shouldEndCall = false;
+        let extractedData: Record<string, any> = {};
         
-        // Select appropriate response based on conversation history
-        const conversationLength = context.conversationHistory.length;
-        let fallbackIndex = Math.min(conversationLength, hinglishFallbacks.length - 1);
-        
-        // If it's the first message, use greeting
-        if (conversationLength === 0) {
-          fallbackIndex = 0;
+        // Response logic based on customer's exact words
+        if (customerSaid.includes("fine") || customerSaid.includes("good") || customerSaid.includes("theek") || customerSaid.includes("accha")) {
+          response = "Great! Can you share your WhatsApp number?";
+          extractedData.customer_interest = "interested";
+        } 
+        else if (customerSaid.includes("what") || customerSaid.includes("why") || customerSaid.includes("kya") || customerSaid.includes("kyon")) {
+          response = "We want to share our lab test details with you";
+          extractedData.customer_interest = "neutral";
+        }
+        else if (customerSaid.match(/\d{10}/)) { // Phone number detected
+          const phoneMatch = customerSaid.match(/\d{10}/);
+          response = "Perfect! Now can you share your email ID?";
+          extractedData.whatsapp_number = phoneMatch ? phoneMatch[0] : "";
+          extractedData.customer_interest = "interested";
+        }
+        else if (customerSaid.includes("@") || customerSaid.includes("email") || customerSaid.includes("gmail")) {
+          response = "Thank you! We'll send you the details soon";
+          extractedData.email = userInput.match(/\S+@\S+\.\S+/)?.[0] || "provided";
+          extractedData.contact_complete = "yes";
+          shouldEndCall = true;
+        }
+        else if (customerSaid.includes("not interested") || customerSaid.includes("no") || customerSaid.includes("nahi")) {
+          response = "No problem. Have a good day!";
+          extractedData.customer_interest = "not_interested";
+          shouldEndCall = true;
+        }
+        else {
+          // Default response for unclear input
+          response = "Can you share your WhatsApp number for lab details?";
+          extractedData.customer_interest = "neutral";
         }
         
+        extractedData.notes = `Customer said: "${userInput}"`;
+        
         return {
-          message: hinglishFallbacks[fallbackIndex],
-          shouldEndCall: conversationLength >= 4, // End call after extended conversation
-          extractedData: {
-            service_type: "pathology_lab",
-            language_preference: "hinglish",
-            notes: "API quota exceeded - using contextual Hindi-English response"
-          },
+          message: response,
+          shouldEndCall,
+          extractedData,
           responseTime,
         };
       }

@@ -61,10 +61,13 @@ export class CallManager {
 
   async handleUserInput(twilioCallSid: string, userInput: string): Promise<string> {
     try {
+      console.log(`🔍 [CALLMANAGER] Starting handleUserInput for call: ${twilioCallSid}`);
       const activeCall = this.activeCalls.get(twilioCallSid);
       if (!activeCall) {
+        console.log(`❌ [CALLMANAGER] Active call not found for: ${twilioCallSid}`);
         throw new Error('Active call not found');
       }
+      console.log(`✅ [CALLMANAGER] Active call found, proceeding...`);
 
       // Log customer input for debugging
       console.log(`\n🎯 ===========================================`);
@@ -77,10 +80,12 @@ export class CallManager {
       console.log(`🎯 ===========================================\n`);
       
       // Get AI response
+      console.log(`🧠 [AI REQUEST] Calling OpenAI with input: "${userInput}"`);
       const aiResponse = await openaiService.generateResponse(
         activeCall.conversationContext,
         userInput
       );
+      console.log(`🧠 [AI SUCCESS] OpenAI returned response`);
       
       console.log(`🤖 [AI RESPONSE] "${aiResponse.message}"`);
       console.log(`📊 [EXTRACTED DATA]`, JSON.stringify(aiResponse.extractedData, null, 2));
@@ -123,14 +128,19 @@ export class CallManager {
       if (aiResponse.shouldEndCall || hasCompleteContact || extractedData.customer_interest === 'not_interested') {
         console.log(`🏁 [CALL END] Ending call - AI decision: ${aiResponse.shouldEndCall}, Contact complete: ${hasCompleteContact}, Interest: ${extractedData.customer_interest}`);
         await this.endCall(twilioCallSid);
-        return await twilioService.generateHangupTwiML();
+        const hangupTwiml = await twilioService.generateHangupTwiML();
+        console.log(`📞 [HANGUP TWIML] Generated: ${hangupTwiml.substring(0, 100)}...`);
+        return hangupTwiml;
       }
 
       // Get campaign ID for voice synthesis
       const callRecord = await storage.getCallByTwilioSid(twilioCallSid);
       const campaignId = callRecord?.campaignId;
 
-      return await twilioService.generateTwiML(aiResponse.message, campaignId || undefined);
+      console.log(`🗣️ [GENERATING RESPONSE] Creating TwiML for: "${aiResponse.message}"`);
+      const continueTwiml = await twilioService.generateTwiML(aiResponse.message, campaignId || undefined);
+      console.log(`🗣️ [CONTINUE TWIML] Generated length: ${continueTwiml.length}`);
+      return continueTwiml;
     } catch (error) {
       console.error('Error handling user input:', error);
       return await twilioService.generateTwiML("I'm sorry, I'm having technical difficulties. Let me end this call.");
