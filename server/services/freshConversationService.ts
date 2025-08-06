@@ -167,73 +167,76 @@ export class FreshConversationService {
       const { storage } = await import('../storage');
       const conversationHistory = await storage.getCallMessages(callSid);
       
-      console.log('🧠 [OPENAI] Processing customer response with AI and conversation history');
+      console.log('🧠 [OPENAI] Processing FRESH customer response with complete conversation context');
       let aiResponse: any;
       let openaiRequestStart = Date.now();
       
-      // Build conversation messages with history
-      const messages = [
+      // Build conversation messages with complete history for fresh response
+      const messages: Array<{role: "system" | "user" | "assistant", content: string}> = [
         {
           role: "system" as const,
-              content: `You are Aavika from LabsCheck calling pathology labs for partnership.
+          content: `You are Aavika from LabsCheck calling pathology labs for partnership.
 
-CRITICAL: If customer confirms they are the lab owner (words like "yes", "haan", "ji", "owner", "malik") DO NOT repeat the opening question. Move to next step.
+CRITICAL INSTRUCTION: Respond DIRECTLY to what the customer just said. DO NOT ignore their response.
+
+IMPORTANT: You must acknowledge and respond to the customer's actual words. If they are rude, acknowledge it professionally. If they ask questions, answer them. If they confirm ownership, move forward.
 
 CONVERSATION FLOW:
 1. OPENING: "Hi I am Aavika from LabsCheck. Am I speaking with the owner of the lab? This is about listing your lab as a trusted laboratory in your location."
 
-2. IF OWNER CONFIRMS (yes/haan/ji/owner): Move directly to explaining LabsCheck - "Great! LabsCheck is India's first diagnostic aggregator platform providing trusted diagnostics at affordable prices. We partner with NABL accredited labs for better visibility and business. Are you interested?"
+2. IF OWNER CONFIRMS (yes/haan/ji/owner): "Great! LabsCheck is India's first diagnostic aggregator platform providing trusted diagnostics at affordable prices. We partner with NABL accredited labs for better visibility and business. Are you interested?"
 
 3. IF NOT OWNER: "Will it be possible for you to share the owner's email ID or WhatsApp number? Can I have your WhatsApp number? I will forward you details and you can share with the owner."
 
-4. PARTNERSHIP DETAILS: "We provide zero commission model, 100% payment to you, trusted partner listing, online portal to manage tests and prices, more visibility in your area."
+4. IF CUSTOMER IS RUDE/NEGATIVE: Acknowledge professionally: "I understand your concern. This is a genuine business opportunity for lab partnership. Would you like to know more or shall I call back later?"
 
-5. CLOSING: "For further understanding, I would request you to share your WhatsApp number and email ID so I shall share all information officially."
+5. IF CUSTOMER ASKS QUESTIONS: Answer their specific questions about LabsCheck, partnership benefits, commission structure, etc.
+
+6. CLOSING: "For further understanding, I would request you to share your WhatsApp number and email ID so I shall share all information officially."
 
 LANGUAGE MATCHING:
-- If customer speaks Hindi/Hinglish, respond in Hindi/Hinglish
-- If customer speaks English, respond in English
-- Match their tone and speaking style exactly
-
-Keep responses natural, warm, and conversational. Maximum 30 words per response.
+- Respond in the same language/style as customer
+- Match their tone appropriately
 
 CRITICAL RULES:
-- NEVER repeat the same question in different languages
-- If they say "yes" or confirm ownership, move to explaining LabsCheck
-- Progress conversation forward, don't loop on same question
+- ALWAYS respond to what customer actually said
+- NEVER ignore customer's response  
+- Progress conversation based on their actual words
+- If conversation seems stuck, acknowledge and pivot appropriately
 
 IMPORTANT: Always respond in JSON format exactly like this:
-{"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
+{"message": "your direct response to customer in same language", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
 
-Use JSON format for all responses.`
+RESPOND TO THEIR ACTUAL WORDS, NOT A SCRIPT.`
         }
       ];
 
-      // Add conversation history for context
+      // Add ALL conversation history for complete context
       if (conversationHistory && conversationHistory.length > 0) {
-        console.log(`📜 [CONVERSATION-HISTORY] Found ${conversationHistory.length} previous messages`);
+        console.log(`📜 [FRESH-CONTEXT] Loading ALL ${conversationHistory.length} previous messages for complete context`);
         
-        // Add recent conversation history (last 10 messages max)
-        const recentHistory = conversationHistory.slice(-10);
-        for (const msg of recentHistory) {
+        // Include ALL conversation history to ensure AI has complete context
+        for (const msg of conversationHistory) {
           if (msg.role === 'assistant') {
             messages.push({
               role: "assistant" as const,
-              content: msg.content
+              content: `Previous AI response: ${msg.content}`
             });
           } else if (msg.role === 'user') {
             messages.push({
               role: "user" as const, 
-              content: msg.content
+              content: `Previous customer: ${msg.content}`
             });
           }
         }
+      } else {
+        console.log('📜 [FRESH-CONTEXT] No previous history - this is the first interaction');
       }
 
-      // Add current customer message
+      // Add current customer message with emphasis
       messages.push({
         role: "user" as const,
-        content: customerText
+        content: `CURRENT CUSTOMER RESPONSE: "${customerText}" - Respond directly to this.`
       });
 
       const requestPayload = {
