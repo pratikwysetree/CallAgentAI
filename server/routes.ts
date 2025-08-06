@@ -512,6 +512,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Voice diagnostic endpoint - test if Twilio can play a simple audio file
+  app.post('/api/twilio/test-voice-diagnostic', async (req, res) => {
+    try {
+      // Generate a simple test audio file
+      const testText = "This is a voice diagnostic test. If you can hear this, the audio system is working.";
+      const testAudioFilename = await elevenLabsService.generateAudioFile(testText, {
+        voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam voice - widely compatible
+        model: 'eleven_monolingual_v1' // Basic model for compatibility
+      });
+      
+      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+      const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+      const audioUrl = `${protocol}://${baseUrl}/api/audio/${testAudioFilename}`;
+      
+      const simpleTwiML = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${audioUrl}</Play>
+    <Say voice="alice">End of diagnostic test.</Say>
+</Response>`;
+      
+      res.set('Content-Type', 'text/xml');
+      res.send(simpleTwiML);
+      
+      console.log(`🧪 [VOICE DIAGNOSTIC] Generated test audio: ${audioUrl}`);
+      console.log(`🧪 [VOICE DIAGNOSTIC] TwiML: ${simpleTwiML}`);
+    } catch (error) {
+      console.error('Error in voice diagnostic:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // ElevenLabs API key validation endpoint
   app.post('/api/elevenlabs/validate-key', async (req, res) => {
     try {
@@ -691,8 +725,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const stats = await fs.stat(filePath);
         
-        // Set appropriate headers for audio
-        res.setHeader('Content-Type', 'audio/wav');
+        // Set appropriate headers for audio based on file type
+        const contentType = filename.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav';
+        res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Length', stats.size);
         res.setHeader('Cache-Control', 'public, max-age=300');
         res.setHeader('Accept-Ranges', 'bytes');

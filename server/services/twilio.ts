@@ -161,9 +161,9 @@ export class TwilioService {
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="15">
-        <Say voice="alice" language="en-US">Please respond when you're ready.</Say>
-    </Gather>
+    <Pause length="1"/>
+    <Say voice="alice" language="en-US">Please respond when you're ready.</Say>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="10"/>
 </Response>`;
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
