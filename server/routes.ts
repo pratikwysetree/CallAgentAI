@@ -643,7 +643,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🚫 [NO SCRIPTS] All campaign scripts ignored - using simple greeting only`);
 
       console.log(`🎙️ [FINAL SCRIPT] Speaking: "${scriptToSpeak}"`);
-      const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
+      const callSid = req.body.CallSid;
+      const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string, callSid);
       
       res.type('text/xml').send(twiml);
     } catch (error) {
