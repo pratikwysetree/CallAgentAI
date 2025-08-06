@@ -36,7 +36,7 @@ export class CallManager {
 
       // Set up simple conversation context
       const conversationContext: ConversationContext = {
-        campaignPrompt: "Hi this is Aavika from LabsCheck, how are you doing today",
+        campaignPrompt: campaign.introLine || "Hi this is Priya from LabsCheck, how are you doing today",
         conversationHistory: [],
         contactName: contact?.name,
         phoneNumber,

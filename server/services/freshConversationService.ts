@@ -61,8 +61,8 @@ export class FreshConversationService {
     
     // Default values
     return {
-      introLine: "Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?",
-      agentName: "Anvika"
+      introLine: "Hi, this is Priya from LabsCheck. Am I speaking with the owner or manager of the lab?",
+      agentName: "Priya"
     };
   }
 
@@ -114,15 +114,15 @@ RESPONSE FORMAT: Just provide your response naturally - no JSON formatting neede
       const { introLine, agentName } = await this.getCampaignConfig(callSid);
       if (isHindi) {
         // Convert to Hindi/Hinglish version
-        return introLine.replace(/Anvika|Aavika/gi, agentName).replace(/Hi/gi, 'हैलो');
+        return introLine.replace(/Anvika|Aavika|Priya/gi, agentName).replace(/Hi/gi, 'हैलो');
       }
       return introLine;
     }
     
     // Fallback for cases without call context
     return isHindi ? 
-      "हैलो! मैं अन्विका हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : 
-      "Hi! This is Anvika from LabsCheck. Are you the owner or manager of the lab?";
+      "हैलो! मैं प्रिया हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : 
+      "Hi! This is Priya from LabsCheck. Are you the owner or manager of the lab?";
   }
 
   // Quick responses for common queries - no OpenAI needed
@@ -146,7 +146,7 @@ RESPONSE FORMAT: Just provide your response naturally - no JSON formatting neede
     // Common greetings/responses - only for simple greetings without owner context
     if (/(^hello$|^hi$|^namaste$)/i.test(text)) {
       return {
-        message: isHindi ? "हैलो! मैं अन्विका हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : "Hi! This is Anvika from LabsCheck. Are you the owner or manager of the lab?",
+        message: isHindi ? "हैलो! मैं प्रिया हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : "Hi! This is Priya from LabsCheck. Are you the owner or manager of the lab?",
         collected_data: {},
         should_end: false
       };
@@ -259,31 +259,6 @@ RESPONSE FORMAT: Just provide your response naturally - no JSON formatting neede
         {
           role: "system" as const,
           content: await this.getSystemPromptForCampaign(callSid)
-
-2. IF OWNER CONFIRMS (yes/haan/ji/owner): "Great! LabsCheck is India's first diagnostic aggregator platform providing trusted diagnostics at affordable prices. We partner with NABL accredited labs for better visibility and business. Are you interested?"
-
-3. IF NOT OWNER: "Will it be possible for you to share the owner's email ID or WhatsApp number? Can I have your WhatsApp number? I will forward you details and you can share with the owner."
-
-4. IF CUSTOMER IS RUDE/NEGATIVE: Acknowledge professionally: "I understand your concern. This is a genuine business opportunity for lab partnership. Would you like to know more or shall I call back later?"
-
-5. IF CUSTOMER ASKS QUESTIONS: Answer their specific questions about LabsCheck, partnership benefits, commission structure, etc.
-
-6. CLOSING: "For further understanding, I would request you to share your WhatsApp number and email ID so I shall share all information officially."
-
-LANGUAGE MATCHING:
-- Respond in the same language/style as customer
-- Match their tone appropriately
-
-CRITICAL RULES:
-- ALWAYS respond to what customer actually said
-- NEVER ignore customer's response  
-- Progress conversation based on their actual words
-- If conversation seems stuck, acknowledge and pivot appropriately
-
-IMPORTANT: Always respond in JSON format exactly like this:
-{"message": "your direct response to customer in same language", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
-
-RESPOND TO THEIR ACTUAL WORDS, NOT A SCRIPT.`
         }
       ];
 

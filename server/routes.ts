@@ -675,7 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scriptToSpeak = campaign.introLine;
         console.log(`🎯 [CAMPAIGN INTRO] Using campaign intro: "${scriptToSpeak}"`);
       } else {
-        scriptToSpeak = "Hi this is Anvika from LabsCheck, how are you doing today";
+        scriptToSpeak = "Hi this is Priya from LabsCheck, how are you doing today";
         console.log(`🎯 [FALLBACK INTRO] Using default intro: "${scriptToSpeak}"`);
       }
 
