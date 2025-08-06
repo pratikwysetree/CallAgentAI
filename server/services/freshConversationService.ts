@@ -41,38 +41,70 @@ export class FreshConversationService {
     console.log(`📡 [WEBSOCKET] Broadcasted ${eventType} for call ${callSid}`);
   }
 
-  // Quick responses for common queries - no OpenAI needed
+  // Quick responses for common queries with accurate LabsCheck information
   private getQuickResponse(customerText: string): any | null {
     const text = customerText.toLowerCase().trim();
     
-    // Detect language
+    // Detect language for proper response
     const isHindi = /[\u0900-\u097F]/.test(customerText) || 
                    /(hai|hain|kya|kaise|kahan|nahin|nahi|acha|thik|lab|test)/i.test(customerText);
     
-    // Common greetings/responses
-    if (/(hello|hi|haan|han|yes|ji)/i.test(text)) {
+    // Professional opening - LabsCheck introduction
+    if (/(hello|hi|haan|han|yes|ji|namaste)/i.test(text)) {
+      console.log('⚡ [QUICK-RESPONSE] Professional LabsCheck introduction');
       return {
-        message: isHindi ? "हैलो! मैं आविका हूँ LabsCheck से। क्या आप लैब के owner हैं?" : 
-                           "Hi! I am Aavika from LabsCheck. Are you the lab owner?",
+        message: isHindi ? 
+          "नमस्ते! मैं आविका हूं LabsCheck से - India का पहला diagnostic aggregator platform। मैं आपकी pathology lab के साथ partnership के बारे में बात करने के लिए कॉल कर रही हूं। क्या मैं lab owner से बात कर रही हूं?" :
+          "Hello! This is Aavika calling from LabsCheck - India's first diagnostic aggregator platform. I'm calling to discuss a partnership opportunity with your pathology lab. Am I speaking with the lab owner?",
         collected_data: {},
         should_end: false
       };
     }
     
-    if (/(owner|malik|malkin)/i.test(text) && /(nahin|nahi|no)/i.test(text)) {
+    // Owner confirmation - LabsCheck mission explanation
+    if (/(yes|haan|main hoon|owner|mein owner)/i.test(text) && !/(nahi|no)/i.test(text)) {
+      console.log('⚡ [QUICK-RESPONSE] Owner confirmed - LabsCheck mission explanation');
       return {
-        message: isHindi ? "क्या आप owner का WhatsApp number share कर सकते हैं?" : 
-                           "Can you share the owner's WhatsApp number?",
-        collected_data: {},
+        message: isHindi ?
+          "बहुत बढ़िया! LabsCheck एक revolutionary platform है जो trusted NABL accredited labs को patients के साथ जोड़ता है। हमारा zero-commission model आपकी lab को enhanced visibility और direct patient access देता है। क्या आप जानना चाहेंगे कि यह partnership आपके business को कैसे बढ़ा सकती है?" :
+          "Excellent! LabsCheck is revolutionizing diagnostic testing in India by connecting trusted NABL accredited labs with patients seeking affordable, reliable testing. We're building a zero-commission platform that gives labs like yours enhanced visibility and direct patient access. Would you be interested in learning how this partnership can grow your business?",
+        collected_data: { lab_owner_confirmed: true },
         should_end: false
       };
     }
     
-    if (/(benefit|faayda|labh)/i.test(text)) {
+    // Non-owner scenario - Request owner contact
+    if (/(no|nahi|owner nahi|not owner|main nahi)/i.test(text)) {
+      console.log('⚡ [QUICK-RESPONSE] Non-owner scenario - requesting owner contact');
       return {
-        message: isHindi ? "आपको 100% payment मिलेगा, zero commission! अधिक visibility भी।" : 
-                           "You get 100% payment, zero commission! More visibility too.",
-        collected_data: {},
+        message: isHindi ?
+          "समझ गया। क्या आप मुझे lab owner से मिला सकते हैं या उनका WhatsApp number share कर सकते हैं? मैं उन्हें बताना चाहूंगी कि LabsCheck कैसे आपकी lab की reach को बढ़ा सकता है। यह zero-commission partnership opportunity के बारे में है।" :
+          "I understand. Could you please connect me with the lab owner, or share their WhatsApp number? I'd like to discuss how LabsCheck can help expand your lab's reach through our trusted partner network. This is regarding a zero-commission partnership opportunity.",
+        collected_data: { non_owner_contact_requested: true },
+        should_end: false
+      };
+    }
+    
+    // Benefits inquiry - Detailed LabsCheck value proposition
+    if (/(benefit|faayda|kya milega|what will get|partnership|details|interested)/i.test(text)) {
+      console.log('⚡ [QUICK-RESPONSE] LabsCheck benefits explanation');
+      return {
+        message: isHindi ?
+          "LabsCheck partner के रूप में आपको मिलता है: पूरे India में enhanced online visibility, direct patient bookings transparent pricing के साथ, आपके test menu और rates पर पूरा control, NABL accreditation verification trust के लिए, Zero commission - 100% earnings retention, और easy management के लिए partner portal access। हम quality labs और trusted diagnostics चाहने वाले patients के बीच gap को भर रहे हैं।" :
+          "As a LabsCheck partner, you get: Enhanced online visibility across India, Direct patient bookings with transparent pricing, Full control over your test menu and rates, NABL accreditation verification for trust, Zero commission - 100% earnings retention, and access to our partner portal for easy management. We're bridging the gap between quality labs and patients seeking trusted diagnostics.",
+        collected_data: { benefits_explained: true },
+        should_end: false
+      };
+    }
+    
+    // Interest confirmation and next steps
+    if (/(interested|yes|haan|tell me|batao|more|partner portal)/i.test(text) && /(portal|login|details|information)/i.test(text)) {
+      console.log('⚡ [QUICK-RESPONSE] Interest confirmed - next steps');
+      return {
+        message: isHindi ?
+          "बहुत अच्छा! मैं आपको partner portal login details provide करूंगी जहां आप अपना test menu और pricing upload कर सकते हैं। हम आपको WhatsApp के जरिए official partnership information भी भेजेंगे। क्या आप अपना WhatsApp number और email documentation के लिए share कर सकते हैं?" :
+          "Wonderful! I'll provide you with our partner portal login details where you can upload your test menu and pricing. We'll also send you official partnership information via WhatsApp. Can you please share your WhatsApp number and email for the documentation?",
+        collected_data: { interest_confirmed: true, contact_requested: true },
         should_end: false
       };
     }
@@ -189,8 +221,8 @@ LANGUAGE MATCHING:
 
 Keep responses natural, warm, and conversational. Maximum 25 words per response.
 
-IMPORTANT: Always respond in JSON format exactly like this:
-{"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
+RESPOND IN JSON FORMAT:
+{"message": "your professional response", "collected_data": {"whatsapp_number": "", "email": "", "lab_owner_confirmed": "", "interest_level": ""}, "should_end": false}
 
 Use JSON format for all responses.`
             },
@@ -314,7 +346,7 @@ Use JSON format for all responses.`
       }
       
       // 6. Store conversation message history
-      await this.saveConversationMessage(callSid, userTranscription, aiResponse.message);
+      await this.saveConversationMessage(callSid, transcription, aiResponse.message);
       
       // 7. Store conversation data if collected
       if (aiResponse.collected_data && Object.keys(aiResponse.collected_data).length > 0) {
