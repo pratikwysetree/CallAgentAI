@@ -1500,8 +1500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('🎵 [TYPING-SOUND] Generating typing effect audio...');
         
         // Generate a very subtle typing sound using ElevenLabs
-        const { ElevenLabsService } = await import('./services/elevenLabsService');
-        const elevenLabsService = new ElevenLabsService();
+        const { elevenLabsService } = await import('./services/elevenLabsService');
         
         // Use minimal settings for very subtle typing effect
         const typingSettings = {

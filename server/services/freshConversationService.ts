@@ -218,12 +218,12 @@ Use JSON format for all responses.`
         for (const msg of recentHistory) {
           if (msg.role === 'assistant') {
             messages.push({
-              role: "assistant" as const,
+              role: "assistant",
               content: msg.content
             });
           } else if (msg.role === 'user') {
             messages.push({
-              role: "user" as const,
+              role: "user", 
               content: msg.content
             });
           }
@@ -232,7 +232,7 @@ Use JSON format for all responses.`
 
       // Add current customer message
       messages.push({
-        role: "user" as const,
+        role: "user",
         content: customerText
       });
 
