@@ -69,16 +69,18 @@ export class CallManager {
       }
       console.log(`✅ [CALLMANAGER] Active call found, proceeding...`);
 
-      // Minimal logging for faster processing
-      console.log(`👤 [CUSTOMER] "${userInput}" | Messages: ${activeCall.conversationContext.conversationHistory.length}`);
+      // Speed-optimized flow tracking
+      const flowStart = Date.now();
+      console.log(`⚡ [FLOW START] "${userInput}"`);
       
-      // DIRECT FLOW: Customer Speech → OpenAI → Customer Response
-      console.log(`🧠 [AI REQUEST] Sending EXACT customer speech to OpenAI: "${userInput}"`);
       const aiResponse = await openaiService.generateResponse(
         activeCall.conversationContext,
         userInput
       );
-      console.log(`🤖 [AI] "${aiResponse.message}" | End: ${aiResponse.shouldEndCall} | Time: ${aiResponse.responseTime}ms`);
+      const aiTime = Date.now() - flowStart;
+      console.log(`🧠 [AI DONE] ${aiTime}ms | "${aiResponse.message}"`);
+      
+      // Generate TwiML response with speed tracking
 
       // Update conversation history
       activeCall.conversationContext.conversationHistory.push(
@@ -151,8 +153,12 @@ export class CallManager {
       const callRecord = await storage.getCallByTwilioSid(twilioCallSid);
       const campaignId = callRecord?.campaignId;
 
-      console.log(`🗣️ [GENERATING RESPONSE] Creating TwiML for: "${aiResponse.message}"`);
+      const audioStart = Date.now();
+      console.log(`🗣️ [AUDIO START] Generating: "${aiResponse.message}"`);
       const continueTwiml = await twilioService.generateTwiML(aiResponse.message, campaignId || undefined);
+      const audioTime = Date.now() - audioStart;
+      const totalTime = Date.now() - flowStart;
+      console.log(`🎤 [AUDIO DONE] ${audioTime}ms | Total: ${totalTime}ms`);
       console.log(`🗣️ [CONTINUE TWIML] Generated length: ${continueTwiml.length}`);
       return continueTwiml;
     } catch (error) {

@@ -148,15 +148,14 @@ Respond with a JSON object:
 
       // Use fast model for sub-2s response time
       const model = "gpt-4o-mini"; // Fastest model for under 2s response
-      console.log(`🧠 [AI MODEL] Using ${model} for Hinglish conversation`);
-      console.log(`🧠 [EXACT INPUT TO AI] Customer's exact words: "${userInput}"`);
+      console.log(`🧠 [AI] Model: ${model} | Input: "${userInput}"`);
       
       const response = await openai.chat.completions.create({
         model,
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 250, // Increased for better contextual responses
-        temperature: 0.1, // Very low for consistent, focused responses
+        max_tokens: 120, // Optimized for speed while maintaining context
+        temperature: 0.05, // Minimal randomness for fastest consistent responses
       });
 
       const responseTime = Date.now() - startTime;
