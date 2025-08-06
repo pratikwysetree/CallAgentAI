@@ -30,16 +30,7 @@ export default function Campaigns() {
     isActive: true,
   });
   
-  const [useIndicTTS, setUseIndicTTS] = useState(false);
   const [useElevenLabs, setUseElevenLabs] = useState(false);
-  const [voiceSettings, setVoiceSettings] = useState({
-    language: "hi",
-    speaker: "female",
-    speed: 1,
-    pitch: 1,
-    model: "fastpitch",
-    outputFormat: "wav"
-  });
   const [elevenLabsSettings, setElevenLabsSettings] = useState({
     voiceId: "pNInz6obpgDQGcFmaJgB", // Adam voice
     model: "eleven_monolingual_v1",
@@ -114,16 +105,7 @@ export default function Campaigns() {
       transcriberConfig: null,
       isActive: true,
     });
-    setUseIndicTTS(false);
     setUseElevenLabs(false);
-    setVoiceSettings({
-      language: "hi",
-      speaker: "female",
-      speed: 1,
-      pitch: 1,
-      model: "fastpitch",
-      outputFormat: "wav"
-    });
     setElevenLabsSettings({
       voiceId: "pNInz6obpgDQGcFmaJgB",
       model: "eleven_monolingual_v1",
@@ -142,33 +124,22 @@ export default function Campaigns() {
       aiPrompt: campaign.aiPrompt,
       script: campaign.script || "",
       openaiModel: campaign.openaiModel || "gpt-4o",
-      voiceConfig: campaign.voiceConfig,
-      transcriberConfig: campaign.transcriberConfig,
+      voiceConfig: campaign.voiceConfig as any,
+      transcriberConfig: campaign.transcriberConfig as any,
       isActive: campaign.isActive,
     });
     
     // Set voice configuration states
-    if (campaign.voiceConfig?.useIndicTTS) {
-      setUseIndicTTS(true);
-      setVoiceSettings({
-        language: campaign.voiceConfig.language || "hi",
-        speaker: campaign.voiceConfig.speaker || "female",
-        speed: campaign.voiceConfig.speed || 1,
-        pitch: campaign.voiceConfig.pitch || 1,
-        model: campaign.voiceConfig.model || "fastpitch",
-        outputFormat: campaign.voiceConfig.outputFormat || "wav"
-      });
-    }
-    
-    if (campaign.voiceConfig?.useElevenLabs) {
+    const voiceConfig = campaign.voiceConfig as any;
+    if (voiceConfig?.useElevenLabs) {
       setUseElevenLabs(true);
       setElevenLabsSettings({
-        voiceId: campaign.voiceConfig.voiceId || "pNInz6obpgDQGcFmaJgB",
-        model: campaign.voiceConfig.model || "eleven_monolingual_v1",
-        stability: campaign.voiceConfig.stability || 0.5,
-        similarityBoost: campaign.voiceConfig.similarityBoost || 0.75,
-        style: campaign.voiceConfig.style || 0.0,
-        useSpeakerBoost: campaign.voiceConfig.useSpeakerBoost ?? true
+        voiceId: voiceConfig.voiceId || "pNInz6obpgDQGcFmaJgB",
+        model: voiceConfig.model || "eleven_monolingual_v1",
+        stability: voiceConfig.stability || 0.5,
+        similarityBoost: voiceConfig.similarityBoost || 0.75,
+        style: voiceConfig.style || 0.0,
+        useSpeakerBoost: voiceConfig.useSpeakerBoost ?? true
       });
     }
     
@@ -184,12 +155,7 @@ export default function Campaigns() {
     
     // Prepare voice configuration
     let voiceConfig = null;
-    if (useIndicTTS) {
-      voiceConfig = {
-        useIndicTTS: true,
-        ...voiceSettings
-      };
-    } else if (useElevenLabs) {
+    if (useElevenLabs) {
       voiceConfig = {
         useElevenLabs: true,
         ...elevenLabsSettings
@@ -330,7 +296,6 @@ export default function Campaigns() {
                           checked={useElevenLabs}
                           onCheckedChange={(checked) => {
                             setUseElevenLabs(checked as boolean);
-                            if (checked) setUseIndicTTS(false);
                           }}
                         />
                         <Label htmlFor="use-elevenlabs" className="flex items-center space-x-2">
@@ -391,120 +356,7 @@ export default function Campaigns() {
                         </div>
                       )}
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="use-indic-tts"
-                          checked={useIndicTTS}
-                          onCheckedChange={(checked) => {
-                            setUseIndicTTS(checked as boolean);
-                            if (checked) setUseElevenLabs(false);
-                          }}
-                        />
-                        <Label htmlFor="use-indic-tts" className="flex items-center space-x-2">
-                          <Mic className="h-4 w-4" />
-                          <span>Enable AI4Bharat Indic-TTS (Hindi Voice Synthesis)</span>
-                        </Label>
-                      </div>
                     </div>
-                    
-                    {useIndicTTS && (
-                      <div className="bg-blue-50 p-4 rounded-lg space-y-4 border border-blue-200">
-                        <p className="text-sm text-blue-800 mb-3">
-                          Configure AI-powered Hindi voice synthesis for natural Indian language calls
-                        </p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="voice-language">Language</Label>
-                            <Select
-                              value={voiceSettings.language}
-                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, language: value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select language" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="hi">Hindi (हिन्दी)</SelectItem>
-                                <SelectItem value="bn">Bengali (বাংলা)</SelectItem>
-                                <SelectItem value="gu">Gujarati (ગુજરાતી)</SelectItem>
-                                <SelectItem value="mr">Marathi (मराठी)</SelectItem>
-                                <SelectItem value="ta">Tamil (தமிழ்)</SelectItem>
-                                <SelectItem value="te">Telugu (తెలుగు)</SelectItem>
-                                <SelectItem value="kn">Kannada (ಕನ್ನಡ)</SelectItem>
-                                <SelectItem value="ml">Malayalam (മലയാളം)</SelectItem>
-                                <SelectItem value="pa">Punjabi (ਪੰਜਾਬੀ)</SelectItem>
-                                <SelectItem value="or">Odia (ଓଡ଼ିଆ)</SelectItem>
-                                <SelectItem value="as">Assamese (অসমীয়া)</SelectItem>
-                                <SelectItem value="ur">Urdu (اردو)</SelectItem>
-                                <SelectItem value="ne">Nepali (नेपाली)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor="voice-speaker">Speaker</Label>
-                            <Select
-                              value={voiceSettings.speaker}
-                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, speaker: value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select speaker" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="female">Female Voice</SelectItem>
-                                <SelectItem value="male">Male Voice</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor="voice-speed">Speech Speed: {voiceSettings.speed}x</Label>
-                            <Select
-                              value={voiceSettings.speed.toString()}
-                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, speed: parseFloat(value) })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select speed" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="0.7">0.7x (Slower)</SelectItem>
-                                <SelectItem value="0.8">0.8x (Slow)</SelectItem>
-                                <SelectItem value="0.9">0.9x (Slightly Slow)</SelectItem>
-                                <SelectItem value="1">1.0x (Normal)</SelectItem>
-                                <SelectItem value="1.1">1.1x (Slightly Fast)</SelectItem>
-                                <SelectItem value="1.2">1.2x (Fast)</SelectItem>
-                                <SelectItem value="1.3">1.3x (Faster)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor="voice-pitch">Voice Pitch: {voiceSettings.pitch}x</Label>
-                            <Select
-                              value={voiceSettings.pitch.toString()}
-                              onValueChange={(value) => setVoiceSettings({ ...voiceSettings, pitch: parseFloat(value) })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select pitch" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="0.8">0.8x (Lower Pitch)</SelectItem>
-                                <SelectItem value="0.9">0.9x (Slightly Lower)</SelectItem>
-                                <SelectItem value="1">1.0x (Natural)</SelectItem>
-                                <SelectItem value="1.1">1.1x (Slightly Higher)</SelectItem>
-                                <SelectItem value="1.2">1.2x (Higher Pitch)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                          <p className="text-sm text-green-800">
-                            <strong>Preview:</strong> {voiceSettings.language === "hi" ? "Hindi" : voiceSettings.language.toUpperCase()} {voiceSettings.speaker} voice at {voiceSettings.speed}x speed with {voiceSettings.pitch}x pitch
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">
@@ -611,7 +463,6 @@ export default function Campaigns() {
                           checked={useElevenLabs}
                           onCheckedChange={(checked) => {
                             setUseElevenLabs(checked as boolean);
-                            if (checked) setUseIndicTTS(false);
                           }}
                         />
                         <Label htmlFor="edit-use-elevenlabs" className="flex items-center space-x-2">
@@ -672,20 +523,7 @@ export default function Campaigns() {
                         </div>
                       )}
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="edit-use-indic-tts"
-                          checked={useIndicTTS}
-                          onCheckedChange={(checked) => {
-                            setUseIndicTTS(checked as boolean);
-                            if (checked) setUseElevenLabs(false);
-                          }}
-                        />
-                        <Label htmlFor="edit-use-indic-tts" className="flex items-center space-x-2">
-                          <Mic className="h-4 w-4" />
-                          <span>Enable AI4Bharat Indic-TTS (Hindi Voice Synthesis)</span>
-                        </Label>
-                      </div>
+
                     </div>
                   </div>
 
@@ -812,21 +650,16 @@ export default function Campaigns() {
                               <Volume2 className="h-3 w-3" />
                               <span>Voice Configuration</span>
                             </Label>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <div className="text-sm text-gray-600 mt-1">
                               {(campaign.voiceConfig as any)?.useElevenLabs ? (
                                 <span className="inline-flex items-center space-x-1">
                                   <Volume2 className="h-3 w-3 text-green-600" />
                                   <span>ElevenLabs Premium Voice ({(campaign.voiceConfig as any)?.model})</span>
                                 </span>
-                              ) : (campaign.voiceConfig as any)?.useIndicTTS ? (
-                                <span className="inline-flex items-center space-x-1">
-                                  <Mic className="h-3 w-3 text-blue-600" />
-                                  <span>AI4Bharat {(campaign.voiceConfig as any)?.language?.toUpperCase()} ({(campaign.voiceConfig as any)?.speaker}) - Speed: {(campaign.voiceConfig as any)?.speed}x</span>
-                                </span>
                               ) : (
                                 "Default Twilio Voice"
                               )}
-                            </p>
+                            </div>
                           </div>
                         )}
                         

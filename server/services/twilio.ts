@@ -177,42 +177,8 @@ export class TwilioService {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
           console.log('🎤 [ELEVENLABS] Falling back to Twilio voice');
         }
-      }
-      // Check for Indic-TTS (Hindi option)
-      else if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
-        console.log(`🎤 [INDIC-TTS] ACTIVATED - Using AI4Bharat TTS for Hindi voice!`);
-        console.log(`🎤 [INDIC-TTS] Language: ${(voiceConfig as any).language}, Speaker: ${(voiceConfig as any).speaker}`);
-        console.log(`🎤 [INDIC-TTS] Message: "${message}"`);
-        
-        const { IndicTTSService } = await import('./indicTtsService');
-        const indicTtsService = new IndicTTSService();
-        
-        const audioFilename = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.wav`;
-        const audioPath = `./temp/${audioFilename}`;
-        
-        const result = await indicTtsService.synthesizeSpeech(message, audioPath, voiceConfig as any);
-        
-        if (result.success && result.audioPath) {
-          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-          
-          console.log(`🎤 [INDIC-TTS] SUCCESS - Hindi audio generated: ${audioUrl}`);
-          console.log(`🎤 [INDIC-TTS] Using <Play> tag for AI4Bharat voice synthesis!`);
-          
-          return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Play>${audioUrl}</Play>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="15">
-        <Play>${audioUrl}</Play>
-    </Gather>
-</Response>`;
-        } else {
-          console.error('🎤 [INDIC-TTS] FAILED - Synthesis error:', result.error);
-          console.log('🎤 [INDIC-TTS] Falling back to Twilio English voice');
-        }
       } else {
-        console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in English voice`);
+        console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in English voice - ElevenLabs not configured`);
       }
 
       // Use Twilio's built-in voice with better configuration  
@@ -281,32 +247,7 @@ export class TwilioService {
           console.error('🎤 [ELEVENLABS] Error generating goodbye:', error);
         }
       }
-      // Check for Indic-TTS
-      else if (voiceConfig && (voiceConfig as any)?.useIndicTTS) {
-        console.log(`🎤 [INDIC-TTS] Generating goodbye message with Hindi TTS`);
-        
-        const { IndicTTSService } = await import('./indicTtsService');
-        const indicTtsService = new IndicTTSService();
-        
-        const audioFilename = `goodbye_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.wav`;
-        const audioPath = `./temp/${audioFilename}`;
-        
-        const result = await indicTtsService.synthesizeSpeech(goodbyeMessage, audioPath, voiceConfig as any);
-        
-        if (result.success && result.audioPath) {
-          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-          
-          console.log(`🎤 [INDIC-TTS] Goodbye message generated: ${audioUrl}`);
-          
-          return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Play>${audioUrl}</Play>
-    <Hangup/>
-</Response>`;
-        }
-      }
+
 
       // Default fallback
       return `<?xml version="1.0" encoding="UTF-8"?>

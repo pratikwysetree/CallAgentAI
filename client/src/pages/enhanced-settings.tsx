@@ -13,14 +13,7 @@ import { Settings, Save, Upload, Mic, MessageSquare, Bot, Globe, Volume2, FileAu
 import Sidebar from "@/components/sidebar";
 import { useMutation } from "@tanstack/react-query";
 
-interface IndicTTSConfig {
-  model: string;
-  language: string;
-  speaker: string;
-  speed: number;
-  pitch: number;
-  outputFormat: 'wav' | 'mp3';
-}
+// Removed IndicTTSConfig - using only ElevenLabs
 
 interface WhisperConfig {
   model: 'tiny' | 'base' | 'small' | 'medium' | 'large' | 'large-v2' | 'large-v3';
@@ -34,7 +27,6 @@ interface WhisperConfig {
 
 interface SystemSettings {
   openaiModel: string;
-  indicTts: IndicTTSConfig;
   whisper: WhisperConfig;
   messaging: {
     whatsappEnabled: boolean;
@@ -58,14 +50,6 @@ export default function EnhancedSettings() {
   
   const [settings, setSettings] = useState<SystemSettings>({
     openaiModel: "gpt-4o",
-    indicTts: {
-      model: "fastpitch",
-      language: "hi",
-      speaker: "female",
-      speed: 1.0,
-      pitch: 1.0,
-      outputFormat: "wav"
-    },
     whisper: {
       model: "base",
       task: "transcribe",
@@ -127,7 +111,7 @@ export default function EnhancedSettings() {
     onSuccess: () => {
       toast({
         title: "Voice configuration uploaded",
-        description: "Indic-TTS configuration has been updated.",
+        description: "Voice configuration has been updated.",
       });
     },
   });
@@ -186,21 +170,7 @@ export default function EnhancedSettings() {
     testWhatsAppMutation.mutate(testWhatsAppData);
   };
 
-  const indicLanguages = [
-    { code: 'hi', name: 'Hindi' },
-    { code: 'bn', name: 'Bengali' },
-    { code: 'gu', name: 'Gujarati' },
-    { code: 'kn', name: 'Kannada' },
-    { code: 'ml', name: 'Malayalam' },
-    { code: 'mr', name: 'Marathi' },
-    { code: 'or', name: 'Odia' },
-    { code: 'pa', name: 'Punjabi' },
-    { code: 'ta', name: 'Tamil' },
-    { code: 'te', name: 'Telugu' },
-    { code: 'ur', name: 'Urdu' },
-    { code: 'as', name: 'Assamese' },
-    { code: 'en', name: 'English' },
-  ];
+  // Removed indicLanguages - using only ElevenLabs now
 
   const whisperLanguages = [
     { code: 'auto', name: 'Auto-detect' },
@@ -306,119 +276,25 @@ export default function EnhancedSettings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
-                      <Languages className="mr-2 h-5 w-5" />
-                      Indic-TTS Configuration
+                      <Volume2 className="mr-2 h-5 w-5" />
+                      Voice Synthesis Configuration
                     </CardTitle>
                     <CardDescription>
-                      Configure voice synthesis for 13 Indian languages using AI4Bharat Indic-TTS
+                      Configure ElevenLabs premium voice synthesis for natural-sounding calls
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="tts-model">TTS Model</Label>
-                        <Select
-                          value={settings.indicTts.model}
-                          onValueChange={(value) => setSettings({
-                            ...settings,
-                            indicTts: { ...settings.indicTts, model: value }
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="fastpitch">FastPitch</SelectItem>
-                            <SelectItem value="hifigan">HiFi-GAN V1</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="tts-language">Language</Label>
-                        <Select
-                          value={settings.indicTts.language}
-                          onValueChange={(value) => setSettings({
-                            ...settings,
-                            indicTts: { ...settings.indicTts, language: value }
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {indicLanguages.map((lang) => (
-                              <SelectItem key={lang.code} value={lang.code}>
-                                {lang.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="tts-speaker">Speaker</Label>
-                        <Select
-                          value={settings.indicTts.speaker}
-                          onValueChange={(value) => setSettings({
-                            ...settings,
-                            indicTts: { ...settings.indicTts, speaker: value }
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <Label>Speed: {settings.indicTts.speed}x</Label>
-                        <Slider
-                          value={[settings.indicTts.speed]}
-                          onValueChange={([value]) => setSettings({
-                            ...settings,
-                            indicTts: { ...settings.indicTts, speed: value }
-                          })}
-                          min={0.5}
-                          max={2.0}
-                          step={0.1}
-                          className="mt-2"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Pitch: {settings.indicTts.pitch}x</Label>
-                        <Slider
-                          value={[settings.indicTts.pitch]}
-                          onValueChange={([value]) => setSettings({
-                            ...settings,
-                            indicTts: { ...settings.indicTts, pitch: value }
-                          })}
-                          min={0.5}
-                          max={2.0}
-                          step={0.1}
-                          className="mt-2"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label>Upload Indic-TTS Configuration</Label>
-                      <FileUpload
-                        onFileSelect={(file) => uploadVoiceConfigMutation.mutate(file)}
-                        accept=".json,.yaml,.yml"
-                        maxSize={5 * 1024 * 1024}
-                        className="mt-2"
-                        disabled={uploadVoiceConfigMutation.isPending}
-                      >
-                        Upload Indic-TTS Config File
-                      </FileUpload>
+                    <div className="text-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
+                      <Volume2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">ElevenLabs Voice Synthesis</h3>
+                      <p className="text-gray-600 mb-4">
+                        Voice synthesis is now configured per campaign in the Campaigns section.
+                        Each campaign can use a different ElevenLabs voice configuration.
+                      </p>
+                      <Button variant="outline" onClick={() => window.location.href = '/campaigns'}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Configure in Campaigns
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

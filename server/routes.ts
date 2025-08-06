@@ -305,18 +305,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In a real implementation, save settings to database
       console.log('Settings updated:', req.body);
       
-      // Initialize Indic-TTS and Whisper services with new config
-      const { IndicTTSService } = await import('./services/indicTtsService');
+      // Initialize Whisper service with new config
       const { WhisperService } = await import('./services/whisperService');
       
-      const indicTtsService = new IndicTTSService();
       const whisperService = new WhisperService();
       
       // Save configurations
-      if (req.body.indicTts) {
-        await indicTtsService.saveConfig(req.body.indicTts);
-      }
-      
       if (req.body.whisper) {
         await whisperService.saveConfig(req.body.whisper);
       }
@@ -332,20 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get available voice languages and models
-  app.get('/api/config/voice/languages', async (req, res) => {
-    try {
-      const { IndicTTSService } = await import('./services/indicTtsService');
-      const indicTtsService = new IndicTTSService();
-      
-      const languages = await indicTtsService.getAvailableLanguages();
-      const speakers = await indicTtsService.getAvailableSpeakers();
-      
-      res.json({ languages, speakers });
-    } catch (error) {
-      console.error('Error fetching voice languages:', error);
-      res.status(500).json({ error: 'Failed to fetch voice languages' });
-    }
-  });
+
 
   // Get available transcription models and languages
   app.get('/api/config/transcriber/models', async (req, res) => {
@@ -381,34 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enable Indic-TTS for a campaign
-  app.post('/api/campaigns/:id/enable-indic-tts', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { language = 'hi', speaker = 'female', speed = 1.0, pitch = 1.0 } = req.body;
-      
-      const voiceConfig = {
-        useIndicTTS: true,
-        language,
-        speaker,
-        speed,
-        pitch,
-        model: 'fastpitch',
-        outputFormat: 'wav' as const
-      };
-      
-      const updatedCampaign = await storage.updateCampaign(id, { voiceConfig });
-      
-      res.json({ 
-        success: true, 
-        message: `Indic-TTS enabled for campaign with language: ${language}`,
-        voiceConfig,
-        campaign: updatedCampaign
-      });
-    } catch (error) {
-      console.error('Error enabling Indic-TTS:', error);
-      res.status(500).json({ error: 'Failed to enable Indic-TTS' });
-    }
-  });
+
 
   // ElevenLabs TTS Routes
   app.get('/api/elevenlabs/status', async (req, res) => {
