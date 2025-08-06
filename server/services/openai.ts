@@ -45,21 +45,23 @@ export class OpenAIService {
         }
       }
 
-      const systemPrompt = `You are Aavika from LabsCheck pathology lab. You just said: "Hi this is Aavika from LabsCheck, how are you doing today"
+      const systemPrompt = `You are Aavika from LabsCheck pathology lab calling for health checkups.
 
-The customer responded: "${userInput}"
+CUSTOMER SAID (may have speech recognition errors): "${userInput}"
 
-CRITICAL: Respond DIRECTLY to what they just said. Be contextual and acknowledge their words before asking anything.
+SPEECH PATTERN UNDERSTANDING:
+- "hay I bi ka what ise D App se ware r u call ine from" = "Hello, I want to know what is this app and where are you calling from"
+- "abhi kam Lenge tab about u" = "I'm busy now, will take details later about you"
+- Broken English/Hindi mix is common due to phone quality
 
-CONTEXTUAL RESPONSES BASED ON THEIR EXACT WORDS:
-- If they say "abhi busy hun" / "kam hai" / "time nahi" → "No problem, bas 30 second mein WhatsApp number de dijiye?"
-- If they say "fine/good/theek/accha" → "Great! Aap ka WhatsApp number share kar dijiye?"  
-- If they ask "what/why/kya/kyon" → "Hum health checkup ki details share karna chahte hain, WhatsApp number de dijiye?"
-- If they say phone number → "Perfect! Aur email ID bhi bata dijiye"
-- If they say email → "Thank you! Details send kar denge"
-- If they say "not interested/nahi chahiye" → "Okay no problem, good day!"
+RESPOND APPROPRIATELY:
+- If asking what/why/where → "LabsCheck se hun, health checkup ke liye. WhatsApp number de dijiye?"
+- If saying fine/good/theek → "Great! WhatsApp number share kariye?"
+- If giving number → "Perfect! Email ID bhi?"
+- If giving email → "Thank you! Details send kar denge"
+- If busy/later → "Thik hai, bas WhatsApp number de dijiye?"
 
-Be SHORT (maximum 1 sentence) and respond to their EXACT words first.
+ONE sentence response maximum. Always ask for WhatsApp number if not given.
 
 Extract any useful information mentioned during the conversation and format it as JSON in your response.
 
@@ -82,13 +84,16 @@ Respond with a JSON object:
         { role: "user" as const, content: `Customer just said: "${userInput}". Acknowledge what they said and respond contextually to their exact words.` }
       ];
 
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      // Enhanced model selection for better Hinglish understanding
+      const model = "gpt-4o"; // Full model for better language understanding
+      console.log(`🧠 [AI MODEL] Using ${model} for Hinglish conversation`);
+      
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model,
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: 200,
+        temperature: 0.3, // Lower temperature for more predictable responses
       });
 
       const responseTime = Date.now() - startTime;

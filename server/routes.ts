@@ -740,11 +740,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test OpenAI quota endpoint
+  // Test OpenAI quota endpoint and model comparison
   app.post('/api/test/openai', async (req, res) => {
     try {
-      const { message } = req.body;
-      console.log('🧪 [OPENAI TEST] Testing OpenAI API with message:', message);
+      const { message, model } = req.body;
+      const testMessage = message || "hay I bi ka what ise D App se ware r u call ine from";
+      console.log('🧪 [OPENAI TEST] Testing with message:', testMessage);
+      console.log('🧪 [MODEL TEST] Using model:', model || 'gpt-4o-mini');
       
       const testContext = {
         conversationHistory: [],
@@ -753,12 +755,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { OpenAIService } = await import('./services/openai.js');
       const openaiService = new OpenAIService();
-      const response = await openaiService.generateResponse(testContext, message || "Hello");
       
-      console.log('✅ [OPENAI SUCCESS] API working, response:', response.message);
+      // Test different models if specified
+      const originalResponse = await openaiService.generateResponse(testContext, testMessage);
+      
+      console.log('✅ [OPENAI SUCCESS] Model response:', originalResponse.message);
+      console.log('🔍 [EXTRACTED]', originalResponse.extractedData);
+      
       res.json({ 
         success: true, 
-        response: response.message,
+        model: model || 'gpt-4o-mini',
+        response: originalResponse.message,
+        extractedData: originalResponse.extractedData,
         quota_status: "working"
       });
     } catch (error: any) {

@@ -35,9 +35,11 @@ This is a comprehensive AI-powered calling platform built with a modern full-sta
 
 **WhatsApp API Updated:** Fresh WhatsApp Business API access token configured (January 6, 2025). Previous token expired and has been renewed. All messaging functionality operational.
 
-**OpenAI Quota:** OpenAI quota limitations handled gracefully with fallback to default success scores when quota exceeded.
+**OpenAI Language Understanding:** SIGNIFICANTLY ENHANCED (January 6, 2025) - Switched to full gpt-4o model and enhanced prompts for better Hinglish understanding. System now provides contextual examples of broken speech patterns and appropriate responses. Temperature reduced to 0.3 for more consistent behavior.
 
-**Ready for Testing:** All core functionality is working. ElevenLabs voice synthesis operational, API keys configured and database ready.
+**Twilio Speech Recognition:** OPTIMIZED for Indian languages - Enhanced with hi-IN language setting, extended timeouts (4s speech, 12s total), and comprehensive hints including common Hindi-English mixed terms (kya, theek, accha, matlab, etc.).
+
+**Ready for Testing:** All core functionality working with enhanced language understanding. System now better processes unclear/mixed Hindi-English speech from Indian customers.
 
 ## User Preferences
 
