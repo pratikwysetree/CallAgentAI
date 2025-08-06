@@ -187,6 +187,26 @@ export class WhatsAppService {
     }
   }
 
+  // Handle message status updates (webhook)
+  static async handleMessageStatus(statusData: any): Promise<void> {
+    try {
+      console.log('📊 Processing message status update:', JSON.stringify(statusData, null, 2));
+      
+      const { id: messageId, status, recipient_id } = statusData;
+      
+      console.log(`📊 Status update - Message ID: ${messageId}, Status: ${status}, Recipient: ${recipient_id}`);
+      
+      // Update message status in database
+      const result = await db.update(whatsappMessages)
+        .set({ status })
+        .where(eq(whatsappMessages.twilioMessageSid, messageId));
+      
+      console.log(`✅ Message status updated to: ${status} for message ID: ${messageId}`);
+    } catch (error) {
+      console.error('❌ Error handling message status update:', error);
+    }
+  }
+
   // Handle incoming WhatsApp message (webhook)
   static async handleIncomingMessage(messageData: any): Promise<void> {
     try {

@@ -840,12 +840,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entry.changes?.forEach((change: any) => {
             console.log('🔄 Processing change:', JSON.stringify(change, null, 2));
             if (change.field === 'messages') {
+              // Handle incoming messages
               const messages = change.value?.messages;
               console.log('📨 Found messages:', JSON.stringify(messages, null, 2));
               if (messages) {
                 messages.forEach(async (message: any) => {
                   console.log('💬 Processing individual message:', JSON.stringify(message, null, 2));
                   await WhatsAppService.handleIncomingMessage(message);
+                });
+              }
+              
+              // Handle message status updates
+              const statuses = change.value?.statuses;
+              console.log('📊 Found statuses:', JSON.stringify(statuses, null, 2));
+              if (statuses) {
+                statuses.forEach(async (status: any) => {
+                  console.log('📊 Processing status update:', JSON.stringify(status, null, 2));
+                  await WhatsAppService.handleMessageStatus(status);
                 });
               }
             }
