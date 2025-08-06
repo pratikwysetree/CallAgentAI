@@ -66,11 +66,18 @@ export class CallManager {
         throw new Error('Active call not found');
       }
 
+      // Log customer input for debugging
+      console.log(`👤 [CUSTOMER SAID] "${userInput}"`);
+      console.log(`🔄 [CONVERSATION HISTORY]`, activeCall.conversationContext.conversationHistory.map(msg => `${msg.role}: ${msg.content}`));
+      
       // Get AI response
       const aiResponse = await openaiService.generateResponse(
         activeCall.conversationContext,
         userInput
       );
+      
+      console.log(`🤖 [AI RESPONSE] "${aiResponse.message}"`);
+      console.log(`📊 [EXTRACTED DATA]`, JSON.stringify(aiResponse.extractedData, null, 2));
 
       // Update conversation history
       activeCall.conversationContext.conversationHistory.push(

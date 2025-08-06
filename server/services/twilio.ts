@@ -161,8 +161,8 @@ export class TwilioService {
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Pause length="2"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="auto" timeout="8" language="en-IN"/>
+    <Pause length="1"/>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="3" timeout="10" language="en-IN" enhanced="true" profanityFilter="false"/>
 </Response>`;
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
@@ -176,8 +176,8 @@ export class TwilioService {
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice" language="en-IN" rate="medium">${message}</Say>
-    <Pause length="2"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="auto" timeout="8" language="en-IN"/>
+    <Pause length="1"/>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="3" timeout="10" language="en-IN" enhanced="true" profanityFilter="false"/>
 </Response>`;
     } catch (error) {
       console.error('Error generating TwiML:', error);

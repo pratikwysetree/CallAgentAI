@@ -636,26 +636,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/twilio/gather', async (req, res) => {
     try {
-      const { CallSid, SpeechResult } = req.body;
+      const { CallSid, SpeechResult, Confidence } = req.body;
       
-      if (!SpeechResult) {
-        const twiml = await twilioService.generateTwiML("I didn't catch that. Could you please repeat?");
+      console.log(`🎤 [SPEECH INPUT] Call: ${CallSid}`);
+      console.log(`🎤 [SPEECH TEXT] "${SpeechResult}"`);
+      console.log(`🎤 [CONFIDENCE] ${Confidence || 'N/A'}`);
+      console.log(`🎤 [RAW REQUEST]`, JSON.stringify(req.body, null, 2));
+      
+      // Handle empty or low-confidence speech
+      if (!SpeechResult || SpeechResult.trim() === '' || SpeechResult.toLowerCase() === 'timeout') {
+        console.log('❌ [NO SPEECH] No speech detected, asking customer to repeat');
+        const twiml = await twilioService.generateTwiML("Kuch samjha nahi aaya. Please speak clearly.");
         return res.type('text/xml').send(twiml);
       }
+      
+      // Clean up speech result
+      const cleanedInput = SpeechResult.trim();
+      console.log(`✅ [PROCESSING] Clean customer input: "${cleanedInput}"`);
 
-      const responseTwiml = await callManager.handleUserInput(CallSid, SpeechResult);
+      const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
       
       // Broadcast real-time update
       broadcast({ 
         type: 'conversation_update', 
         callSid: CallSid, 
-        userInput: SpeechResult 
+        userInput: cleanedInput 
       });
 
       res.type('text/xml').send(responseTwiml);
     } catch (error) {
       console.error('Error handling Twilio gather webhook:', error);
-      const errorTwiml = twilioService.generateHangupTwiML();
+      const errorTwiml = await twilioService.generateHangupTwiML();
       res.type('text/xml').send(errorTwiml);
     }
   });
