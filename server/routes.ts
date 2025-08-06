@@ -785,17 +785,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`❌ [SPEECH DEBUG] Raw SpeechResult: "${SpeechResult}"`);
         console.log(`❌ [SPEECH DEBUG] Confidence: ${Confidence}`);
         
-        // More patient retry with Hindi prompt
-        const retryPrompt = "Sunai nahi diya, dobara boliye. Please speak clearly.";
-        const twiml = await twilioService.generateTwiML(retryPrompt);
+        // No speech detected - just record without prompts
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Record action="/api/twilio/recording/${CallSid}" maxLength="10" playBeep="false" timeout="8" />
+</Response>`;
         return res.type('text/xml').send(twiml);
       }
       
       // For direct audio mode, accept lower confidence speech
       if (Confidence && parseFloat(Confidence) < 0.2) {
         console.log(`⚠️ [VERY LOW CONFIDENCE] Speech confidence extremely low: ${Confidence}`);
-        const retryPrompt = "I didn't catch that clearly. Please speak again.";
-        const twiml = await twilioService.generateTwiML(retryPrompt);
+        // Low confidence - just record without prompts
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Record action="/api/twilio/recording/${CallSid}" maxLength="10" playBeep="false" timeout="8" />
+</Response>`;
         return res.type('text/xml').send(twiml);
       }
       

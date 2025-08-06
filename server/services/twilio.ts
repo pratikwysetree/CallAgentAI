@@ -126,7 +126,7 @@ export class TwilioService {
     }
   }
 
-  async generateTwiML(message: string, campaignId?: string): Promise<string> {
+  async generateTwiML(message: string, campaignId?: string, options?: { callSid?: string }): Promise<string> {
     try {
       // Check if campaign has specific voice configuration
       let voiceConfig = null;
@@ -161,10 +161,7 @@ export class TwilioService {
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Pause length="1"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="8" timeout="20" language="en-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="I am great,I am fine,hello,hi,yes,no,ok,okay,good,lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,business,labscheck,diagnostic,test,my name is,thank you,thanks,bye,goodbye">
-        <Say voice="alice" language="en-IN">Please speak...</Say>
-    </Gather>
+    <Record action="/api/twilio/recording/${options?.callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
@@ -174,14 +171,11 @@ export class TwilioService {
         console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in English voice - ElevenLabs not configured`);
       }
 
-      // Fallback to Twilio's built-in voice synthesis for conversational flow
+      // Fallback to Twilio's built-in voice synthesis for conversational flow  
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice" language="en-IN" rate="medium">${message}</Say>
-    <Pause length="1"/>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="8" timeout="20" language="en-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="I am great,I am fine,hello,hi,yes,no,ok,okay,good,lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,business,labscheck,diagnostic,test,my name is,thank you,thanks,bye,goodbye">
-        <Say voice="alice" language="en-IN">Please speak...</Say>
-    </Gather>
+    <Record action="/api/twilio/recording/${options?.callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
     } catch (error) {
       console.error('Error generating TwiML:', error);
@@ -189,9 +183,7 @@ export class TwilioService {
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="alice">${message}</Say>
-    <Gather input="speech" action="/api/twilio/gather" speechTimeout="8" timeout="20" language="en-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="I am great,I am fine,hello,hi,yes,no,ok,okay,good,lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,business,labscheck,diagnostic,test,my name is,thank you,thanks,bye,goodbye">
-        <Say voice="alice" language="en-IN">Please speak...</Say>
-    </Gather>
+    <Record action="/api/twilio/recording/${options?.callSid || 'unknown'}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
     }
   }
