@@ -31,17 +31,15 @@ export class CallManager {
       const twilioCallSid = await twilioService.initiateCall({
         to: phoneNumber,
         campaignId,
-        contactId: contact?.id,
+        contactId: contact?.id?.toString(),
       });
 
-      // Set up conversation context with full campaign script for AI reference
+      // Set up conversation context for natural conversation (no script reading)
       const conversationContext: ConversationContext = {
-        campaignPrompt: campaign.aiPrompt,
+        campaignPrompt: campaign.aiPrompt || "Introduce LabsCheck services and collect WhatsApp/email for sharing details",
         conversationHistory: [],
         contactName: contact?.name,
         phoneNumber,
-        campaignScript: campaign.script, // Include full script for AI to follow conversation flow
-        campaignScript: campaign.script, // Include full script for AI to follow conversation flow
       };
 
       // Store active call
@@ -112,7 +110,7 @@ export class CallManager {
       const callRecord = await storage.getCallByTwilioSid(twilioCallSid);
       const campaignId = callRecord?.campaignId;
 
-      return await twilioService.generateTwiML(aiResponse.message, campaignId);
+      return await twilioService.generateTwiML(aiResponse.message, campaignId || undefined);
     } catch (error) {
       console.error('Error handling user input:', error);
       return await twilioService.generateTwiML("I'm sorry, I'm having technical difficulties. Let me end this call.");
@@ -151,11 +149,12 @@ export class CallManager {
           // Update or create contact with collected data
           if (call.collectedData && call.contactId) {
             const extractedData = call.collectedData as Record<string, any>;
-            await storage.updateContact(call.contactId, {
+            await storage.updateContact(parseInt(call.contactId), {
               name: extractedData.name || undefined,
               email: extractedData.email || undefined,
               company: extractedData.company || undefined,
               notes: extractedData.notes || undefined,
+              whatsappNumber: extractedData.whatsapp_number || undefined,
             });
           } else if (call.collectedData) {
             // Create new contact if we collected a name
@@ -163,14 +162,15 @@ export class CallManager {
             if (extractedData.name) {
             const newContact = await storage.createContact({
               name: extractedData.name,
-              phoneNumber: call.phoneNumber,
+              phone: call.phoneNumber,
               email: extractedData.email || undefined,
               company: extractedData.company || undefined,
               notes: extractedData.notes || undefined,
+              whatsappNumber: extractedData.whatsapp_number || undefined,
             });
 
             await storage.updateCall(call.id, {
-              contactId: newContact.id,
+              contactId: newContact.id.toString(),
             });
             }
           }
