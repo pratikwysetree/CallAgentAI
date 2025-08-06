@@ -186,6 +186,158 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "voic
     }
   }
   
+  // Process direct speech text (from Twilio Gather) with language detection
+  async processDirectSpeech(speechText: string, callSid: string, campaignId: string): Promise<string> {
+    const startTime = Date.now();
+    console.log(`🎤 [DIRECT-SPEECH] Processing: "${speechText}"`);
+    
+    try {
+      // Get AI response with enhanced language detection
+      const aiStart = Date.now();
+      const aiResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are calling pathology labs for LabsCheck partnership. 
+
+BUSINESS: LabsCheck is a neutral platform connecting 500+ labs to 100k+ users. Zero commission - labs keep 100% payments.
+
+GOAL: Get lab owner/manager contact details (WhatsApp, email) for partnership.
+
+CRITICAL LANGUAGE DETECTION:
+- Analyze the input language carefully
+- If input contains Hindi words (hai, abhi, kya, acha, etc.) OR mixed Hindi-English, respond in Hindi/Hinglish
+- If input is purely English, respond in English
+- Match the customer's exact language style and tone
+
+EXAMPLES:
+- Input: "Hai abhi i m doing great" → Respond: "Acha! Aap lab owner hain?" (Hindi/Hinglish)
+- Input: "Hello I am fine" → Respond: "Great! Are you a lab owner?" (English)
+- Input: "Main theek hun" → Respond: "Bahut acha! Aap laboratory chalate hain?" (Hindi)
+
+STYLE: Warm, brief, natural conversation. Max 15 words. Say key benefit upfront.
+
+RESPONSE FORMAT: {"message": "your response matching customer's language exactly", "voice_language": "hindi/english/hinglish based on input", "collected_data": {"contact_person": "name", "whatsapp_number": "number", "email": "email", "lab_name": "name"}, "should_end": false}`
+          },
+          {
+            role: "user", 
+            content: speechText
+          }
+        ],
+        max_tokens: 120,
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      });
+      
+      const aiTime = Date.now() - aiStart;
+      let aiData;
+      try {
+        aiData = JSON.parse(aiResponse.choices[0].message.content || '{}');
+      } catch (parseError) {
+        console.error('❌ [AI JSON PARSE ERROR]:', parseError);
+        // Detect language from input for fallback
+        const hasHindi = /hai|abhi|kya|acha|main|theek|hun|aap|hain|ke|ka|ki/.test(speechText.toLowerCase());
+        aiData = {
+          message: hasHindi ? "Acha! Aap lab owner hain?" : "Great! Are you a lab owner?",
+          voice_language: hasHindi ? "hinglish" : "english",
+          should_end: false,
+          collected_data: {}
+        };
+      }
+      
+      console.log(`🧠 [AI-DIRECT] ${aiTime}ms: "${aiData.message}" (Language: ${aiData.voice_language})`);
+      console.log(`📤 [LANGUAGE-MATCH] Input: "${speechText}" → Response: "${aiData.message}" (${aiData.voice_language})`);
+      
+      // Generate voice response with matching language
+      const ttsStart = Date.now();
+      let audioUrl = null;
+      
+      const voiceLanguage = aiData.voice_language || 'english';
+      const isHindiResponse = voiceLanguage.includes('hindi') || voiceLanguage.includes('hinglish');
+      
+      try {
+        console.log(`🎤 [TTS-DIRECT] Generating ${voiceLanguage} voice for: "${aiData.message}"`);
+        
+        const speechResponse = await openai.audio.speech.create({
+          model: "tts-1",
+          voice: isHindiResponse ? "nova" : "alloy",
+          input: aiData.message,
+          speed: 1.0,
+        });
+        
+        const audioArrayBuffer = await speechResponse.arrayBuffer();
+        const audioBuffer = Buffer.from(audioArrayBuffer);
+        const audioFilename = `direct_speech_${callSid}_${Date.now()}.mp3`;
+        const audioPath = path.join(__dirname, '../../temp', audioFilename);
+        fs.writeFileSync(audioPath, audioBuffer);
+        
+        const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+        const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+        audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+        
+        const ttsTime = Date.now() - ttsStart;
+        console.log(`🎤 [TTS-DIRECT] ${ttsTime}ms - Generated ${voiceLanguage} audio: ${audioUrl}`);
+        
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(audioPath);
+            console.log(`🗑️ [CLEANUP] Removed audio file: ${audioFilename}`);
+          } catch (e) {
+            console.log('Audio cleanup:', e.message);
+          }
+        }, 60000);
+        
+      } catch (ttsError) {
+        console.error('❌ [TTS-DIRECT] Error generating voice:', ttsError);
+      }
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`⚡ [TOTAL-DIRECT] ${totalTime}ms (AI: ${aiTime}ms, TTS: ${Date.now() - ttsStart}ms)`);
+      
+      // Create TwiML response WITHOUT "Please speak" prompts
+      let twiml;
+      if (audioUrl) {
+        twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${audioUrl}</Play>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
+</Response>`;
+      } else {
+        twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" rate="normal">${aiData.message}</Say>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
+</Response>`;
+      }
+
+      // Store conversation data if collected
+      if (aiData.collected_data && Object.keys(aiData.collected_data).length > 0) {
+        await this.updateContactData(callSid, aiData.collected_data);
+      }
+      
+      // Check if call should end
+      if (aiData.should_end) {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  ${audioUrl ? `<Play>${audioUrl}</Play>` : `<Say voice="alice" rate="normal">${aiData.message}</Say>`}
+  <Hangup/>
+</Response>`;
+      }
+      
+      return twiml;
+      
+    } catch (error) {
+      console.error('❌ [DIRECT-SPEECH] Error:', error);
+      
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Sorry, technical issue. Thank you for your time.</Say>
+  <Hangup/>
+</Response>`;
+    }
+  }
+
   // Store contact data from conversation
   private async updateContactData(callSid: string, collectedData: any) {
     try {

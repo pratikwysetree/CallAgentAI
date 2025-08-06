@@ -671,8 +671,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`⚡ [DIRECT-AUDIO] Call: ${callSid}, Speech: "${SpeechResult}", Confidence: ${Confidence}`);
     
     try {
-      // Import direct audio service
-      const { directAudioService } = await import('./services/directAudioService');
+      // Import enhanced direct audio service
+      const { enhancedDirectAudioService } = await import('./services/enhancedDirectAudioService');
       
       // Get call info
       const call = await storage.getCallByTwilioSid(callSid);
@@ -686,25 +686,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
       
-      // Process speech result directly with AI (ultra-fast mode)
+      // Process speech result with enhanced language detection
       if (SpeechResult && SpeechResult.trim()) {
-        const { directAudioService } = await import('./services/directAudioService');
-        const speechBuffer = Buffer.from(SpeechResult, 'utf8');
-        const twimlResponse = await directAudioService.processAudioRealtime(
-          speechBuffer,
+        console.log(`🎙️ [ENHANCED-DIRECT] Processing speech: "${SpeechResult}"`);
+        const { enhancedDirectAudioService } = await import('./services/enhancedDirectAudioService');
+        const twimlResponse = await enhancedDirectAudioService.processDirectSpeech(
+          SpeechResult,
           callSid,
           call.campaignId
         );
         return res.type('text/xml').send(twimlResponse);
       }
       
-      // If no speech result, prompt to repeat
+      // If no speech result, just record without prompts
       const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">I didn't catch that. Please speak clearly.</Say>
-  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${callSid}" method="POST">
-    <Say voice="alice">Please speak now</Say>
-  </Gather>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
       return res.type('text/xml').send(noSpeechTwiml);
       
