@@ -41,8 +41,14 @@ export class FreshConversationService {
       
       try {
         // Use Twilio client to access authenticated recording
-        const twilio = await import('twilio');
-        const twilioClient = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        let twilioClient;
+        try {
+          const twilio = await import('twilio');
+          twilioClient = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        } catch (importError) {
+          console.error('❌ [TWILIO-IMPORT] Failed to import Twilio:', importError);
+          throw new Error('Twilio client initialization failed');
+        }
         
         // Extract recording SID from URL
         const recordingSid = recordingUrl.split('/').pop();
@@ -73,7 +79,15 @@ export class FreshConversationService {
       
       // 2. Save audio file with proper extension for OpenAI Whisper
       const audioFilename = `fresh_audio_${callSid}_${Date.now()}.${audioExtension}`;
-      const audioPath = path.join(process.cwd(), 'temp', audioFilename);
+      const tempDir = path.join(process.cwd(), 'temp');
+      
+      // Ensure temp directory exists
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+        console.log('📁 [TEMP] Created temp directory');
+      }
+      
+      const audioPath = path.join(tempDir, audioFilename);
       fs.writeFileSync(audioPath, audioBuffer);
       
       // 3. Transcribe with OpenAI Whisper (auto-detect language)
@@ -87,6 +101,12 @@ export class FreshConversationService {
       
       const customerText = transcription.text.trim();
       console.log(`🎤 [CUSTOMER] Said: "${customerText}"`);
+      
+      // Check if transcription is empty
+      if (!customerText || customerText.length < 2) {
+        console.log('⚠️ [WHISPER] Empty or very short transcription, using default response');
+        return this.generateTwiMLResponse(null, "I didn't catch that. Could you please repeat?", false, callSid);
+      }
       
       // Broadcast customer speech event
       this.broadcastConversationEvent(callSid, 'customer_speech', customerText, {

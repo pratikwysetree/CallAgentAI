@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Export broadcast function for use in other modules
-  global.broadcastToClients = broadcast;
+  (global as any).broadcastToClients = broadcast;
 
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
