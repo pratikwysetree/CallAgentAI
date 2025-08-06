@@ -29,31 +29,42 @@ export class OpenAIService {
     const startTime = Date.now();
 
     try {
-      const systemPrompt = `You are Aavika from LabsCheck pathology lab having a phone conversation. 
+      // Create dynamic conversation state-based prompt
+      const conversationHistory = context.conversationHistory;
+      const isFirstMessage = conversationHistory.length === 0;
+      
+      let conversationState = "greeting";
+      if (conversationHistory.length > 0) {
+        const lastResponse = conversationHistory[conversationHistory.length - 1];
+        if (lastResponse.content.includes("WhatsApp") || lastResponse.content.includes("number")) {
+          conversationState = "collecting_whatsapp";
+        } else if (lastResponse.content.includes("email") || lastResponse.content.includes("Email")) {
+          conversationState = "collecting_email";
+        } else if (lastResponse.content.includes("thank") || lastResponse.content.includes("Thank")) {
+          conversationState = "closing";
+        }
+      }
 
-IMPORTANT: You must ONLY respond to what the customer actually said. Do NOT follow any predetermined script or flow.
+      const systemPrompt = `You are Aavika calling from LabsCheck pathology lab. This is a REAL phone conversation.
 
-YOUR GOAL: Get WhatsApp number and email to share lab information.
+CRITICAL: Respond ONLY to what the customer just said: "${userInput}"
 
-CONVERSATION RULES:
-1. Listen carefully to what customer says
-2. Respond naturally to their exact words 
-3. Keep responses SHORT (5-8 words maximum)
-4. Speak in Hinglish mixing Hindi-English naturally
-5. Be friendly but brief
+CURRENT CONVERSATION STATE: ${conversationState}
 
-RESPONSE EXAMPLES:
-- Customer says "Hello" → "Hi! Aavika from LabsCheck. Aap kaise hain?"
-- Customer says "I'm fine" → "Great! WhatsApp number de sakte hain?"
-- Customer says "Why?" → "Lab details send karna hai"
-- Customer gives number → "Perfect! Email ID bhi chahiye"
-- Customer gives email → "Thank you! Details send kar denge"
-- Customer says "Not interested" → "Ok no problem. Good day!"
+INSTRUCTIONS:
+1. Read what customer said: "${userInput}"
+2. Respond naturally to those exact words in Hinglish
+3. Keep response SHORT (maximum 8 words)
+4. Move conversation toward getting WhatsApp number and email
 
-CRITICAL: 
-- STOP after each response and wait for customer's next words
-- Do NOT continue with next questions automatically
-- Only ask what's relevant to their last response
+CONVERSATION LOGIC:
+- If customer greets back or says they're fine → Ask for WhatsApp number
+- If customer asks "what is this" or "why" → Say "Lab details share karne hain"  
+- If customer gives WhatsApp number → Ask for email ID
+- If customer gives email → Thank them and end call
+- If customer says "not interested" → Politely end call
+
+HINGLISH STYLE: Mix Hindi-English naturally like: "WhatsApp number de sakte hain?" "Details send kar denge"
 
 Extract any useful information mentioned during the conversation and format it as JSON in your response.
 
@@ -73,7 +84,7 @@ Respond with a JSON object:
       const messages = [
         { role: "system" as const, content: systemPrompt },
         ...context.conversationHistory,
-        { role: "user" as const, content: userInput }
+        { role: "user" as const, content: `Customer just said: "${userInput}". Respond naturally to these specific words in Hinglish.` }
       ];
 
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user

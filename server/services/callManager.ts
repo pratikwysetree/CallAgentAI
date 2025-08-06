@@ -36,7 +36,7 @@ export class CallManager {
 
       // Set up conversation context for natural conversation (no script reading)
       const conversationContext: ConversationContext = {
-        campaignPrompt: "Have a natural conversation to collect WhatsApp number and email ID for sharing LabsCheck information",
+        campaignPrompt: "Natural conversation to collect WhatsApp and email",
         conversationHistory: [],
         contactName: contact?.name,
         phoneNumber,
@@ -67,8 +67,14 @@ export class CallManager {
       }
 
       // Log customer input for debugging
+      console.log(`\n🎯 ===========================================`);
       console.log(`👤 [CUSTOMER SAID] "${userInput}"`);
-      console.log(`🔄 [CONVERSATION HISTORY]`, activeCall.conversationContext.conversationHistory.map(msg => `${msg.role}: ${msg.content}`));
+      console.log(`📞 [CALL STATE] Total messages: ${activeCall.conversationContext.conversationHistory.length}`);
+      console.log(`🔄 [CONVERSATION HISTORY]`);
+      activeCall.conversationContext.conversationHistory.forEach((msg, i) => {
+        console.log(`   ${i+1}. ${msg.role}: "${msg.content}"`);
+      });
+      console.log(`🎯 ===========================================\n`);
       
       // Get AI response
       const aiResponse = await openaiService.generateResponse(
@@ -78,6 +84,7 @@ export class CallManager {
       
       console.log(`🤖 [AI RESPONSE] "${aiResponse.message}"`);
       console.log(`📊 [EXTRACTED DATA]`, JSON.stringify(aiResponse.extractedData, null, 2));
+      console.log(`🎯 [END CALL FLAG] ${aiResponse.shouldEndCall}`);
 
       // Update conversation history
       activeCall.conversationContext.conversationHistory.push(
@@ -162,7 +169,7 @@ export class CallManager {
           // Update or create contact with collected data
           if (call.collectedData && call.contactId) {
             const extractedData = call.collectedData as Record<string, any>;
-            await storage.updateContact(parseInt(call.contactId), {
+            await storage.updateContact(call.contactId, {
               name: extractedData.name || undefined,
               email: extractedData.email || undefined,
               company: extractedData.company || undefined,
