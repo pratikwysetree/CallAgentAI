@@ -33,6 +33,8 @@ This is a comprehensive AI-powered calling platform built with a modern full-sta
 
 **Indic-TTS Integration:** AI4Bharat Indic-TTS fully operational with enhanced speech synthesis! System now uses campaign scripts instead of generic greetings. Fixed formant-based audio generation to produce speech-like audio instead of musical tones. Generates proper 22050Hz WAV files with word-by-word processing, natural pauses, and human speech formant frequencies. Campaign scripts properly processed with Hindi word translation (lab→लैब, test→जांच). Audio files at 646KB show complete script content. TwiML uses `<Play>` tags for synthesized Hindi audio. Ready for production with authentic speech-like voice calls.
 
+**WhatsApp API Updated:** New WhatsApp Business API credentials successfully configured and tested. All messaging functionality operational.
+
 **Ready for Testing:** All core functionality is working. API keys configured and database ready.
 
 ## User Preferences
