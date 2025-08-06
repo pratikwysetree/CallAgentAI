@@ -636,31 +636,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎙️ [PERFORMANCE] Target: <2s total response time`);
       
       if (!RecordingUrl || !RecordingDuration || parseFloat(RecordingDuration) < 0.5) {
-        console.log('❌ [NO RECORDING] No recording or too short');
-        const retryPrompt = "I didn't catch that. Could you please repeat?";
-        const { fastResponseService } = await import('./services/fastResponse');
-        const twiml = fastResponseService.generateTwiML(retryPrompt);
-        return res.type('text/xml').send(twiml);
+        console.log('❌ [NO RECORDING] No recording or too short - NO RESPONSE');
+        // NO RESPONSE - Wait for proper recording
+        return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
+</Response>`);
       }
 
-      // ULTRA-FAST MODE: Skip all AI processing for <200ms response
-      console.log(`⚡ [ULTRA-FAST MODE] Generating instant response`);
+      // STEP 1: WHISPER TRANSCRIPTION - MANDATORY
+      const transcriptionStart = Date.now();
+      const { whisperService } = await import('./services/whisperService');
+      const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
+        language: 'hi',
+        prompt: "Hindi English mixed lab business call"
+      });
+
+      const transcriptionTime = Date.now() - transcriptionStart;
+      console.log(`🎙️ [WHISPER] "${transcription.text}" (${transcriptionTime}ms)`);
+
+      if (!transcription.text || transcription.text.trim().length < 2) {
+        console.log('❌ [EMPTY TRANSCRIPTION] No speech detected - NO RESPONSE');
+        // NO RESPONSE - Wait for clear speech
+        return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
+</Response>`);
+      }
+
+      const customerInput = transcription.text.trim();
+      console.log(`🗣️ [CUSTOMER SAID] "${customerInput}"`);
+
+      // STEP 2: MANDATORY OPENAI PROCESSING
+      const modelStart = Date.now();
+      console.log(`🧠 [AI] Processing customer input through OpenAI...`);
       
-      const { fastResponseService } = await import('./services/fastResponse');
-      const fastResponse = "Do you run a pathology lab?"; // Natural English response
-      const twiml = fastResponseService.generateTwiML(fastResponse);
+      const responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
       
+      const modelTime = Date.now() - modelStart;
       const totalTime = Date.now() - startTime;
-      console.log(`⚡ [INSTANT] Response in ${totalTime}ms`);
+      
+      console.log(`🧠 [AI] OpenAI response generated (${modelTime}ms)`);
+      console.log(`⚡ [TOTAL] End-to-end with OpenAI: ${totalTime}ms`);
       
       // Broadcast update
       broadcast({ 
         type: 'conversation_update', 
         callSid: CallSid, 
-        userInput: "Customer spoke" 
+        userInput: customerInput 
       });
 
-      res.type('text/xml').send(twiml);
+      res.type('text/xml').send(responseTwiml);
 
     } catch (error) {
       const errorTime = Date.now() - startTime;

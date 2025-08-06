@@ -183,17 +183,14 @@ Respond with a JSON object:
 
       const responseTime = Date.now() - startTime;
       
-      // Safe JSON parsing with fallback
+      // Safe JSON parsing - NO FALLBACK RESPONSES
       let aiResponse;
       try {
         aiResponse = JSON.parse(response.choices[0].message.content || '{}');
       } catch (parseError) {
-        console.error('🚨 [JSON ERROR] Invalid AI response, using fallback');
-        aiResponse = {
-          message: "Sorry, connection issue. Can you repeat?",
-          shouldEndCall: false,
-          extractedData: { notes: "JSON parse error" }
-        };
+        console.error('🚨 [JSON ERROR] Invalid AI response - RETRYING');
+        // RETRY the OpenAI call instead of fallback
+        throw new Error('Invalid JSON response from OpenAI - retry required');
       }
 
       return {
