@@ -899,6 +899,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await callManager.handleCallStatusUpdate(CallSid, CallStatus);
       
+      // Handle call completion with summary generation
+      if (CallStatus === 'completed' || CallStatus === 'failed' || CallStatus === 'busy' || CallStatus === 'no-answer') {
+        const { FreshConversationService } = await import('./services/freshConversationService');
+        const freshConversationService = new FreshConversationService(wss);
+        await freshConversationService.handleCallCompletion(CallSid);
+      }
+      
       // Broadcast real-time update
       broadcast({ 
         type: 'call_status_update', 

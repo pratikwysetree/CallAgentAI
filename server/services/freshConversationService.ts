@@ -501,6 +501,73 @@ RESPONSE FORMAT: You must respond in json format with this exact structure: {"me
     this.collectedData.set(callSid, mergedData);
     
     console.log(`💾 [STORE-DATA] Call: ${callSid}, Data:`, mergedData);
+    
+    // Store in database and trigger actions
+    await this.updateCallWithCollectedData(callSid, mergedData);
+    
+    // Send real-time WhatsApp message if contact details collected
+    if (mergedData.whatsapp_number && !this.sentWhatsApp.has(callSid)) {
+      await this.sendRealTimeWhatsApp(callSid, mergedData.whatsapp_number);
+      this.sentWhatsApp.add(callSid);
+    }
+  }
+
+  private sentWhatsApp = new Set<string>();
+
+  private async updateCallWithCollectedData(callSid: string, collectedData: any): Promise<void> {
+    try {
+      const { storage } = await import('../storage');
+      const calls = await storage.getCalls();
+      const call = calls.find(c => c.twilioCallSid === callSid);
+      
+      if (call) {
+        // Update call with collected data
+        await storage.updateCall(call.id, { 
+          collectedData,
+          status: Object.keys(collectedData).length > 0 ? 'data_collected' : 'active'
+        });
+        
+        // Update contact if contact details collected
+        if (call.contactId && (collectedData.whatsapp_number || collectedData.email)) {
+          const updateData: any = {};
+          if (collectedData.whatsapp_number) updateData.whatsappNumber = collectedData.whatsapp_number;
+          if (collectedData.email) updateData.email = collectedData.email;
+          if (collectedData.contact_person) updateData.name = collectedData.contact_person;
+          
+          await storage.updateContact(call.contactId, updateData);
+          console.log(`📋 [CONTACT-UPDATE] Updated contact for call: ${callSid}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ [UPDATE-CALL-DATA] Error:', error);
+    }
+  }
+
+  private async sendRealTimeWhatsApp(callSid: string, whatsappNumber: string): Promise<void> {
+    try {
+      const { storage } = await import('../storage');
+      const calls = await storage.getCalls();
+      const call = calls.find(c => c.twilioCallSid === callSid);
+      
+      if (call?.campaignId) {
+        const { WhatsAppService } = await import('./whatsappService');
+        const message = "Thank you for your time! This is the official information about LabsCheck partnership. Please check your email for detailed partnership proposal.";
+        
+        await WhatsAppService.sendMessage(whatsappNumber, message, 'LabsCheck Partner', call.contactId || undefined);
+        
+        // Update call to mark WhatsApp sent
+        await storage.updateCall(call.id, { whatsappSent: true });
+        
+        console.log(`📱 [WHATSAPP-SENT] Real-time message sent to: ${whatsappNumber}`);
+        
+        // Broadcast the WhatsApp event
+        this.broadcastConversationEvent(callSid, 'whatsapp_sent', message, {
+          phoneNumber: whatsappNumber
+        });
+      }
+    } catch (error) {
+      console.error('❌ [WHATSAPP-REALTIME] Error:', error);
+    }
   }
 
   getStoredData(callSid: string): any {
@@ -509,5 +576,80 @@ RESPONSE FORMAT: You must respond in json format with this exact structure: {"me
 
   clearStoredData(callSid: string): void {
     this.collectedData.delete(callSid);
+    this.sentWhatsApp.delete(callSid);
+  }
+
+  // Complete call handling with summary generation
+  async handleCallCompletion(callSid: string): Promise<void> {
+    try {
+      const { storage } = await import('../storage');
+      const calls = await storage.getCalls();
+      const call = calls.find(c => c.twilioCallSid === callSid);
+      
+      if (call) {
+        // Generate call summary
+        const summary = await this.generateCallSummary(callSid);
+        
+        // Update call with final status
+        await storage.updateCall(call.id, { 
+          status: 'completed',
+          endTime: new Date(),
+          collectedData: { ...call.collectedData, summary }
+        });
+        
+        // Clean up stored data
+        this.clearStoredData(callSid);
+        
+        console.log(`✅ [CALL-COMPLETED] Call ${callSid} completed with summary`);
+        
+        // Broadcast completion event
+        this.broadcastConversationEvent(callSid, 'call_completed', summary, {
+          callId: call.id,
+          duration: call.endTime ? Date.now() - new Date(call.startTime || 0).getTime() : null
+        });
+      }
+    } catch (error) {
+      console.error('❌ [CALL-COMPLETION] Error:', error);
+    }
+  }
+
+  private async generateCallSummary(callSid: string): Promise<string> {
+    try {
+      const { storage } = await import('../storage');
+      const messages = await storage.getCallMessages(callSid);
+      const collectedData = this.getStoredData(callSid);
+      
+      if (!messages || messages.length === 0) {
+        return "Call completed with no conversation recorded.";
+      }
+      
+      // Generate AI summary of the conversation
+      const conversationText = messages.map(msg => 
+        `${msg.role === 'user' ? 'Customer' : 'Agent'}: ${msg.content}`
+      ).join('\n');
+      
+      const { default: OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const summaryResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Generate a concise call summary for a LabsCheck partnership call. Include: call outcome, collected contact details, customer interest level, and next steps. Keep it under 100 words."
+          },
+          {
+            role: "user",
+            content: `Conversation:\n${conversationText}\n\nCollected Data: ${JSON.stringify(collectedData)}`
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.3
+      });
+      
+      return summaryResponse.choices[0]?.message?.content || "Call summary could not be generated.";
+    } catch (error) {
+      console.error('❌ [SUMMARY-GENERATION] Error:', error);
+      return "Call completed. Summary generation failed.";
+    }
   }
 }
