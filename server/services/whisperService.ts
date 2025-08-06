@@ -133,16 +133,31 @@ export class WhisperService {
       // Add Twilio authentication for downloading recordings
       const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
       
-      const response = await fetch(recordingUrl, {
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'User-Agent': 'LabsCheck-Whisper/1.0'
-        }
-      });
+      // Add retry mechanism for Twilio recording availability
+      let response;
+      let attempts = 0;
+      const maxAttempts = 3;
       
-      if (!response.ok) {
-        console.error(`🎙️ [WHISPER] Download failed: ${response.status} ${response.statusText}`);
-        throw new Error(`Failed to download audio: ${response.statusText}`);
+      while (attempts < maxAttempts) {
+        response = await fetch(recordingUrl, {
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'User-Agent': 'LabsCheck-Whisper/1.0'
+          }
+        });
+
+        if (response.ok) {
+          break;
+        }
+
+        attempts++;
+        if (attempts < maxAttempts && response.status === 404) {
+          console.log(`🎙️ [WHISPER] Recording not ready (attempt ${attempts}), waiting 1s...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          console.error(`🎙️ [WHISPER] Download failed: ${response.status} ${response.statusText}`);
+          throw new Error(`Failed to download audio: ${response.statusText}`);
+        }
       }
       
       const audioBuffer = Buffer.from(await response.arrayBuffer());

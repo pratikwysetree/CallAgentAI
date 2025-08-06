@@ -712,6 +712,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const errorTime = Date.now() - startTime;
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ [RECORD ERROR] ${errorMsg} (${errorTime}ms)`);
+      
+      // For Whisper download errors, continue recording instead of hanging up
+      if (errorMsg.includes('Whisper download failed') || errorMsg.includes('Failed to download audio')) {
+        console.log('🔄 [WHISPER ERROR] Continuing recording instead of hanging up');
+        return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
+</Response>`);
+      }
+      
       const errorTwiml = await twilioService.generateHangupTwiML();
       res.type('text/xml').send(errorTwiml);
     }
