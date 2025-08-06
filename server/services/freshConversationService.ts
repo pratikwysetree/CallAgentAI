@@ -49,8 +49,8 @@ export class FreshConversationService {
     const isHindi = /[\u0900-\u097F]/.test(customerText) || 
                    /(hai|hain|kya|kaise|kahan|nahin|nahi|acha|thik|lab|test)/i.test(customerText);
     
-    // Lab owner confirmation responses
-    if (/(yes|haan|han|ji|owner|malik|malkin)/i.test(text) && !(/(nahin|nahi|no)/i.test(text))) {
+    // Lab owner confirmation responses - only if they explicitly mention being owner
+    if (/(yes.*owner|owner.*yes|i.*am.*owner|main.*owner|mai.*malik|haan.*owner)/i.test(text) && !(/(nahin|nahi|no)/i.test(text))) {
       return {
         message: isHindi ? "महान! LabsCheck India का पहला diagnostic aggregator platform है। हम trusted diagnostics को affordable prices पर provide करते हैं। क्या आप partnership में interested हैं?" : 
                            "Great! LabsCheck is India's first diagnostic aggregator platform. We provide trusted diagnostics at affordable prices. Are you interested in partnership?",
@@ -59,8 +59,8 @@ export class FreshConversationService {
       };
     }
     
-    // Common greetings/responses
-    if (/(hello|hi|haan|han)/i.test(text) && !/(owner|malik|malkin|yes)/i.test(text)) {
+    // Common greetings/responses - only for simple greetings without owner context
+    if (/(^hello$|^hi$|^namaste$)/i.test(text)) {
       return {
         message: isHindi ? "हैलो! मैं आविका हूँ LabsCheck से। क्या आप लैब के owner हैं?" : 
                            "Hi! I am Aavika from LabsCheck. Are you the lab owner?",
@@ -163,22 +163,17 @@ export class FreshConversationService {
         processingTime: Date.now() - startTime
       });
       
-      // 4. Check for quick responses first, then use OpenAI for complex queries
-      const quickResponse = this.getQuickResponse(customerText);
+      // 4. Always use OpenAI for better conversation processing
+      // Skip quick responses to avoid blocking important conversations
+      console.log('🧠 [OPENAI] Processing customer response with AI for better conversation flow');
       let aiResponse: any;
       let openaiRequestStart = Date.now();
       
-      if (quickResponse) {
-        console.log('⚡ [QUICK-RESPONSE] Using predefined response for common query');
-        aiResponse = quickResponse;
-      } else {
-        console.log('🧠 [OPENAI] Using OpenAI for complex query');
-        
-        const requestPayload = {
-          model: "gpt-4o" as const,
-          messages: [
-            {
-              role: "system" as const,
+      const requestPayload = {
+        model: "gpt-4o" as const,
+        messages: [
+          {
+            role: "system" as const,
               content: `You are Aavika from LabsCheck calling pathology labs for partnership.
 
 CRITICAL: If customer confirms they are the lab owner (words like "yes", "haan", "ji", "owner", "malik") DO NOT repeat the opening question. Move to next step.
@@ -210,51 +205,50 @@ IMPORTANT: Always respond in JSON format exactly like this:
 {"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
 
 Use JSON format for all responses.`
-            },
-            {
-              role: "user" as const,
-              content: customerText
-            }
-          ],
-          response_format: { type: "json_object" as const },
-          temperature: 0.3
+          },
+          {
+            role: "user" as const,
+            content: customerText
+          }
+        ],
+        response_format: { type: "json_object" as const },
+        temperature: 0.3
+      };
+      
+      // Broadcast OpenAI request
+      this.broadcastConversationEvent(callSid, 'openai_request', JSON.stringify(requestPayload, null, 2), {
+        model: "gpt-4o",
+        temperature: 0.3
+      });
+      
+      const openaiResponse = await openai.chat.completions.create(requestPayload);
+      
+      const openaiProcessingTime = Date.now() - openaiRequestStart;
+      
+      // Validate OpenAI response structure
+      if (!openaiResponse || !openaiResponse.choices || !Array.isArray(openaiResponse.choices) || openaiResponse.choices.length === 0) {
+        throw new Error('Invalid OpenAI response structure');
+      }
+      
+      const aiResponseContent = openaiResponse.choices[0]?.message?.content || '{}';
+      
+      // Broadcast OpenAI response
+      this.broadcastConversationEvent(callSid, 'openai_response', aiResponseContent, {
+        model: "gpt-4o",
+        processingTime: openaiProcessingTime,
+        tokens: openaiResponse.usage?.total_tokens || 0
+      });
+      
+      // Parse AI response
+      try {
+        aiResponse = JSON.parse(aiResponseContent);
+      } catch (parseError) {
+        console.error('❌ [AI PARSE ERROR]:', parseError);
+        aiResponse = {
+          message: "Great! Can I get your WhatsApp number for partnership details?",
+          should_end: false,
+          collected_data: {}
         };
-        
-        // Broadcast OpenAI request
-        this.broadcastConversationEvent(callSid, 'openai_request', JSON.stringify(requestPayload, null, 2), {
-          model: "gpt-4o",
-          temperature: 0.3
-        });
-        
-        const openaiResponse = await openai.chat.completions.create(requestPayload);
-        
-        const openaiProcessingTime = Date.now() - openaiRequestStart;
-        
-        // Validate OpenAI response structure
-        if (!openaiResponse || !openaiResponse.choices || !Array.isArray(openaiResponse.choices) || openaiResponse.choices.length === 0) {
-          throw new Error('Invalid OpenAI response structure');
-        }
-        
-        const aiResponseContent = openaiResponse.choices[0]?.message?.content || '{}';
-        
-        // Broadcast OpenAI response
-        this.broadcastConversationEvent(callSid, 'openai_response', aiResponseContent, {
-          model: "gpt-4o",
-          processingTime: openaiProcessingTime,
-          tokens: openaiResponse.usage?.total_tokens || 0
-        });
-        
-        // Parse AI response
-        try {
-          aiResponse = JSON.parse(aiResponseContent);
-        } catch (parseError) {
-          console.error('❌ [AI PARSE ERROR]:', parseError);
-          aiResponse = {
-            message: "Great! Can I get your WhatsApp number for partnership details?",
-            should_end: false,
-            collected_data: {}
-          };
-        }
       }
 
       // Validate aiResponse structure to prevent crashes
