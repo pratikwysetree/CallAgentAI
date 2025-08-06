@@ -38,6 +38,16 @@ A WebSocket server facilitates bi-directional communication, broadcasting live c
 ### Development & Build
 The project emphasizes type safety with full TypeScript coverage. Development benefits from hot reloading (Vite HMR for frontend, TSX for backend) and organized imports via path aliases. The monorepo structure ensures shared schema and types between the client and server.
 
+## Recent Changes (August 6, 2025)
+
+### Campaign Configuration System
+- Implemented comprehensive database-driven campaign management system
+- Added campaign settings UI with real-time editing and deletion capabilities
+- Moved intro lines and agent names from hardcoded values to database configuration
+- Fixed foreign key constraint issues for campaign deletion (properly removes associated calls and messages)
+- All campaign configurations now instantly available to AI conversation system
+- Users can modify intro lines and agent names without technical knowledge through Campaign Settings page
+
 ## External Dependencies
 
 ### Core Infrastructure

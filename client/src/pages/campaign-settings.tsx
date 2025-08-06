@@ -72,9 +72,12 @@ export default function CampaignSettings() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Update successful:', data);
       toast({ title: "Campaign updated successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      // Update the selected campaign with new data
+      setSelectedCampaign(data);
     },
     onError: (error: any) => {
       console.error('Update error:', error);
@@ -107,7 +110,11 @@ export default function CampaignSettings() {
     },
     onError: (error: any) => {
       console.error('Delete error:', error);
-      toast({ title: "Failed to delete campaign", variant: "destructive" });
+      toast({ 
+        title: "Failed to delete campaign", 
+        description: error.message || "Unknown error occurred",
+        variant: "destructive" 
+      });
     }
   });
 
@@ -127,6 +134,7 @@ export default function CampaignSettings() {
   const handleSave = () => {
     if (!selectedCampaign) return;
     
+    console.log('Saving campaign:', selectedCampaign.id, formData);
     updateCampaignMutation.mutate({
       id: selectedCampaign.id,
       data: formData

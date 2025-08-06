@@ -199,10 +199,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCampaign(id: string): Promise<boolean> {
-    const result = await db
-      .delete(campaigns)
-      .where(eq(campaigns.id, id));
-    return result.rowCount > 0;
+    try {
+      // First get all call IDs for this campaign
+      const campaignCalls = await db.select({ id: calls.id }).from(calls).where(eq(calls.campaignId, id));
+      const callIds = campaignCalls.map(call => call.id);
+      
+      // Delete all call messages for calls in this campaign
+      if (callIds.length > 0) {
+        for (const callId of callIds) {
+          await db.delete(callMessages).where(eq(callMessages.callId, callId));
+        }
+      }
+      
+      // Then delete all calls associated with this campaign  
+      await db.delete(calls).where(eq(calls.campaignId, id));
+      
+      // Finally delete the campaign
+      const result = await db
+        .delete(campaigns)
+        .where(eq(campaigns.id, id));
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      throw error;
+    }
   }
 
   // Calls

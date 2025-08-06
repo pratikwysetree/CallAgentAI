@@ -232,13 +232,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const deleted = await storage.deleteCampaign(id);
       if (deleted) {
-        res.json({ success: true, message: 'Campaign deleted successfully' });
+        res.json({ success: true, message: 'Campaign and associated calls deleted successfully' });
       } else {
         res.status(404).json({ error: 'Campaign not found' });
       }
     } catch (error) {
       console.error('Error deleting campaign:', error);
-      res.status(500).json({ error: 'Failed to delete campaign' });
+      res.status(500).json({ error: 'Failed to delete campaign: ' + (error instanceof Error ? error.message : 'Unknown error') });
     }
   });
 
