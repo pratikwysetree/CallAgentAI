@@ -163,17 +163,18 @@ export class FreshConversationService {
         processingTime: Date.now() - startTime
       });
       
-      // 4. Always use OpenAI for better conversation processing
-      // Skip quick responses to avoid blocking important conversations
-      console.log('🧠 [OPENAI] Processing customer response with AI for better conversation flow');
+      // 4. Get conversation history to provide context to AI
+      const { storage } = await import('../storage');
+      const conversationHistory = await storage.getCallMessages(callSid);
+      
+      console.log('🧠 [OPENAI] Processing customer response with AI and conversation history');
       let aiResponse: any;
       let openaiRequestStart = Date.now();
       
-      const requestPayload = {
-        model: "gpt-4o" as const,
-        messages: [
-          {
-            role: "system" as const,
+      // Build conversation messages with history
+      const messages = [
+        {
+          role: "system" as const,
               content: `You are Aavika from LabsCheck calling pathology labs for partnership.
 
 CRITICAL: If customer confirms they are the lab owner (words like "yes", "haan", "ji", "owner", "malik") DO NOT repeat the opening question. Move to next step.
@@ -205,12 +206,39 @@ IMPORTANT: Always respond in JSON format exactly like this:
 {"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
 
 Use JSON format for all responses.`
-          },
-          {
-            role: "user" as const,
-            content: customerText
+        }
+      ];
+
+      // Add conversation history for context
+      if (conversationHistory && conversationHistory.length > 0) {
+        console.log(`📜 [CONVERSATION-HISTORY] Found ${conversationHistory.length} previous messages`);
+        
+        // Add recent conversation history (last 10 messages max)
+        const recentHistory = conversationHistory.slice(-10);
+        for (const msg of recentHistory) {
+          if (msg.role === 'assistant') {
+            messages.push({
+              role: "assistant" as const,
+              content: msg.content
+            });
+          } else if (msg.role === 'user') {
+            messages.push({
+              role: "user" as const,
+              content: msg.content
+            });
           }
-        ],
+        }
+      }
+
+      // Add current customer message
+      messages.push({
+        role: "user" as const,
+        content: customerText
+      });
+
+      const requestPayload = {
+        model: "gpt-4o" as const,
+        messages,
         response_format: { type: "json_object" as const },
         temperature: 0.3
       };
