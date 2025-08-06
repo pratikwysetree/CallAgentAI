@@ -512,6 +512,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ElevenLabs API key validation endpoint
+  app.post('/api/elevenlabs/validate-key', async (req, res) => {
+    try {
+      const validation = await elevenLabsService.validateApiKey();
+      res.json(validation);
+    } catch (error) {
+      console.error('Error validating ElevenLabs API key:', error);
+      res.status(500).json({ valid: false, error: 'Failed to validate API key' });
+    }
+  });
+
   // ElevenLabs API key configuration endpoint
   app.post('/api/secrets/elevenlabs', async (req, res) => {
     try {
@@ -1006,7 +1017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             imported++;
           }
         } catch (error) {
-          errors.push(`Row ${i + 1}: ${error.message}`);
+          errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -1029,11 +1040,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contactCount = totalContacts[0]?.count || 0;
       
       const analytics = {
-        totalContacts: parseInt(contactCount),
+        totalContacts: parseInt(contactCount.toString()),
         contacted: 0,
         responded: 0,
         onboarded: 0,
-        pending: parseInt(contactCount),
+        pending: parseInt(contactCount.toString()),
         failed: 0,
         followUpsDue: 0,
         todayActivity: {
