@@ -668,9 +668,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clean up speech result
       const cleanedInput = SpeechResult.trim();
       console.log(`⚡ [PROCESSING] "${cleanedInput}"`);
+      
+      // Broadcast live transcript immediately
+      broadcast({ 
+        type: 'live_transcript', 
+        callSid: CallSid, 
+        speaker: 'customer',
+        text: cleanedInput,
+        confidence: Confidence,
+        timestamp: new Date().toISOString()
+      });
+      
       const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
       
-      // Broadcast real-time update
+      // Broadcast conversation update
       broadcast({ 
         type: 'conversation_update', 
         callSid: CallSid, 

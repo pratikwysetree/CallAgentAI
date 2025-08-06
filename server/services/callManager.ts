@@ -80,6 +80,16 @@ export class CallManager {
       const aiTime = Date.now() - flowStart;
       console.log(`🧠 [AI DONE] ${aiTime}ms | "${aiResponse.message}"`);
       
+      // Broadcast AI response transcript
+      const { broadcast } = require('../routes');
+      broadcast({ 
+        type: 'live_transcript', 
+        callSid: twilioCallSid, 
+        speaker: 'agent',
+        text: aiResponse.message,
+        timestamp: new Date().toISOString()
+      });
+      
       // Generate TwiML response with speed tracking
 
       // Update conversation history
