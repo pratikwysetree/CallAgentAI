@@ -141,11 +141,8 @@ export class TwilioService {
         console.log(`🎤 [ELEVENLABS] Voice ID: ${(voiceConfig as any).voiceId}, Model: ${(voiceConfig as any).model}`);
         console.log(`🎤 [ELEVENLABS] Message: "${message}"`);
         
-        const audioFilename = `elevenlabs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
-        const audioPath = `./temp/${audioFilename}`;
-        
         try {
-          const result = await elevenLabsService.synthesizeSpeech(message, audioPath, {
+          const audioFilename = await elevenLabsService.generateAudioFile(message, {
             voiceId: (voiceConfig as any).voiceId,
             model: (voiceConfig as any).model || 'eleven_monolingual_v1',
             stability: (voiceConfig as any).stability || 0.5,
@@ -154,25 +151,20 @@ export class TwilioService {
             useSpeakerBoost: (voiceConfig as any).useSpeakerBoost || true,
           });
           
-          if (result.success && result.audioPath) {
-            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-            const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-            
-            console.log(`🎤 [ELEVENLABS] SUCCESS - Premium audio generated: ${audioUrl}`);
-            console.log(`🎤 [ELEVENLABS] Using <Play> tag for ElevenLabs voice synthesis!`);
-            
-            return `<?xml version="1.0" encoding="UTF-8"?>
+          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          
+          console.log(`🎤 [ELEVENLABS] SUCCESS - Premium audio generated: ${audioUrl}`);
+          console.log(`🎤 [ELEVENLABS] Using <Play> tag for ElevenLabs voice synthesis!`);
+          
+          return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
     <Gather input="speech" action="/api/twilio/gather" speechTimeout="5" timeout="15">
-        <Play>${audioUrl}</Play>
+        <Say voice="alice" language="en-US">Please respond when you're ready.</Say>
     </Gather>
 </Response>`;
-          } else {
-            console.error('🎤 [ELEVENLABS] FAILED - Synthesis error:', result.error);
-            console.log('🎤 [ELEVENLABS] Falling back to Twilio voice');
-          }
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
           console.log('🎤 [ELEVENLABS] Falling back to Twilio voice');
@@ -217,11 +209,8 @@ export class TwilioService {
       if (voiceConfig && (voiceConfig as any)?.useElevenLabs) {
         console.log(`🎤 [ELEVENLABS] Generating goodbye message with ElevenLabs TTS`);
         
-        const audioFilename = `elevenlabs_goodbye_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
-        const audioPath = `./temp/${audioFilename}`;
-        
         try {
-          const result = await elevenLabsService.synthesizeSpeech(goodbyeMessage, audioPath, {
+          const audioFilename = await elevenLabsService.generateAudioFile(goodbyeMessage, {
             voiceId: (voiceConfig as any).voiceId,
             model: (voiceConfig as any).model || 'eleven_monolingual_v1',
             stability: (voiceConfig as any).stability || 0.5,
@@ -230,19 +219,17 @@ export class TwilioService {
             useSpeakerBoost: (voiceConfig as any).useSpeakerBoost || true,
           });
           
-          if (result.success && result.audioPath) {
-            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-            const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-            
-            console.log(`🎤 [ELEVENLABS] Goodbye message generated: ${audioUrl}`);
-            
-            return `<?xml version="1.0" encoding="UTF-8"?>
+          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+          const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          
+          console.log(`🎤 [ELEVENLABS] Goodbye message generated: ${audioUrl}`);
+          
+          return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
     <Hangup/>
 </Response>`;
-          }
         } catch (error) {
           console.error('🎤 [ELEVENLABS] Error generating goodbye:', error);
         }

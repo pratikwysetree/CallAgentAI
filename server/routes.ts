@@ -451,19 +451,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🧪 Testing ElevenLabs synthesis with voice: ${voiceId}`);
       
-      const audioFilename = `test_synthesis_${Date.now()}.mp3`;
-      const audioPath = `./temp/${audioFilename}`;
+      try {
+        const audioFilename = await elevenLabsService.generateAudioFile(text, {
+          voiceId: voiceId || 'Z6TUNPsOxhTPtqLx81EX',
+          model: model || 'eleven_turbo_v2',
+          stability: 0.5,
+          similarityBoost: 0.75,
+          style: 0,
+          useSpeakerBoost: true,
+        });
+        
+        console.log(`✅ ElevenLabs synthesis completed successfully: ${audioFilename}`);
       
-      const result = await elevenLabsService.synthesizeSpeech(text, audioPath, {
-        voiceId: voiceId || 'Z6TUNPsOxhTPtqLx81EX',
-        model: model || 'eleven_turbo_v2',
-        stability: 0.5,
-        similarityBoost: 0.75,
-        style: 0,
-        useSpeakerBoost: true,
-      });
-      
-      if (result.success) {
         const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
         const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
         const audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
@@ -472,17 +471,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true,
           message: 'ElevenLabs synthesis successful',
           audioUrl,
-          audioPath: result.audioPath,
+          audioFilename,
           text,
           voiceId,
           model
         });
-      } else {
-        res.status(500).json({
-          success: false,
-          error: result.error,
-          message: 'ElevenLabs synthesis failed'
-        });
+      } catch (synthError) {
+        console.error('🎙️ [ELEVENLABS] Synthesis error:', synthError);
+        throw synthError;
       }
     } catch (error) {
       console.error('Error testing ElevenLabs synthesis:', error);
