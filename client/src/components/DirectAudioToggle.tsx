@@ -69,7 +69,7 @@ export function DirectAudioToggle({ onToggle }: DirectAudioToggleProps) {
                   <span className="font-semibold text-green-600">Total: ~1.1 seconds</span>
                 </div>
                 <div className="text-xs text-green-600 font-medium">
-                  ✅ Records calls & sends audio to OpenAI Whisper
+                  ✅ Records calls • OpenAI Whisper • Language matching • Voice synthesis
                 </div>
               </div>
             ) : (

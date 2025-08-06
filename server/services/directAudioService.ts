@@ -25,13 +25,13 @@ export class DirectAudioService {
       const tempAudioPath = path.join(__dirname, '../../temp', `recorded_${callSid}_${Date.now()}.mp3`);
       fs.writeFileSync(tempAudioPath, audioBuffer);
       
-      // 2. Transcribe with OpenAI Whisper (high accuracy)
+      // 2. Transcribe with OpenAI Whisper (auto-detect language)
       const transcriptionStart = Date.now();
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(tempAudioPath),
         model: "whisper-1",
-        language: "en", // English for Indian market
-        prompt: "LabsCheck partnership, laboratory, pathology, WhatsApp, email, I am great, I am fine", // Context hints
+        // Let Whisper auto-detect language (Hindi/English/Hinglish)
+        prompt: "LabsCheck partnership, laboratory, pathology, WhatsApp, email, main theek hun, I am great, I am fine", // Context hints
       });
       
       const transcriptionTime = Date.now() - transcriptionStart;
@@ -86,15 +86,70 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
       const totalTime = Date.now() - startTime;
       console.log(`⚡ [TOTAL] ${totalTime}ms (Whisper: ${transcriptionTime}ms, AI: ${aiTime}ms)`);
       
-      // Create TwiML response
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+      // 4. Generate voice response with OpenAI TTS (matching customer's language/accent)
+      const ttsStart = Date.now();
+      let audioUrl = null;
+      
+      // Detect if response should be in Hindi/Hinglish or English
+      const voiceLanguage = aiData.voice_language || 'english';
+      const isHindiResponse = voiceLanguage.includes('hindi') || voiceLanguage.includes('hinglish');
+      
+      try {
+        console.log(`🎤 [TTS] Generating ${voiceLanguage} voice for: "${aiData.message}"`);
+        
+        // Generate speech with OpenAI TTS
+        const speechResponse = await openai.audio.speech.create({
+          model: "tts-1", // Fast model
+          voice: isHindiResponse ? "nova" : "alloy", // Nova for Hindi/Hinglish, Alloy for English
+          input: aiData.message,
+          speed: 1.0,
+        });
+        
+        // Save audio file
+        const audioArrayBuffer = await speechResponse.arrayBuffer();
+        const audioBuffer = Buffer.from(audioArrayBuffer);
+        const audioFilename = `openai_tts_${callSid}_${Date.now()}.mp3`;
+        const audioPath = path.join(__dirname, '../../temp', audioFilename);
+        fs.writeFileSync(audioPath, audioBuffer);
+        
+        // Create URL for Twilio to play
+        const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+        const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+        audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+        
+        const ttsTime = Date.now() - ttsStart;
+        console.log(`🎤 [TTS] ${ttsTime}ms - Generated ${voiceLanguage} audio: ${audioUrl}`);
+        
+        // Cleanup audio file after 60 seconds
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(audioPath);
+            console.log(`🗑️ [CLEANUP] Removed audio file: ${audioFilename}`);
+          } catch (e) {
+            console.log('Audio cleanup:', e.message);
+          }
+        }, 60000);
+        
+      } catch (ttsError) {
+        console.error('❌ [TTS] Error generating voice:', ttsError);
+        // Fallback to Twilio Say
+      }
+      
+      // Create TwiML response (no "Please speak" prompts)
+      let twiml;
+      if (audioUrl) {
+        twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${audioUrl}</Play>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
+</Response>`;
+      } else {
+        twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" rate="normal">${aiData.message}</Say>
-  <Record action="/api/twilio/recording/${callSid}" maxLength="30" playBeep="false" />
-  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${callSid}" method="POST">
-    <Say voice="alice">Please continue</Say>
-  </Gather>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
+      }
 
       // Store conversation data if collected
       if (aiData.collected_data && Object.keys(aiData.collected_data).length > 0) {

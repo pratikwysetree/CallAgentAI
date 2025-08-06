@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import path from 'path';
+import fs from "fs";
 import { storage } from "./storage";
 import { db } from "./db";
 import { contacts } from "@shared/schema";
@@ -608,11 +609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const callSid = req.body.CallSid || 'unknown';
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Record action="/api/twilio/recording/${callSid}" maxLength="30" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
   <Say voice="alice" rate="normal">Hi, this is Aavika from LabsCheck. How are you doing today?</Say>
-  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${callSid}" method="POST" enhanced="true">
-    <Say voice="alice">Please speak</Say>
-  </Gather>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" timeout="8" />
 </Response>`;
       
       res.type('text/xml').send(twiml);
@@ -729,8 +727,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🎙️ [RECORDING] Call: ${callSid}, Recording: ${RecordingSid}, URL: ${RecordingUrl}`);
     
     try {
-      // Download and process recording with OpenAI Whisper
-      const { directAudioService } = await import('./services/directAudioService');
+      // Download and process recording with Enhanced OpenAI Whisper + TTS
+      const { enhancedDirectAudioService } = await import('./services/enhancedDirectAudioService');
       
       // Download audio file
       const audioResponse = await fetch(RecordingUrl + '.mp3');
@@ -741,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process with direct audio service
       const call = await storage.getCallByTwilioSid(callSid);
       if (call) {
-        const twimlResponse = await directAudioService.processRecordedAudio(
+        const twimlResponse = await enhancedDirectAudioService.processRecordedAudio(
           audioBuffer,
           callSid,
           call.campaignId
@@ -1490,6 +1488,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup direct audio API routes
   const { setupDirectAudioAPI } = await import('./routes/directAudioAPI');
   setupDirectAudioAPI(app);
+
+  // Serve OpenAI TTS audio files
+  app.get('/api/audio/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const audioPath = path.join(__dirname, '../temp', filename);
+    
+    if (fs.existsSync(audioPath)) {
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      
+      const stream = fs.createReadStream(audioPath);
+      stream.pipe(res);
+      
+      stream.on('error', (err) => {
+        console.error('Audio stream error:', err);
+        res.status(404).send('Audio file not found');
+      });
+    } else {
+      res.status(404).send('Audio file not found');
+    }
+  });
 
   return httpServer;
 }
