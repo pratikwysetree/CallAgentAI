@@ -128,6 +128,19 @@ export class TwilioService {
 
   async generateTwiML(message: string, campaignId?: string): Promise<string> {
     try {
+      // Detect language of AI response to match customer's language for ElevenLabs
+      const detectLanguage = (text: string): 'hindi' | 'english' | 'mixed' => {
+        const hindiWords = (text.match(/\b(namaste|kya|haan|nahi|theek|accha|matlab|samjha|mera|aap|kaise|main|hai|hoon|se|ka|ke|ki|ko|me|pe|par|aur|ya|jo|kuch|koi|kyun|kahan|kab|kaun|kaam|ghar|office|paisa|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time|dhanyawad|thank|english|hindi|boliye|suniye|bataye|dijiye|milega|hoga|karenge|karte|dete|lete|denge|lenge|bhej|send|message|details|labscheck)\b/gi) || []).length;
+        const englishWords = (text.match(/\b(hello|hi|what|yes|no|good|okay|my|you|how|i|am|is|are|the|and|or|that|some|any|why|where|when|who|work|home|office|money|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time|thank|thanks|english|hindi|speak|tell|give|will|can|get|send|message|details|labscheck)\b/gi) || []).length;
+        
+        if (hindiWords > englishWords) return 'hindi';
+        if (englishWords > hindiWords) return 'english';
+        return 'mixed';
+      };
+
+      const responseLanguage = detectLanguage(message);
+      console.log(`🌐 [AI RESPONSE LANGUAGE] Detected: ${responseLanguage.toUpperCase()} for message: "${message}"`);
+
       // Check if campaign has specific voice configuration
       let voiceConfig = null;
       if (campaignId) {

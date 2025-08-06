@@ -665,10 +665,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.type('text/xml').send(twiml);
       }
       
-      // Clean up speech result
+      // Clean up speech result and preserve exact customer language
       const cleanedInput = SpeechResult.trim();
       console.log(`✅ [PROCESSING] Clean customer input: "${cleanedInput}"`);
-      console.log(`🔄 [STEP 1] About to call callManager.handleUserInput()...`);
+      console.log(`🗣️ [SPEECH-TO-TEXT] Exact customer speech captured: "${cleanedInput}"`);
+      console.log(`🔄 [STEP 1] Sending exact speech to AI model via callManager.handleUserInput()...`);
 
       const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
       
