@@ -643,7 +643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use Whisper for better transcription
-      const { whisperService } = await import('../services/whisperService');
+      const { whisperService } = await import('./services/whisperService');
       const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
         language: 'hi', // Hindi with auto-detection
         prompt: "Phone call about pathology lab business partnership in Hindi, English, or mixed Hinglish"

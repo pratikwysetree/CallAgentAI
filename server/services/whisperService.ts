@@ -77,7 +77,8 @@ export class WhisperService {
       
     } catch (error) {
       console.error('🎙️ [WHISPER] Error during transcription:', error);
-      throw new Error(`Whisper transcription failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Whisper transcription failed: ${errorMessage}`);
     }
   }
 
