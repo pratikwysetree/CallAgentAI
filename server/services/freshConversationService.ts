@@ -346,7 +346,7 @@ Use JSON format for all responses.`
       }
       
       // 6. Store conversation message history
-      await this.saveConversationMessage(callSid, transcription, aiResponse.message);
+      await this.saveConversationMessage(callSid, customerText, aiResponse.message);
       
       // 7. Store conversation data if collected
       if (aiResponse.collected_data && Object.keys(aiResponse.collected_data).length > 0) {
