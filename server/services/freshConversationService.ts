@@ -40,7 +40,7 @@ export class FreshConversationService {
           }
         }
       } catch (fetchError) {
-        throw new Error(`Audio download failed: ${fetchError.message}`);
+        throw new Error(`Audio download failed: ${(fetchError as Error).message}`);
       }
       
       console.log(`📥 [FRESH-SERVICE] Downloaded ${audioBuffer.length} bytes (${audioExtension} format)`);
