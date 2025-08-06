@@ -626,71 +626,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Twilio recording endpoint with Whisper transcription
+  // Twilio recording endpoint with ultra-fast Whisper transcription
   app.post('/api/twilio/record', async (req, res) => {
+    const startTime = Date.now();
     try {
       const { CallSid, RecordingUrl, RecordingDuration } = req.body;
       
-      console.log(`🎙️ [RECORDING] Call: ${CallSid}`);
-      console.log(`🎙️ [RECORDING URL] ${RecordingUrl}`);
-      console.log(`🎙️ [DURATION] ${RecordingDuration} seconds`);
+      console.log(`🎙️ [RECORDING START] Call: ${CallSid} - Duration: ${RecordingDuration}s`);
+      console.log(`🎙️ [PERFORMANCE] Target: <2s total response time`);
       
       if (!RecordingUrl || !RecordingDuration || parseFloat(RecordingDuration) < 0.5) {
         console.log('❌ [NO RECORDING] No recording or too short');
-        const retryPrompt = "Kuch nahi suna. Please speak clearly.";
+        const retryPrompt = "Kuch nahi suna. Boliye.";
         const twiml = await twilioService.generateTwiML(retryPrompt);
         return res.type('text/xml').send(twiml);
       }
 
-      // Use Whisper for better transcription with fallback
+      // STEP 1: ULTRA-FAST WHISPER TRANSCRIPTION
+      const transcriptionStart = Date.now();
       try {
         const { whisperService } = await import('./services/whisperService');
         const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
-          language: 'hi', // Hindi with auto-detection
-          prompt: "Phone call about pathology lab business partnership in Hindi, English, or mixed Hinglish"
+          language: 'hi',
+          prompt: "Hindi English mixed lab business call"
         });
 
-        console.log(`🎙️ [WHISPER RESULT] "${transcription.text}"`);
-        console.log(`🎙️ [WHISPER LANGUAGE] ${transcription.language}`);
-        console.log(`🎙️ [WHISPER CONFIDENCE] ${transcription.confidence}`);
+        const transcriptionTime = Date.now() - transcriptionStart;
+        console.log(`🎙️ [WHISPER] "${transcription.text}" (${transcriptionTime}ms)`);
 
-        // Check transcription quality
-        if (!transcription.text || transcription.text.trim() === '' || transcription.confidence < 0.3) {
-          console.log('❌ [LOW QUALITY] Poor transcription quality');
-          const retryPrompt = "Samjha nahi. Dobara boliye please.";
+        // Quality check - fast rejection
+        if (!transcription.text || transcription.text.trim().length < 2) {
+          console.log('❌ [EMPTY] No speech detected');
+          const retryPrompt = "Samjha nahi. Dobara boliye.";
           const twiml = await twilioService.generateTwiML(retryPrompt);
           return res.type('text/xml').send(twiml);
         }
 
-        const cleanedInput = transcription.text.trim();
-        console.log(`✅ [WHISPER SUCCESS] Clean customer input: "${cleanedInput}"`);
-        console.log(`🗣️ [SPEECH-TO-TEXT] Exact customer speech via Whisper: "${cleanedInput}"`);
-        console.log(`🔄 [STEP 1] Sending exact Whisper speech to AI model...`);
+        const customerInput = transcription.text.trim();
+        console.log(`🗣️ [CUSTOMER SAID] "${customerInput}"`);
 
-        const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
+        // STEP 2: AI MODEL PROCESSING
+        const modelStart = Date.now();
+        console.log(`🧠 [AI] Processing customer input...`);
         
-        console.log(`🔄 [STEP 2] CallManager returned TwiML length: ${responseTwiml.length}`);
+        const responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
+        
+        const modelTime = Date.now() - modelStart;
+        const totalTime = Date.now() - startTime;
+        
+        console.log(`🧠 [AI] Response generated (${modelTime}ms)`);
+        console.log(`⚡ [TOTAL] End-to-end: ${totalTime}ms`);
+        
+        if (totalTime > 2000) {
+          console.log(`⚠️ [SLOW] Response took ${totalTime}ms (target: <2000ms)`);
+        } else {
+          console.log(`✅ [FAST] Response under 2s: ${totalTime}ms`);
+        }
         
         // Broadcast real-time update
         broadcast({ 
           type: 'conversation_update', 
           callSid: CallSid, 
-          userInput: cleanedInput 
+          userInput: customerInput 
         });
 
         res.type('text/xml').send(responseTwiml);
         
       } catch (whisperError) {
-        console.error('🎙️ [WHISPER FALLBACK] Whisper failed, using fallback response:', whisperError);
+        const errorTime = Date.now() - startTime;
+        const errorMsg = whisperError instanceof Error ? whisperError.message : 'Unknown error';
+        console.error(`🎙️ [WHISPER ERROR] ${errorMsg} (${errorTime}ms)`);
         
-        // Fallback: Ask customer to repeat with clear message
-        const fallbackPrompt = "Main samjha nahi. Thoda dhire aur saaf boliye please. Could you speak more clearly?";
+        // Ultra-fast fallback
+        const fallbackPrompt = "Samjha nahi. Dobara boliye.";
         const twiml = await twilioService.generateTwiML(fallbackPrompt);
         res.type('text/xml').send(twiml);
       }
 
     } catch (error) {
-      console.error('Error handling Twilio recording webhook:', error);
+      const errorTime = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ [RECORD ERROR] ${errorMsg} (${errorTime}ms)`);
       const errorTwiml = await twilioService.generateHangupTwiML();
       res.type('text/xml').send(errorTwiml);
     }

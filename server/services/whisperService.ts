@@ -42,17 +42,18 @@ export class WhisperService {
       fs.writeFileSync(tempFilePath, audioBuffer);
       console.log(`🎙️ [WHISPER] Temporary audio file created: ${tempFilename}`);
       
-      // Enhanced prompt for better Indian language recognition
+      // Ultra-fast transcription prompt
       const transcriptionPrompt = options.prompt || 
-        "This is a phone call conversation in Hindi, English, or mixed Hinglish about pathology labs and business partnerships. Common words include: lab, laboratory, pathology, partner, WhatsApp, email, number, business, LabsCheck, haan, nahi, theek, accha, kya, main, aap, hai, good, yes, no, okay.";
+        "Hindi English mixed pathology lab business call. Common: lab, pathology, partner, WhatsApp, email, haan, nahi, accha, kya, main, aap.";
       
-      // Transcribe using Whisper
+      // Ultra-fast Whisper transcription (optimized for speed)
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(tempFilePath),
         model: 'whisper-1',
-        language: options.language || 'hi', // Hindi as primary with auto-detection
+        language: options.language || 'hi',
         prompt: transcriptionPrompt,
-        response_format: 'verbose_json',
+        response_format: 'json', // Faster than verbose_json
+        temperature: 0, // More deterministic, faster
       }) as any;
       
       // Clean up temporary file
