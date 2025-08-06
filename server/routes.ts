@@ -599,31 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Direct audio webhook route for ultra-fast processing
-  app.post('/api/twilio/direct-voice', async (req, res) => {
-    try {
-      const { callId } = req.query;
-      console.log(`⚡ [DIRECT-VOICE] Starting direct audio call: ${callId}`);
-      
-      // Direct audio processing with recording
-      const callSid = req.body.CallSid || 'unknown';
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" rate="normal">Hi, this is Aavika from LabsCheck. How are you doing today?</Say>
-  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" timeout="8" />
-</Response>`;
-      
-      res.type('text/xml').send(twiml);
-    } catch (error) {
-      console.error('Error in direct voice webhook:', error);
-      res.type('text/xml').send(`
-        <Response>
-          <Say voice="alice">Thank you for calling.</Say>
-          <Hangup/>
-        </Response>
-      `);
-    }
-  });
+  // REMOVED: Conflicting direct voice webhook - using main voice webhook only
 
   // Twilio webhook routes
   app.post('/api/twilio/voice', async (req, res) => {
