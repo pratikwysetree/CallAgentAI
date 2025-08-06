@@ -125,53 +125,7 @@ RESPONSE FORMAT: Respond in JSON format with the structure: {"message": "your re
       "Hi! This is Priya from LabsCheck. Are you the owner or manager of the lab?";
   }
 
-  // Quick responses for common queries - no OpenAI needed
-  private getQuickResponse(customerText: string): any | null {
-    const text = customerText.toLowerCase().trim();
-    
-    // Detect language
-    const isHindi = /[\u0900-\u097F]/.test(customerText) || 
-                   /(hai|hain|kya|kaise|kahan|nahin|nahi|acha|thik|lab|test)/i.test(customerText);
-    
-    // Lab owner confirmation responses - only if they explicitly mention being owner
-    if (/(yes.*owner|owner.*yes|i.*am.*owner|main.*owner|mai.*malik|haan.*owner)/i.test(text) && !(/(nahin|nahi|no)/i.test(text))) {
-      return {
-        message: isHindi ? "महान! LabsCheck India का पहला diagnostic aggregator platform है। हम trusted diagnostics को affordable prices पर provide करते हैं। क्या आप partnership में interested हैं?" : 
-                           "Great! LabsCheck is India's first diagnostic aggregator platform. We provide trusted diagnostics at affordable prices. Are you interested in partnership?",
-        collected_data: { contact_person: "lab_owner" },
-        should_end: false
-      };
-    }
-    
-    // Common greetings/responses - only for simple greetings without owner context
-    if (/(^hello$|^hi$|^namaste$)/i.test(text)) {
-      return {
-        message: isHindi ? "हैलो! मैं प्रिया हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : "Hi! This is Priya from LabsCheck. Are you the owner or manager of the lab?",
-        collected_data: {},
-        should_end: false
-      };
-    }
-    
-    if (/(owner|malik|malkin)/i.test(text) && /(nahin|nahi|no)/i.test(text)) {
-      return {
-        message: isHindi ? "क्या आप owner का WhatsApp number share कर सकते हैं?" : 
-                           "Can you share the owner's WhatsApp number?",
-        collected_data: {},
-        should_end: false
-      };
-    }
-    
-    if (/(benefit|faayda|labh)/i.test(text)) {
-      return {
-        message: isHindi ? "आपको 100% payment मिलेगा, zero commission! अधिक visibility भी।" : 
-                           "You get 100% payment, zero commission! More visibility too.",
-        collected_data: {},
-        should_end: false
-      };
-    }
-    
-    return null; // Use OpenAI for complex queries
-  }
+
 
   async processAudio(recordingUrl: string, callSid: string): Promise<string> {
     const startTime = Date.now();
