@@ -157,8 +157,8 @@ Respond with a JSON object:
         model,
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 200,
-        temperature: 0.3, // Lower temperature for more predictable responses
+        max_tokens: 150, // Reduced for faster response
+        temperature: 0.2, // Lower temperature for more predictable responses
       });
 
       const responseTime = Date.now() - startTime;

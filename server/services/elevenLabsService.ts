@@ -133,10 +133,10 @@ export class ElevenLabsService {
           text: text,
           model_id: model,
           voice_settings: {
-            stability: config.stability ?? 0.5,
-            similarity_boost: config.similarityBoost ?? 0.75,
+            stability: config.stability ?? 0.4, // Reduced for faster generation
+            similarity_boost: config.similarityBoost ?? 0.6, // Reduced for speed
             style: config.style ?? 0.0,
-            use_speaker_boost: config.useSpeakerBoost ?? true,
+            use_speaker_boost: config.useSpeakerBoost ?? false, // Disabled for speed
           },
         }),
       });
