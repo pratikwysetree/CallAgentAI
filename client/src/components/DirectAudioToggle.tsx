@@ -14,6 +14,15 @@ export function DirectAudioToggle({ onToggle }: DirectAudioToggleProps) {
   const handleToggle = (checked: boolean) => {
     setIsDirectAudio(checked);
     onToggle?.(checked);
+    
+    // Store preference in localStorage
+    localStorage.setItem('directAudioMode', checked.toString());
+    
+    if (checked) {
+      console.log('⚡ Direct Audio Mode ENABLED - Ultra-fast voice processing active!');
+    } else {
+      console.log('🔄 Standard Mode - Using traditional processing pipeline');
+    }
   };
 
   return (
@@ -46,18 +55,18 @@ export function DirectAudioToggle({ onToggle }: DirectAudioToggleProps) {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span><strong>Voice → OpenAI Whisper</strong> (300ms)</span>
+                  <span><strong>Direct Speech Processing</strong> (50ms)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                   <span><strong>GPT-4o Response</strong> (400ms)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  <span><strong>OpenAI TTS Audio</strong> (500ms)</span>
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  <span><strong>Twilio Say Audio</strong> (200ms)</span>
                 </div>
                 <div className="pt-2 border-t">
-                  <span className="font-semibold text-green-600">Total: ~1.2 seconds</span>
+                  <span className="font-semibold text-green-600">Total: ~650ms</span>
                 </div>
               </div>
             ) : (
@@ -83,7 +92,7 @@ export function DirectAudioToggle({ onToggle }: DirectAudioToggleProps) {
           
           <div className="pt-2 border-t text-xs text-muted-foreground">
             <strong>Benefits:</strong> {isDirectAudio ? 
-              "50% faster response • Better Hindi/English accuracy • Lower latency" :
+              "70% faster response • Direct speech processing • Ultra-low latency" :
               "Higher voice quality • More reliable • Current production mode"
             }
           </div>

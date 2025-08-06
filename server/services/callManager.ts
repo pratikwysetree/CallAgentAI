@@ -80,15 +80,20 @@ export class CallManager {
       const aiTime = Date.now() - flowStart;
       console.log(`🧠 [AI DONE] ${aiTime}ms | "${aiResponse.message}"`);
       
-      // Broadcast AI response transcript
-      const { broadcast } = require('../routes');
-      broadcast({ 
-        type: 'live_transcript', 
-        callSid: twilioCallSid, 
-        speaker: 'agent',
-        text: aiResponse.message,
-        timestamp: new Date().toISOString()
-      });
+      // Broadcast AI response transcript (commented out to avoid require issue)
+      // TODO: Fix broadcast import for live transcript
+      try {
+        const { broadcast } = await import('../routes');
+        broadcast({ 
+          type: 'live_transcript', 
+          callSid: twilioCallSid, 
+          speaker: 'agent',
+          text: aiResponse.message,
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {
+        console.log('Broadcast not available:', e.message);
+      }
       
       // Generate TwiML response with speed tracking
 

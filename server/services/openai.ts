@@ -101,7 +101,23 @@ Respond with a JSON object:
       });
 
       const responseTime = Date.now() - startTime;
-      const aiResponse = JSON.parse(response.choices[0].message.content || '{}');
+      let aiResponse;
+      try {
+        aiResponse = JSON.parse(response.choices[0].message.content || '{}');
+      } catch (parseError) {
+        console.error('❌ [AI JSON PARSE ERROR]:', parseError);
+        console.log('❌ [AI RAW CONTENT]:', response.choices[0].message.content);
+        
+        // Fallback to simple response if JSON parsing fails
+        const rawContent = response.choices[0].message.content || '';
+        aiResponse = {
+          message: rawContent.includes('"message"') ? 
+            rawContent.split('"message"')[1]?.split('"')[1] || "Great to hear! Can I get your WhatsApp number for lab partnership details?" :
+            "Great to hear! Can I get your WhatsApp number for lab partnership details?",
+          shouldEndCall: false,
+          extractedData: {}
+        };
+      }
 
       console.log(`🧠 [AI DONE] ${responseTime}ms | "${aiResponse.message}"`);
       console.log(`🔍 [AI RESPONSE DEBUG] Input was: "${userInput}" → Output: "${aiResponse.message}"`);

@@ -598,6 +598,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Direct audio webhook route for ultra-fast processing
+  app.post('/api/twilio/direct-voice', async (req, res) => {
+    try {
+      const { callId } = req.query;
+      console.log(`⚡ [DIRECT-VOICE] Starting direct audio call: ${callId}`);
+      
+      // Simple TwiML for direct audio processing
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" rate="normal">Hi, this is Aavika from LabsCheck. How are you doing today?</Say>
+  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${req.body.CallSid || 'unknown'}" method="POST" enhanced="true">
+    <Say voice="alice">Please speak</Say>
+  </Gather>
+</Response>`;
+      
+      res.type('text/xml').send(twiml);
+    } catch (error) {
+      console.error('Error in direct voice webhook:', error);
+      res.type('text/xml').send(`
+        <Response>
+          <Say voice="alice">Thank you for calling.</Say>
+          <Hangup/>
+        </Response>
+      `);
+    }
+  });
+
   // Twilio webhook routes
   app.post('/api/twilio/voice', async (req, res) => {
     try {
@@ -659,16 +686,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
       
-      // Process with direct audio service (using speech result for now)
-      const mockAudioBuffer = Buffer.from(SpeechResult || 'hello', 'utf8');
-      const twimlResponse = await directAudioService.processAudioRealtime(
-        mockAudioBuffer,
-        callSid,
-        call.campaignId
-      );
+      // Process speech result directly with AI (ultra-fast mode)
+      if (SpeechResult && SpeechResult.trim()) {
+        const { directAudioService } = await import('./services/directAudioService');
+        const speechBuffer = Buffer.from(SpeechResult, 'utf8');
+        const twimlResponse = await directAudioService.processAudioRealtime(
+          speechBuffer,
+          callSid,
+          call.campaignId
+        );
+        return res.type('text/xml').send(twimlResponse);
+      }
       
-      console.log(`✅ [DIRECT-AUDIO] Response generated for call: ${callSid}`);
-      return res.type('text/xml').send(twimlResponse);
+      // If no speech result, prompt to repeat
+      const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">I didn't catch that. Please speak clearly.</Say>
+  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${callSid}" method="POST">
+    <Say voice="alice">Please speak now</Say>
+  </Gather>
+</Response>`;
+      return res.type('text/xml').send(noSpeechTwiml);
       
     } catch (error) {
       console.error('❌ [DIRECT-AUDIO] Error:', error);
@@ -1392,6 +1430,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to fetch contacts' });
     }
   });
+
+  // Setup direct audio API routes
+  const { setupDirectAudioAPI } = await import('./routes/directAudioAPI');
+  setupDirectAudioAPI(app);
 
   return httpServer;
 }

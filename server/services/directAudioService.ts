@@ -25,17 +25,11 @@ export class DirectAudioService {
       const tempAudioPath = path.join(__dirname, '../../temp', `audio_${callSid}_${Date.now()}.wav`);
       fs.writeFileSync(tempAudioPath, audioBuffer);
       
-      // 2. Transcribe with Whisper (ultra-fast)
+      // For now, use the speech result directly (skip Whisper transcription)
       const transcriptionStart = Date.now();
-      const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tempAudioPath),
-        model: "whisper-1",
-        language: "en", // English for Indian market
-        prompt: "LabsCheck partnership, laboratory, pathology, WhatsApp, email", // Context hints
-      });
-      
+      const speechText = audioBuffer.toString('utf8'); // Use direct speech input
       const transcriptionTime = Date.now() - transcriptionStart;
-      console.log(`🧠 [WHISPER] ${transcriptionTime}ms: "${transcription.text}"`);
+      console.log(`⚡ [DIRECT-SPEECH] ${transcriptionTime}ms: "${speechText}"`);
       
       // 3. Get AI response (optimized prompt)
       const aiStart = Date.now();
@@ -58,7 +52,7 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
           },
           {
             role: "user", 
-            content: transcription.text
+            content: speechText
           }
         ],
         max_tokens: 100,
@@ -70,23 +64,10 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
       const aiData = JSON.parse(aiResponse.choices[0].message.content || '{}');
       console.log(`🧠 [AI] ${aiTime}ms: "${aiData.message}"`);
       
-      // 4. Generate speech with OpenAI TTS (faster than ElevenLabs)
-      const ttsStart = Date.now();
-      const speechResponse = await openai.audio.speech.create({
-        model: "tts-1", // Fastest model
-        voice: "alloy", // Natural voice
-        input: aiData.message,
-        speed: 1.1, // Slightly faster for efficiency
-      });
-      
-      const ttsTime = Date.now() - ttsStart;
-      const audioArrayBuffer = await speechResponse.arrayBuffer();
-      const audioBuffer = Buffer.from(audioArrayBuffer);
-      
       const totalTime = Date.now() - startTime;
-      console.log(`⚡ [TOTAL] ${totalTime}ms (Whisper: ${transcriptionTime}ms, AI: ${aiTime}ms, TTS: ${ttsTime}ms)`);
+      console.log(`⚡ [TOTAL] ${totalTime}ms (Whisper: ${transcriptionTime}ms, AI: ${aiTime}ms)`);
       
-      // 5. For now, use Twilio Say instead of audio file serving for simplicity
+      // For now, use Twilio Say for immediate response (no TTS delay)
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" rate="normal">${aiData.message}</Say>
@@ -95,20 +76,28 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
   </Gather>
 </Response>`;
 
-      // 7. Store conversation data
+      // 6. Store conversation data if collected
       if (aiData.collected_data) {
-        this.updateContactData(callSid, aiData.collected_data);
+        await this.updateContactData(callSid, aiData.collected_data);
       }
       
-      // 8. Cleanup temp files after delay
+      // 7. Check if call should end
+      if (aiData.should_end) {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" rate="normal">${aiData.message}</Say>
+  <Hangup/>
+</Response>`;
+      }
+      
+      // 8. Cleanup temp file
       setTimeout(() => {
         try {
           fs.unlinkSync(tempAudioPath);
-          fs.unlinkSync(responseAudioPath);
         } catch (e) {
           console.log('Temp file cleanup:', e.message);
         }
-      }, 30000); // 30 seconds
+      }, 10000);
       
       return twiml;
       
