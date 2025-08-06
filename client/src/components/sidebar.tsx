@@ -15,16 +15,9 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
-  { name: 'Contacts', href: '/contacts', icon: Users },
-  { name: 'Campaigns', href: '/campaigns', icon: Phone },
-  { name: 'Campaign Settings', href: '/campaign-settings', icon: Settings },
+  { name: 'WhatsApp Bulk', href: '/', icon: MessageSquare },
   { name: 'Contact Campaigns', href: '/contact-campaigns', icon: Target },
-  { name: 'WhatsApp Bulk', href: '/whatsapp-bulk', icon: MessageSquare },
   { name: 'WhatsApp Chats', href: '/whatsapp-chats', icon: MessageCircle },
-  { name: 'Live Conversation', href: '/live-conversation', icon: Monitor },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'ElevenLabs Voice', href: '/elevenlabs-setup', icon: Volume2 },
   { name: 'App Settings', href: '/enhanced-settings', icon: Upload },
 ];
 
@@ -34,8 +27,8 @@ export default function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-white dark:bg-gray-900 border-r">
       <div className="flex h-16 items-center px-6 border-b">
-        <Phone className="h-8 w-8 text-blue-600" />
-        <span className="ml-2 text-xl font-bold">AI Caller</span>
+        <MessageSquare className="h-8 w-8 text-blue-600" />
+        <span className="ml-2 text-xl font-bold">WhatsApp Messenger</span>
       </div>
       <nav className="flex-1 space-y-1 px-4 py-4">
         {navigation.map((item) => {

@@ -1,4 +1,4 @@
-import { twilioService } from './twilio';
+// Removed twilio service - calling functionality deleted
 
 export class MessagingService {
   // Send WhatsApp message via Meta Business API
@@ -13,7 +13,8 @@ export class MessagingService {
 
       if (!accessToken || !phoneNumberId) {
         console.log('Meta WhatsApp credentials not configured, using Twilio fallback');
-        return await this.sendWhatsAppViaTwilio(whatsappNumber, message, callSummary);
+        console.error('WhatsApp credentials not configured');
+        return false;
       }
 
       // Format WhatsApp number (remove + and non-digits)
@@ -56,35 +57,7 @@ export class MessagingService {
     }
   }
 
-  // Fallback to Twilio WhatsApp
-  private static async sendWhatsAppViaTwilio(
-    whatsappNumber: string, 
-    message: string, 
-    callSummary?: string
-  ): Promise<boolean> {
-    try {
-      // Format WhatsApp number
-      const formattedNumber = whatsappNumber.startsWith('whatsapp:') 
-        ? whatsappNumber 
-        : `whatsapp:${whatsappNumber}`;
-
-      // Create personalized message
-      const personalizedMessage = callSummary 
-        ? `${message}\n\nCall Summary: ${callSummary}`
-        : message;
-
-      // Send via Twilio WhatsApp API
-      const result = await twilioService.sendWhatsAppMessage(
-        formattedNumber,
-        personalizedMessage
-      );
-
-      return result.success;
-    } catch (error) {
-      console.error('Error sending WhatsApp message via Twilio:', error);
-      return false;
-    }
-  }
+  // Twilio fallback method removed - calling functionality deleted
 
   // Send Email
   static async sendEmail(
