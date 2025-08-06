@@ -5,20 +5,20 @@
 
 export class FastResponseService {
   private responsePatterns: { [key: string]: string } = {
-    // Common Hindi responses
-    'lab': 'Aapka lab hai kya?',
-    'business': 'LabsCheck partnership interest hai?',
-    'pathology': 'Pathology lab details chahiye?',
-    'test': 'Kya test karte hain aap?',
-    'number': 'WhatsApp number share kar sakte hain?',
-    'email': 'Email ID de sakte hain?',
-    'interest': 'Partnership mein interest hai?',
+    // Natural English responses matching the greeting tone
+    'lab': 'Do you have a pathology lab?',
+    'business': 'Are you interested in our lab partnership program?',
+    'pathology': 'What tests does your lab offer?',
+    'test': 'What kind of tests do you perform?',
+    'number': 'Could you share your WhatsApp number?',
+    'email': 'What is your email address?',
+    'interest': 'Would you like to know more about our partnership?',
     
     // Default responses based on input patterns
-    'default_question': 'Aapka lab hai kya?',
-    'default_positive': 'WhatsApp number?',
-    'default_negative': 'Koi baat nahi. Dhanyawad!',
-    'default_confused': 'LabsCheck se partnership ka call hai.',
+    'default_question': 'Do you run a pathology lab?',
+    'default_positive': 'Great! Could you share your WhatsApp number?',
+    'default_negative': 'No problem. Thank you for your time!',
+    'default_confused': 'This is about LabsCheck lab partnership opportunities.',
   };
 
   detectIntent(input: string): string {
@@ -52,9 +52,9 @@ export class FastResponseService {
   generateTwiML(response: string): string {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice" language="en-IN" rate="fast">${response}</Say>
-    <Pause length="0.1"/>
-    <Record action="/api/twilio/record" maxLength="5" timeout="1" playBeep="false" />
+    <Say voice="alice" language="en-US" rate="medium">${response}</Say>
+    <Pause length="0.3"/>
+    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
 </Response>`;
   }
 }

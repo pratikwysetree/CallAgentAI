@@ -637,8 +637,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!RecordingUrl || !RecordingDuration || parseFloat(RecordingDuration) < 0.5) {
         console.log('❌ [NO RECORDING] No recording or too short');
-        const retryPrompt = "Kuch nahi suna. Boliye.";
-        const twiml = await twilioService.generateTwiML(retryPrompt);
+        const retryPrompt = "I didn't catch that. Could you please repeat?";
+        const { fastResponseService } = await import('./services/fastResponse');
+        const twiml = fastResponseService.generateTwiML(retryPrompt);
         return res.type('text/xml').send(twiml);
       }
 
@@ -646,7 +647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`⚡ [ULTRA-FAST MODE] Generating instant response`);
       
       const { fastResponseService } = await import('./services/fastResponse');
-      const fastResponse = "Aapka lab hai kya?"; // Static ultra-fast response
+      const fastResponse = "Do you run a pathology lab?"; // Natural English response
       const twiml = fastResponseService.generateTwiML(fastResponse);
       
       const totalTime = Date.now() - startTime;
