@@ -41,86 +41,39 @@ export class FreshConversationService {
     console.log(`📡 [WEBSOCKET] Broadcasted ${eventType} for call ${callSid}`);
   }
 
-  // Quick responses for common queries with accurate LabsCheck information
-  private getQuickResponse(customerText: string, voiceConfig?: any): { response: any, needsAudio: boolean } | null {
+  // Quick responses for common queries - no OpenAI needed
+  private getQuickResponse(customerText: string): any | null {
     const text = customerText.toLowerCase().trim();
     
-    // Detect language for proper response
+    // Detect language
     const isHindi = /[\u0900-\u097F]/.test(customerText) || 
                    /(hai|hain|kya|kaise|kahan|nahin|nahi|acha|thik|lab|test)/i.test(customerText);
     
-    // Professional opening - LabsCheck introduction (INSTANT)
-    if (/(hello|hi|haan|han|yes|ji|namaste)/i.test(text)) {
-      console.log('⚡ [INSTANT-RESPONSE] Professional LabsCheck introduction');
+    // Common greetings/responses
+    if (/(hello|hi|haan|han|yes|ji)/i.test(text)) {
       return {
-        response: {
-          message: isHindi ? 
-            "नमस्ते! मैं आविका हूं LabsCheck से - India का पहला diagnostic aggregator platform। मैं आपकी pathology lab के साथ partnership के बारे में बात करने के लिए कॉल कर रही हूं। क्या मैं lab owner से बात कर रही हूं?" :
-            "Hello! This is Aavika calling from LabsCheck - India's first diagnostic aggregator platform. I'm calling to discuss a partnership opportunity with your pathology lab. Am I speaking with the lab owner?",
-          collected_data: {},
-          should_end: false
-        },
-        needsAudio: true // Generate audio immediately
+        message: isHindi ? "हैलो! मैं आविका हूँ LabsCheck से। क्या आप लैब के owner हैं?" : 
+                           "Hi! I am Aavika from LabsCheck. Are you the lab owner?",
+        collected_data: {},
+        should_end: false
       };
     }
     
-    // Owner confirmation - LabsCheck mission explanation (INSTANT)
-    if (/(yes|haan|han|main hoon|mein hoon|i am|owner|main owner|mein owner|lab owner|owner hoon)/i.test(text) && !/(nahi|no|not)/i.test(text)) {
-      console.log('⚡ [INSTANT-RESPONSE] Owner confirmed - LabsCheck mission explanation');
+    if (/(owner|malik|malkin)/i.test(text) && /(nahin|nahi|no)/i.test(text)) {
       return {
-        response: {
-          message: isHindi ?
-            "बहुत बढ़िया! LabsCheck एक revolutionary platform है जो trusted NABL accredited labs को patients के साथ जोड़ता है। हमारा zero-commission model आपकी lab को enhanced visibility और direct patient access देता है। क्या आप जानना चाहेंगे कि यह partnership आपके business को कैसे बढ़ a सकती है?" :
-            "Excellent! LabsCheck is revolutionizing diagnostic testing in India by connecting trusted NABL accredited labs with patients seeking affordable, reliable testing. We're building a zero-commission platform that gives labs like yours enhanced visibility and direct patient access. Would you be interested in learning how this partnership can grow your business?",
-          collected_data: { lab_owner_confirmed: true },
-          should_end: false
-        },
-        needsAudio: true
+        message: isHindi ? "क्या आप owner का WhatsApp number share कर सकते हैं?" : 
+                           "Can you share the owner's WhatsApp number?",
+        collected_data: {},
+        should_end: false
       };
     }
     
-    // Non-owner scenario - Request owner contact (INSTANT)
-    if (/(no|nahi|owner nahi|not owner|main nahi)/i.test(text)) {
-      console.log('⚡ [INSTANT-RESPONSE] Non-owner scenario - requesting owner contact');
+    if (/(benefit|faayda|labh)/i.test(text)) {
       return {
-        response: {
-          message: isHindi ?
-            "समझ गया। क्या आप मुझे lab owner से मिला सकते हैं या उनका WhatsApp number share कर सकते हैं? मैं उन्हें बताना चाहूंगी कि LabsCheck कैसे आपकी lab की reach को बढ़ा सकता है। यह zero-commission partnership opportunity के बारे में है।" :
-            "I understand. Could you please connect me with the lab owner, or share their WhatsApp number? I'd like to discuss how LabsCheck can help expand your lab's reach through our trusted partner network. This is regarding a zero-commission partnership opportunity.",
-          collected_data: { non_owner_contact_requested: true },
-          should_end: false
-        },
-        needsAudio: true
-      };
-    }
-    
-    // Benefits inquiry - Detailed LabsCheck value proposition (INSTANT)  
-    if (/(benefit|faayda|kya milega|what will get|partnership|details|interested)/i.test(text)) {
-      console.log('⚡ [INSTANT-RESPONSE] LabsCheck benefits explanation');
-      return {
-        response: {
-          message: isHindi ?
-            "LabsCheck partner के रूप में आपको मिलता है: पूरे India में enhanced online visibility, direct patient bookings transparent pricing के साथ, आपके test menu और rates पर पूरा control, NABL accreditation verification trust के लिए, Zero commission - 100% earnings retention, और easy management के लिए partner portal access। हम quality labs और trusted diagnostics चाहने वाले patients के बीच gap को भर रहे हैं।" :
-            "As a LabsCheck partner, you get: Enhanced online visibility across India, Direct patient bookings with transparent pricing, Full control over your test menu and rates, NABL accreditation verification for trust, Zero commission - 100% earnings retention, and access to our partner portal for easy management. We're bridging the gap between quality labs and patients seeking trusted diagnostics.",
-          collected_data: { benefits_explained: true },
-          should_end: false
-        },
-        needsAudio: true
-      };
-    }
-    
-    // Interest confirmation and next steps (INSTANT)
-    if (/(interested|yes|haan|tell me|batao|more|partner portal)/i.test(text) && /(portal|login|details|information)/i.test(text)) {
-      console.log('⚡ [INSTANT-RESPONSE] Interest confirmed - next steps');
-      return {
-        response: {
-          message: isHindi ?
-            "बहुत अच्छा! मैं आपको partner portal login details provide करूंगी जहां आप अपना test menu और pricing upload कर सकते हैं। हम आपको WhatsApp के जरिए official partnership information भी भेजेंगे। क्या आप अपना WhatsApp number और email documentation के लिए share कर सकते हैं?" :
-            "Wonderful! I'll provide you with our partner portal login details where you can upload your test menu and pricing. We'll also send you official partnership information via WhatsApp. Can you please share your WhatsApp number and email for the documentation?",
-          collected_data: { interest_confirmed: true, contact_requested: true },
-          should_end: false
-        },
-        needsAudio: true
+        message: isHindi ? "आपको 100% payment मिलेगा, zero commission! अधिक visibility भी।" : 
+                           "You get 100% payment, zero commission! More visibility too.",
+        collected_data: {},
+        should_end: false
       };
     }
     
@@ -190,42 +143,8 @@ export class FreshConversationService {
       
       // Check if transcription is empty
       if (!customerText || customerText.length < 2) {
-        console.log('⚠️ [WHISPER] Empty or very short transcription, using ElevenLabs voice for consistency');
-        
-        // Generate the "didn't catch" response with ElevenLabs to maintain voice consistency
-        const fallbackResponse = {
-          message: "I didn't catch that clearly. Could you please repeat?",
-          collected_data: {},
-          should_end: false
-        };
-        
-        // Use ElevenLabs for this response too to maintain voice consistency
-        let audioUrl: string | null = null;
-        try {
-          const voiceSettings = {
-            voiceId: voiceConfig?.voiceId || 'Z6TUNPsOxhTPtqLx81EX',
-            model: voiceConfig?.model || 'eleven_turbo_v2',
-            stability: voiceConfig?.stability || 0.5,
-            similarityBoost: voiceConfig?.similarityBoost || 0.75,
-            style: voiceConfig?.style || 0,
-            useSpeakerBoost: voiceConfig?.useSpeakerBoost || true,
-          };
-          
-          const { elevenLabsService } = await import('./elevenLabsService');
-          const audioFilename = await elevenLabsService.generateAudioFile(fallbackResponse.message, voiceSettings);
-          
-          if (audioFilename && typeof audioFilename === 'string') {
-            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-            audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-            console.log(`🎵 [ELEVENLABS] Fallback response generated: ${audioUrl}`);
-          }
-        } catch (fallbackError) {
-          console.error('❌ [ELEVENLABS] Fallback generation failed:', fallbackError);
-          audioUrl = null;
-        }
-        
-        return this.generateTwiMLResponse(audioUrl, fallbackResponse.message, false, callSid, voiceConfig);
+        console.log('⚠️ [WHISPER] Empty or very short transcription, using default response');
+        return this.generateTwiMLResponse(null, "I didn't catch that. Could you please repeat?", false, callSid);
       }
       
       // Broadcast customer speech event
@@ -234,79 +153,17 @@ export class FreshConversationService {
         processingTime: Date.now() - startTime
       });
       
-      // 4. Check for quick responses first - BYPASS EVERYTHING ELSE FOR INSTANT RESPONSE
-      const quickResult = this.getQuickResponse(customerText, voiceConfig);
-      
-      if (quickResult) {
-        console.log('⚡ [INSTANT-BYPASS] Using predefined response - skipping OpenAI completely');
-        
-        // IMMEDIATE RETURN - True instant response
-        const aiResponse = quickResult.response;
-        let audioUrl: string | null = null;
-        const instantStart = Date.now();
-        
-        // Broadcast instant response event immediately
-        this.broadcastConversationEvent(callSid, 'instant_response', aiResponse.message, {
-          processingTime: 0,
-          responseType: 'instant'
-        });
-        
-        try {
-          const voiceSettings = {
-            voiceId: voiceConfig?.voiceId || 'Z6TUNPsOxhTPtqLx81EX',
-            model: voiceConfig?.model || 'eleven_turbo_v2',
-            stability: voiceConfig?.stability || 0.5,
-            similarityBoost: voiceConfig?.similarityBoost || 0.75,
-            style: voiceConfig?.style || 0,
-            useSpeakerBoost: voiceConfig?.useSpeakerBoost || true,
-          };
-          
-          const { elevenLabsService } = await import('./elevenLabsService');
-          const audioFilename = await elevenLabsService.generateAudioFile(aiResponse.message, voiceSettings);
-          
-          if (audioFilename && typeof audioFilename === 'string') {
-            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-            audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-          }
-          
-          const instantTime = Date.now() - instantStart;
-          console.log(`🚀 [INSTANT-COMPLETE] Audio generated in ${instantTime}ms`);
-          
-          // Broadcast voice synthesis complete
-          this.broadcastConversationEvent(callSid, 'voice_synthesis', aiResponse.message, {
-            processingTime: instantTime,
-            audioUrl,
-            voiceId: voiceConfig?.voiceId
-          });
-          
-        } catch (error) {
-          console.error('❌ [INSTANT-ERROR]:', error);
-          audioUrl = null;
-        }
-        
-        // Save conversation and return immediately
-        await this.saveConversationMessage(callSid, customerText, aiResponse.message);
-        
-        if (aiResponse.collected_data && Object.keys(aiResponse.collected_data).length > 0) {
-          await this.storeCollectedData(callSid, aiResponse.collected_data);
-        }
-        
-        // Return TwiML immediately
-        const twimlResponse = this.generateTwiMLResponse(audioUrl, aiResponse.message, aiResponse.should_end, callSid, voiceConfig);
-        
-        // No cleanup needed for instant responses - no temp file created
-        
-        return twimlResponse;
-      }
-      
-      // Continue with OpenAI for complex queries
+      // 4. Check for quick responses first, then use OpenAI for complex queries
+      const quickResponse = this.getQuickResponse(customerText);
       let aiResponse: any;
       let openaiRequestStart = Date.now();
       
-      console.log('🧠 [OPENAI] Using OpenAI for complex query');
-      
-      try {
+      if (quickResponse) {
+        console.log('⚡ [QUICK-RESPONSE] Using predefined response for common query');
+        aiResponse = quickResponse;
+      } else {
+        console.log('🧠 [OPENAI] Using OpenAI for complex query');
+        
         const requestPayload = {
           model: "gpt-4o" as const,
           messages: [
@@ -332,8 +189,8 @@ LANGUAGE MATCHING:
 
 Keep responses natural, warm, and conversational. Maximum 25 words per response.
 
-RESPOND IN JSON FORMAT:
-{"message": "your professional response", "collected_data": {"whatsapp_number": "", "email": "", "lab_owner_confirmed": "", "interest_level": ""}, "should_end": false}
+IMPORTANT: Always respond in JSON format exactly like this:
+{"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
 
 Use JSON format for all responses.`
             },
@@ -381,13 +238,6 @@ Use JSON format for all responses.`
             collected_data: {}
           };
         }
-      } catch (openaiError) {
-        console.error('❌ [OPENAI-ERROR]:', openaiError);
-        aiResponse = {
-          message: "I understand. Could you please share your WhatsApp number for partnership details?",
-          should_end: false,
-          collected_data: {}
-        };
       }
 
       // Validate aiResponse structure to prevent crashes
@@ -407,13 +257,10 @@ Use JSON format for all responses.`
 
       console.log(`🤖 [AI] Response: "${aiResponse.message}"`);
       
-      // 5. Generate voice with ElevenLabs using campaign voice config (INSTANT for quick responses)
+      // 5. Generate voice with ElevenLabs using campaign voice config
       let audioUrl = null;
-      const voiceProcessingStart = Date.now();
-      const responseType = quickResult ? 'instant' : 'openai';
-      
       try {
-        // Use campaign voice settings or fallback to default  
+        // Use campaign voice settings or fallback to default
         const voiceSettings = voiceConfig && voiceConfig.useElevenLabs ? {
           voiceId: voiceConfig.voiceId || '7w5JDCUNbeKrn4ySFgfu', // Use selected voice or Aavika default
           model: voiceConfig.model || 'eleven_multilingual_v2',
@@ -445,8 +292,8 @@ Use JSON format for all responses.`
         const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
         audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
         
-        const voiceProcessingTime = Date.now() - voiceProcessingStart;
-        console.log(`🎵 [ELEVENLABS] Generated ${responseType} audio: ${audioUrl} (${voiceProcessingTime}ms)`);
+        const voiceProcessingTime = Date.now() - voiceSynthesisStart;
+        console.log(`🎵 [ELEVENLABS] Generated audio: ${audioUrl}`);
         
         // Broadcast voice synthesis event with actual voice settings used
         this.broadcastConversationEvent(callSid, 'voice_synthesis', aiResponse.message, {
@@ -454,8 +301,7 @@ Use JSON format for all responses.`
           model: voiceSettings.model,
           processingTime: voiceProcessingTime,
           audioUrl,
-          campaignVoice: voiceConfig ? 'selected' : 'default',
-          responseType: responseType
+          campaignVoice: voiceConfig ? 'selected' : 'default'
         });
         
       } catch (ttsError) {
@@ -468,7 +314,7 @@ Use JSON format for all responses.`
       }
       
       // 6. Store conversation message history
-      await this.saveConversationMessage(callSid, customerText, aiResponse.message);
+      await this.saveConversationMessage(callSid, userTranscription, aiResponse.message);
       
       // 7. Store conversation data if collected
       if (aiResponse.collected_data && Object.keys(aiResponse.collected_data).length > 0) {
@@ -491,37 +337,10 @@ Use JSON format for all responses.`
       console.error('❌ [FRESH-SERVICE] Error:', error);
       this.broadcastConversationEvent(callSid, 'error', `Processing failed: ${(error as Error).message}`);
       
-      // Return safe fallback TwiML - but try to maintain voice consistency even in errors
-      let fallbackAudioUrl: string | null = null;
-      const fallbackMessage = "Thank you for your time. We will contact you soon.";
-      
-      try {
-        // Even for error fallback, try to use ElevenLabs voice to maintain consistency
-        const voiceSettings = {
-          voiceId: voiceConfig?.voiceId || 'Z6TUNPsOxhTPtqLx81EX',
-          model: voiceConfig?.model || 'eleven_turbo_v2',
-          stability: voiceConfig?.stability || 0.5,
-          similarityBoost: voiceConfig?.similarityBoost || 0.75,
-          style: voiceConfig?.style || 0,
-          useSpeakerBoost: voiceConfig?.useSpeakerBoost || true,
-        };
-        
-        const { elevenLabsService } = await import('./elevenLabsService');
-        const audioFilename = await elevenLabsService.generateAudioFile(fallbackMessage, voiceSettings);
-        
-        if (audioFilename && typeof audioFilename === 'string') {
-          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
-          fallbackAudioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
-          console.log(`🎵 [ELEVENLABS] Error fallback generated: ${fallbackAudioUrl}`);
-        }
-      } catch (fallbackError) {
-        console.error('❌ [ELEVENLABS] Error fallback generation failed:', fallbackError);
-      }
-      
+      // Return safe fallback TwiML
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  ${fallbackAudioUrl ? `<Play>${fallbackAudioUrl}</Play>` : `<Say voice="alice" language="en-IN">${fallbackMessage}</Say>`}
+  <Say voice="alice" language="en-IN">Thank you for your time. We will contact you soon.</Say>
   <Hangup/>
 </Response>`;
     }
@@ -558,41 +377,18 @@ Use JSON format for all responses.`
 
     const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
     
-    // Add retry logic for Twilio recording downloads
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        console.log(`📞 [TWILIO-RETRY] Attempt ${attempt} for recording: ${recordingId}`);
-        
-        const response = await fetch(recordingUrl, {
-          headers: {
-            'Authorization': `Basic ${credentials}`,
-            'User-Agent': 'LabsCheck-AI-Caller/1.0'
-          }
-        });
-        
-        if (response.status === 404 && attempt < 3) {
-          console.log(`⏱️ [TWILIO-DELAY] Recording not ready, waiting 2 seconds...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          continue;
-        }
-        
-        if (!response.ok) {
-          throw new Error(`Failed to download recording: ${response.status} ${response.statusText}`);
-        }
-        
-        const arrayBuffer = await response.arrayBuffer();
-        console.log(`✅ [TWILIO-SUCCESS] Downloaded recording on attempt ${attempt}: ${arrayBuffer.byteLength} bytes`);
-        return Buffer.from(arrayBuffer);
-        
-      } catch (error) {
-        console.error(`❌ [TWILIO-ATTEMPT-${attempt}] Error:`, error);
-        if (attempt === 3) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+    const response = await fetch(recordingUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download recording: ${response.status} ${response.statusText}`);
     }
-    
-    // This should never be reached due to the retry loop above
-    throw new Error('Recording download failed after all attempts');
+
+    return Buffer.from(await response.arrayBuffer());
   }
 
   private async saveConversationMessage(callSid: string, userMessage: string, aiMessage: string) {
