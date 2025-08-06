@@ -49,8 +49,18 @@ export class FreshConversationService {
     const isHindi = /[\u0900-\u097F]/.test(customerText) || 
                    /(hai|hain|kya|kaise|kahan|nahin|nahi|acha|thik|lab|test)/i.test(customerText);
     
+    // Lab owner confirmation responses
+    if (/(yes|haan|han|ji|owner|malik|malkin)/i.test(text) && !(/(nahin|nahi|no)/i.test(text))) {
+      return {
+        message: isHindi ? "महान! LabsCheck India का पहला diagnostic aggregator platform है। हम trusted diagnostics को affordable prices पर provide करते हैं। क्या आप partnership में interested हैं?" : 
+                           "Great! LabsCheck is India's first diagnostic aggregator platform. We provide trusted diagnostics at affordable prices. Are you interested in partnership?",
+        collected_data: { contact_person: "lab_owner" },
+        should_end: false
+      };
+    }
+    
     // Common greetings/responses
-    if (/(hello|hi|haan|han|yes|ji)/i.test(text)) {
+    if (/(hello|hi|haan|han)/i.test(text) && !/(owner|malik|malkin|yes)/i.test(text)) {
       return {
         message: isHindi ? "हैलो! मैं आविका हूँ LabsCheck से। क्या आप लैब के owner हैं?" : 
                            "Hi! I am Aavika from LabsCheck. Are you the lab owner?",
@@ -171,14 +181,16 @@ export class FreshConversationService {
               role: "system" as const,
               content: `You are Aavika from LabsCheck calling pathology labs for partnership.
 
+CRITICAL: If customer confirms they are the lab owner (words like "yes", "haan", "ji", "owner", "malik") DO NOT repeat the opening question. Move to next step.
+
 CONVERSATION FLOW:
 1. OPENING: "Hi I am Aavika from LabsCheck. Am I speaking with the owner of the lab? This is about listing your lab as a trusted laboratory in your location."
 
-2. IF NOT OWNER: "Will it be possible for you to share the owner's email ID or WhatsApp number? Can I have your WhatsApp number? I will forward you details and you can share with the owner."
+2. IF OWNER CONFIRMS (yes/haan/ji/owner): Move directly to explaining LabsCheck - "Great! LabsCheck is India's first diagnostic aggregator platform providing trusted diagnostics at affordable prices. We partner with NABL accredited labs for better visibility and business. Are you interested?"
 
-3. WHAT IS LABSCHECK: "LabsCheck is India's first diagnostic aggregator platform. It works on the simple principle of trusted diagnostics at affordable prices. It's a people's platform which will make diagnostics affordable. We are partnering with all NABL accredited labs so they can be more visible in their vicinity and get more business."
+3. IF NOT OWNER: "Will it be possible for you to share the owner's email ID or WhatsApp number? Can I have your WhatsApp number? I will forward you details and you can share with the owner."
 
-4. PARTNERSHIP OFFER: "If you are interested, we can list you as a trusted partner on our platform. We would require few basic documents and we will provide you partner login details where you can login and fill all test menu with test prices and serviceable location."
+4. PARTNERSHIP DETAILS: "We provide zero commission model, 100% payment to you, trusted partner listing, online portal to manage tests and prices, more visibility in your area."
 
 5. CLOSING: "For further understanding, I would request you to share your WhatsApp number and email ID so I shall share all information officially."
 
@@ -187,7 +199,12 @@ LANGUAGE MATCHING:
 - If customer speaks English, respond in English
 - Match their tone and speaking style exactly
 
-Keep responses natural, warm, and conversational. Maximum 25 words per response.
+Keep responses natural, warm, and conversational. Maximum 30 words per response.
+
+CRITICAL RULES:
+- NEVER repeat the same question in different languages
+- If they say "yes" or confirm ownership, move to explaining LabsCheck
+- Progress conversation forward, don't loop on same question
 
 IMPORTANT: Always respond in JSON format exactly like this:
 {"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}

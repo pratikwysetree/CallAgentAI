@@ -1515,10 +1515,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Generate a very short "..." sound for typing effect
         const audioFilename = await elevenLabsService.generateAudioFile('...', typingSettings);
-        const tempPath = path.join(__dirname, '../temp', audioFilename);
+        const tempPath = path.join(process.cwd(), 'temp', audioFilename);
         
         // Move to permanent location for caching
-        const staticAudioDir = path.join(__dirname, '../temp/static-audio');
+        const staticAudioDir = path.join(process.cwd(), 'temp', 'static-audio');
         if (!fs.existsSync(staticAudioDir)) {
           fs.mkdirSync(staticAudioDir, { recursive: true });
         }
