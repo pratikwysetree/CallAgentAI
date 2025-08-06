@@ -626,6 +626,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Twilio partial results endpoint for better speech recognition
+  app.post('/api/twilio/partial', (req, res) => {
+    const { SpeechResult, Confidence, CallSid } = req.body;
+    console.log(`🎯 [PARTIAL SPEECH] Call ${CallSid}: "${SpeechResult}" (confidence: ${Confidence})`);
+    
+    // Send empty TwiML to continue gathering
+    res.set('Content-Type', 'text/xml');
+    res.send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+  });
+
   app.post('/api/twilio/gather', async (req, res) => {
     try {
       const { CallSid, SpeechResult, Confidence } = req.body;
@@ -635,10 +645,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎤 [CONFIDENCE] ${Confidence || 'N/A'}`);
       console.log(`🎤 [RAW REQUEST]`, JSON.stringify(req.body, null, 2));
       
-      // Handle empty or low-confidence speech
+      // Handle empty or low-confidence speech with more detailed logging
       if (!SpeechResult || SpeechResult.trim() === '' || SpeechResult.toLowerCase() === 'timeout') {
-        console.log('❌ [NO SPEECH] No speech detected, asking customer to repeat');
-        const twiml = await twilioService.generateTwiML("Kuch samjha nahi aaya. Please speak clearly.");
+        console.log('❌ [NO SPEECH] No speech detected or timeout occurred');
+        console.log(`❌ [SPEECH DEBUG] Raw SpeechResult: "${SpeechResult}"`);
+        console.log(`❌ [SPEECH DEBUG] Confidence: ${Confidence}`);
+        
+        // More patient retry with Hindi prompt
+        const retryPrompt = "Sunai nahi diya, dobara boliye. Please speak clearly.";
+        const twiml = await twilioService.generateTwiML(retryPrompt);
+        return res.type('text/xml').send(twiml);
+      }
+      
+      // Check for very low confidence and ask to repeat
+      if (Confidence && parseFloat(Confidence) < 0.4) {
+        console.log(`⚠️ [LOW CONFIDENCE] Speech confidence too low: ${Confidence}`);
+        const retryPrompt = "Thoda aur saaf boliye. Can you repeat that?";
+        const twiml = await twilioService.generateTwiML(retryPrompt);
         return res.type('text/xml').send(twiml);
       }
       

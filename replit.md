@@ -37,7 +37,7 @@ This is a comprehensive AI-powered calling platform built with a modern full-sta
 
 **OpenAI Language Understanding:** SIGNIFICANTLY ENHANCED (January 6, 2025) - Switched to full gpt-4o model and enhanced prompts for better Hinglish understanding. System now provides contextual examples of broken speech patterns and appropriate responses. Temperature reduced to 0.3 for more consistent behavior.
 
-**Twilio Speech Recognition:** OPTIMIZED for Indian languages - Enhanced with hi-IN language setting, extended timeouts (4s speech, 12s total), and comprehensive hints including common Hindi-English mixed terms (kya, theek, accha, matlab, etc.).
+**Twilio Speech Recognition:** ENHANCED for Indian languages - Updated with hi-IN language setting, extended timeouts (6s speech, 15s total), experimental_conversations model, partial result callbacks, and comprehensive lab partnership hints (lab, laboratory, pathology, partner, partnership, owner, manager, WhatsApp, etc.). Added proper TwiML structure with closing tags and enhanced confidence thresholds.
 
 **Ready for Testing:** All core functionality working with enhanced language understanding and comprehensive LabsCheck knowledge base. System now better processes unclear/mixed Hindi-English speech from Indian customers.
 
