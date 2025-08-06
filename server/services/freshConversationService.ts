@@ -115,7 +115,10 @@ LANGUAGE MATCHING:
 
 Keep responses brief, warm, natural. Maximum 15 words.
 
-RESPONSE FORMAT: {"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}`
+IMPORTANT: Always respond in JSON format exactly like this:
+{"message": "your response in same language as customer", "collected_data": {"contact_person": "", "whatsapp_number": "", "email": "", "lab_name": ""}, "should_end": false}
+
+Use JSON format for all responses.`
           },
           {
             role: "user" as const,
