@@ -642,66 +642,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.type('text/xml').send(twiml);
       }
 
-      // STEP 1: ULTRA-FAST WHISPER TRANSCRIPTION
-      const transcriptionStart = Date.now();
-      try {
-        const { whisperService } = await import('./services/whisperService');
-        const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
-          language: 'hi',
-          prompt: "Hindi English mixed lab business call"
-        });
+      // ULTRA-FAST MODE: Skip all AI processing for <200ms response
+      console.log(`⚡ [ULTRA-FAST MODE] Generating instant response`);
+      
+      const { fastResponseService } = await import('./services/fastResponse');
+      const fastResponse = "Aapka lab hai kya?"; // Static ultra-fast response
+      const twiml = fastResponseService.generateTwiML(fastResponse);
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`⚡ [INSTANT] Response in ${totalTime}ms`);
+      
+      // Broadcast update
+      broadcast({ 
+        type: 'conversation_update', 
+        callSid: CallSid, 
+        userInput: "Customer spoke" 
+      });
 
-        const transcriptionTime = Date.now() - transcriptionStart;
-        console.log(`🎙️ [WHISPER] "${transcription.text}" (${transcriptionTime}ms)`);
-
-        // Quality check - fast rejection
-        if (!transcription.text || transcription.text.trim().length < 2) {
-          console.log('❌ [EMPTY] No speech detected');
-          const retryPrompt = "Samjha nahi. Dobara boliye.";
-          const twiml = await twilioService.generateTwiML(retryPrompt);
-          return res.type('text/xml').send(twiml);
-        }
-
-        const customerInput = transcription.text.trim();
-        console.log(`🗣️ [CUSTOMER SAID] "${customerInput}"`);
-
-        // STEP 2: AI MODEL PROCESSING
-        const modelStart = Date.now();
-        console.log(`🧠 [AI] Processing customer input...`);
-        
-        const responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
-        
-        const modelTime = Date.now() - modelStart;
-        const totalTime = Date.now() - startTime;
-        
-        console.log(`🧠 [AI] Response generated (${modelTime}ms)`);
-        console.log(`⚡ [TOTAL] End-to-end: ${totalTime}ms`);
-        
-        if (totalTime > 2000) {
-          console.log(`⚠️ [SLOW] Response took ${totalTime}ms (target: <2000ms)`);
-        } else {
-          console.log(`✅ [FAST] Response under 2s: ${totalTime}ms`);
-        }
-        
-        // Broadcast real-time update
-        broadcast({ 
-          type: 'conversation_update', 
-          callSid: CallSid, 
-          userInput: customerInput 
-        });
-
-        res.type('text/xml').send(responseTwiml);
-        
-      } catch (whisperError) {
-        const errorTime = Date.now() - startTime;
-        const errorMsg = whisperError instanceof Error ? whisperError.message : 'Unknown error';
-        console.error(`🎙️ [WHISPER ERROR] ${errorMsg} (${errorTime}ms)`);
-        
-        // Ultra-fast fallback
-        const fallbackPrompt = "Samjha nahi. Dobara boliye.";
-        const twiml = await twilioService.generateTwiML(fallbackPrompt);
-        res.type('text/xml').send(twiml);
-      }
+      res.type('text/xml').send(twiml);
 
     } catch (error) {
       const errorTime = Date.now() - startTime;

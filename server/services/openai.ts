@@ -174,10 +174,10 @@ Respond with a JSON object:
       console.log(`🗣️ [DETECTED LANGUAGE] Customer language: ${customerLanguage.toUpperCase()}`);
       
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Much faster than gpt-4o
+        model: "gpt-3.5-turbo", // Fastest model available
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 50, // Ultra-minimal for <1s response
+        max_tokens: 30, // Absolute minimum for speed
         temperature: 0, // Zero for fastest processing
       });
 
