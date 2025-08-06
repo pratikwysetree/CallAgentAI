@@ -49,13 +49,17 @@ export class OpenAIService {
 
 The customer responded: "${userInput}"
 
-Respond naturally to what they said. Keep it SHORT and conversational. Your goal is to get their WhatsApp number and email to share lab details.
+CRITICAL: Respond DIRECTLY to what they just said. Be contextual and acknowledge their words before asking anything.
 
-- If they say they're fine/good → Ask for WhatsApp number  
-- If they ask what this is about → Say you want to share lab details
-- If they give WhatsApp → Ask for email
-- If they give email → Thank and end call
-- If not interested → Say okay and end call
+CONTEXTUAL RESPONSES BASED ON THEIR EXACT WORDS:
+- If they say "abhi busy hun" / "kam hai" / "time nahi" → "No problem, bas 30 second mein WhatsApp number de dijiye?"
+- If they say "fine/good/theek/accha" → "Great! Aap ka WhatsApp number share kar dijiye?"  
+- If they ask "what/why/kya/kyon" → "Hum health checkup ki details share karna chahte hain, WhatsApp number de dijiye?"
+- If they say phone number → "Perfect! Aur email ID bhi bata dijiye"
+- If they say email → "Thank you! Details send kar denge"
+- If they say "not interested/nahi chahiye" → "Okay no problem, good day!"
+
+Be SHORT (maximum 1 sentence) and respond to their EXACT words first.
 
 Extract any useful information mentioned during the conversation and format it as JSON in your response.
 
@@ -75,7 +79,7 @@ Respond with a JSON object:
       const messages = [
         { role: "system" as const, content: systemPrompt },
         ...context.conversationHistory,
-        { role: "user" as const, content: `Customer just said: "${userInput}". Respond naturally to these specific words in Hinglish.` }
+        { role: "user" as const, content: `Customer just said: "${userInput}". Acknowledge what they said and respond contextually to their exact words.` }
       ];
 
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
