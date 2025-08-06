@@ -15,8 +15,8 @@ export class SimpleConversationService {
     console.log(`🎙️ [SIMPLE-FLOW] Processing ${audioBuffer.length} bytes of customer audio`);
     
     try {
-      // 1. Save audio file for Whisper
-      const tempAudioPath = path.join(__dirname, '../../temp', `customer_${callSid}_${Date.now()}.mp3`);
+      // 1. Save audio file for Whisper  
+      const tempAudioPath = path.join(process.cwd(), 'temp', `customer_${callSid}_${Date.now()}.mp3`);
       fs.writeFileSync(tempAudioPath, audioBuffer);
       
       // 2. Transcribe with OpenAI Whisper

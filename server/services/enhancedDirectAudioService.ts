@@ -16,7 +16,7 @@ export class EnhancedDirectAudioService {
     
     try {
       // 1. Save audio file for Whisper processing
-      const tempAudioPath = path.join(__dirname, '../../temp', `enhanced_${callSid}_${Date.now()}.mp3`);
+      const tempAudioPath = path.join(process.cwd(), 'temp', `enhanced_${callSid}_${Date.now()}.mp3`);
       fs.writeFileSync(tempAudioPath, audioBuffer);
       
       // 2. Transcribe with OpenAI Whisper (auto-detect language)
@@ -104,7 +104,7 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "voic
         const audioArrayBuffer = await speechResponse.arrayBuffer();
         const audioBuffer = Buffer.from(audioArrayBuffer);
         const audioFilename = `openai_enhanced_${callSid}_${Date.now()}.mp3`;
-        const audioPath = path.join(__dirname, '../../temp', audioFilename);
+        const audioPath = path.join(process.cwd(), 'temp', audioFilename);
         fs.writeFileSync(audioPath, audioBuffer);
         
         // Create URL for Twilio to play
@@ -269,7 +269,7 @@ RESPONSE FORMAT: {"message": "your response matching customer's language exactly
         const audioArrayBuffer = await speechResponse.arrayBuffer();
         const audioBuffer = Buffer.from(audioArrayBuffer);
         const audioFilename = `direct_speech_${callSid}_${Date.now()}.mp3`;
-        const audioPath = path.join(__dirname, '../../temp', audioFilename);
+        const audioPath = path.join(process.cwd(), 'temp', audioFilename);
         fs.writeFileSync(audioPath, audioBuffer);
         
         const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';

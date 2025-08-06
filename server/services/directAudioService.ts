@@ -4,7 +4,7 @@ import path from 'path';
 import { storage } from '../storage';
 
 // Ensure temp directory exists
-const tempDir = path.join(__dirname, '../../temp');
+const tempDir = path.join(process.cwd(), 'temp');
 if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir, { recursive: true });
 }
@@ -22,7 +22,7 @@ export class DirectAudioService {
     
     try {
       // 1. Save audio file for Whisper processing
-      const tempAudioPath = path.join(__dirname, '../../temp', `recorded_${callSid}_${Date.now()}.mp3`);
+      const tempAudioPath = path.join(process.cwd(), 'temp', `recorded_${callSid}_${Date.now()}.mp3`);
       fs.writeFileSync(tempAudioPath, audioBuffer);
       
       // 2. Transcribe with OpenAI Whisper (auto-detect language)
@@ -109,7 +109,7 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
         const audioArrayBuffer = await speechResponse.arrayBuffer();
         const audioBuffer = Buffer.from(audioArrayBuffer);
         const audioFilename = `openai_tts_${callSid}_${Date.now()}.mp3`;
-        const audioPath = path.join(__dirname, '../../temp', audioFilename);
+        const audioPath = path.join(process.cwd(), 'temp', audioFilename);
         fs.writeFileSync(audioPath, audioBuffer);
         
         // Create URL for Twilio to play
@@ -195,7 +195,7 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
     
     try {
       // 1. Save audio temporarily
-      const tempAudioPath = path.join(__dirname, '../../temp', `audio_${callSid}_${Date.now()}.wav`);
+      const tempAudioPath = path.join(process.cwd(), 'temp', `audio_${callSid}_${Date.now()}.wav`);
       fs.writeFileSync(tempAudioPath, audioBuffer);
       
       // For now, use the speech result directly (skip Whisper transcription)
