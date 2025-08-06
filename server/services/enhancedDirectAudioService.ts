@@ -70,12 +70,10 @@ RESPONSE FORMAT: {"message": "your response in same language as customer", "voic
         aiData = JSON.parse(aiResponse.choices[0].message.content || '{}');
       } catch (parseError) {
         console.error('❌ [AI JSON PARSE ERROR]:', parseError);
-        aiData = {
-          message: "Great to hear! Can I get your WhatsApp number for partnership details?",
-          voice_language: "english",
-          should_end: false,
-          collected_data: {}
-        };
+        console.error('❌ [RAW AI RESPONSE]:', aiResponse.choices[0].message.content);
+        
+        // FORCE failure instead of fallback - this will trigger error handling
+        throw new Error(`OpenAI JSON parsing failed: ${parseError.message}. Raw: ${aiResponse.choices[0].message.content}`);
       }
       
       console.log(`🧠 [AI] ${aiTime}ms: "${aiData.message}" (Language: ${aiData.voice_language || 'english'})`);
@@ -236,14 +234,10 @@ RESPONSE FORMAT: {"message": "your response matching customer's language exactly
         aiData = JSON.parse(aiResponse.choices[0].message.content || '{}');
       } catch (parseError) {
         console.error('❌ [AI JSON PARSE ERROR]:', parseError);
-        // Detect language from input for fallback
-        const hasHindi = /hai|abhi|kya|acha|main|theek|hun|aap|hain|ke|ka|ki/.test(speechText.toLowerCase());
-        aiData = {
-          message: hasHindi ? "Acha! Aap lab owner hain?" : "Great! Are you a lab owner?",
-          voice_language: hasHindi ? "hinglish" : "english",
-          should_end: false,
-          collected_data: {}
-        };
+        console.error('❌ [RAW AI RESPONSE]:', aiResponse.choices[0].message.content);
+        
+        // FORCE failure instead of fallback - this will trigger proper error handling
+        throw new Error(`OpenAI JSON parsing failed: ${parseError.message}. Raw: ${aiResponse.choices[0].message.content}`);
       }
       
       console.log(`🧠 [AI-DIRECT] ${aiTime}ms: "${aiData.message}" (Language: ${aiData.voice_language})`);

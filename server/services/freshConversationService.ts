@@ -275,30 +275,29 @@ RESPONSE FORMAT: You must respond in json format with this exact structure: {"me
         tokens: openaiResponse.usage?.total_tokens || 0
       });
       
-      // Parse AI response
+      // Parse AI response - STRICT MODE: NO FALLBACKS
       try {
         aiResponse = JSON.parse(aiResponseContent);
+        console.log(`🧠 [AI-PARSED] Successfully parsed OpenAI response: ${JSON.stringify(aiResponse)}`);
       } catch (parseError) {
         console.error('❌ [AI PARSE ERROR]:', parseError);
-        aiResponse = {
-          message: "Great! Can I get your WhatsApp number for partnership details?",
-          should_end: false,
-          collected_data: {}
-        };
+        console.error('❌ [RAW CONTENT]:', aiResponseContent);
+        
+        // FORCE retry with OpenAI instead of using fallback
+        throw new Error(`OpenAI response parsing failed. Raw content: ${aiResponseContent}`);
       }
 
-      // Validate aiResponse structure to prevent crashes
+      // Validate aiResponse structure - FAIL FAST on invalid structure
       if (!aiResponse || typeof aiResponse !== 'object') {
-        console.error('❌ [AI DATA] Invalid AI response structure');
-        aiResponse = {
-          message: "Great! Can I get your WhatsApp number for partnership details?",
-          should_end: false,
-          collected_data: {}
-        };
+        console.error('❌ [AI DATA] Invalid AI response structure:', aiResponse);
+        throw new Error(`Invalid OpenAI response structure: ${JSON.stringify(aiResponse)}`);
       }
 
-      // Ensure required fields exist
-      if (!aiResponse.message) aiResponse.message = "Great! Can I get your WhatsApp number for partnership details?";
+      // Ensure required fields exist - FAIL if OpenAI didn't provide proper format
+      if (!aiResponse.message) {
+        console.error('❌ [AI FORMAT] Missing message field');
+        throw new Error('OpenAI response missing required message field');
+      }
       if (!aiResponse.collected_data) aiResponse.collected_data = {};
       if (typeof aiResponse.should_end !== 'boolean') aiResponse.should_end = false;
 
