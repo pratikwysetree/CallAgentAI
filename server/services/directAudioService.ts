@@ -15,6 +15,124 @@ const openai = new OpenAI({
 
 export class DirectAudioService {
   
+  // Process recorded audio with OpenAI Whisper for highest accuracy
+  async processRecordedAudio(audioBuffer: Buffer, callSid: string, campaignId: string): Promise<string> {
+    const startTime = Date.now();
+    console.log(`🎙️ [RECORDED-AUDIO] Processing ${audioBuffer.length} bytes of recorded audio`);
+    
+    try {
+      // 1. Save audio file for Whisper processing
+      const tempAudioPath = path.join(__dirname, '../../temp', `recorded_${callSid}_${Date.now()}.mp3`);
+      fs.writeFileSync(tempAudioPath, audioBuffer);
+      
+      // 2. Transcribe with OpenAI Whisper (high accuracy)
+      const transcriptionStart = Date.now();
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(tempAudioPath),
+        model: "whisper-1",
+        language: "en", // English for Indian market
+        prompt: "LabsCheck partnership, laboratory, pathology, WhatsApp, email, I am great, I am fine", // Context hints
+      });
+      
+      const transcriptionTime = Date.now() - transcriptionStart;
+      console.log(`🧠 [WHISPER] ${transcriptionTime}ms: "${transcription.text}"`);
+      console.log(`📤 [SENT-TO-OPENAI] Raw audio → Whisper transcription: "${transcription.text}"`);
+      
+      // 3. Get AI response (optimized prompt)
+      const aiStart = Date.now();
+      const campaign = await storage.getCampaign(campaignId);
+      
+      const aiResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are calling pathology labs for LabsCheck partnership. 
+            
+BUSINESS: LabsCheck is a neutral platform connecting 500+ labs to 100k+ users. Zero commission - labs keep 100% payments.
+
+GOAL: Get lab owner/manager contact details (WhatsApp, email) for partnership.
+
+STYLE: Warm, brief Indian English. Max 15 words. Say key benefit upfront.
+
+RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person": "name", "whatsapp_number": "number", "email": "email", "lab_name": "name"}, "should_end": false}`
+          },
+          {
+            role: "user", 
+            content: transcription.text
+          }
+        ],
+        max_tokens: 100,
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      });
+      
+      const aiTime = Date.now() - aiStart;
+      let aiData;
+      try {
+        aiData = JSON.parse(aiResponse.choices[0].message.content || '{}');
+      } catch (parseError) {
+        console.error('❌ [AI JSON PARSE ERROR]:', parseError);
+        aiData = {
+          message: "Great to hear! Can I get your WhatsApp number for partnership details?",
+          should_end: false,
+          collected_data: {}
+        };
+      }
+      
+      console.log(`🧠 [AI] ${aiTime}ms: "${aiData.message}"`);
+      console.log(`📤 [SENT-TO-OPENAI] Customer said: "${transcription.text}" → AI responded: "${aiData.message}"`);
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`⚡ [TOTAL] ${totalTime}ms (Whisper: ${transcriptionTime}ms, AI: ${aiTime}ms)`);
+      
+      // Create TwiML response
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" rate="normal">${aiData.message}</Say>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="30" playBeep="false" />
+  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${callSid}" method="POST">
+    <Say voice="alice">Please continue</Say>
+  </Gather>
+</Response>`;
+
+      // Store conversation data if collected
+      if (aiData.collected_data && Object.keys(aiData.collected_data).length > 0) {
+        await this.updateContactData(callSid, aiData.collected_data);
+      }
+      
+      // Check if call should end
+      if (aiData.should_end) {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" rate="normal">${aiData.message}</Say>
+  <Hangup/>
+</Response>`;
+      }
+      
+      // Cleanup temp file
+      setTimeout(() => {
+        try {
+          fs.unlinkSync(tempAudioPath);
+        } catch (e) {
+          console.log('Temp file cleanup:', e.message);
+        }
+      }, 10000);
+      
+      return twiml;
+      
+    } catch (error) {
+      console.error('❌ [RECORDED-AUDIO] Error:', error);
+      
+      // Fallback TwiML
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Sorry, there was a technical issue. Thank you for your time.</Say>
+  <Hangup/>
+</Response>`;
+    }
+  }
+  
   // Process audio directly from Twilio using OpenAI Whisper + GPT + TTS
   async processAudioRealtime(audioBuffer: Buffer, callSid: string, campaignId: string): Promise<string> {
     const startTime = Date.now();

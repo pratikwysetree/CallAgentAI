@@ -604,11 +604,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { callId } = req.query;
       console.log(`⚡ [DIRECT-VOICE] Starting direct audio call: ${callId}`);
       
-      // Simple TwiML for direct audio processing
+      // Direct audio processing with recording
+      const callSid = req.body.CallSid || 'unknown';
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="30" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
   <Say voice="alice" rate="normal">Hi, this is Aavika from LabsCheck. How are you doing today?</Say>
-  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${req.body.CallSid || 'unknown'}" method="POST" enhanced="true">
+  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${callSid}" method="POST" enhanced="true">
     <Say voice="alice">Please speak</Say>
   </Gather>
 </Response>`;
@@ -719,6 +721,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Recording webhook to process audio with OpenAI
+  app.post('/api/twilio/recording/:callSid', async (req, res) => {
+    const { callSid } = req.params;
+    const { RecordingUrl, RecordingSid } = req.body;
+    
+    console.log(`🎙️ [RECORDING] Call: ${callSid}, Recording: ${RecordingSid}, URL: ${RecordingUrl}`);
+    
+    try {
+      // Download and process recording with OpenAI Whisper
+      const { directAudioService } = await import('./services/directAudioService');
+      
+      // Download audio file
+      const audioResponse = await fetch(RecordingUrl + '.mp3');
+      const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+      
+      console.log(`🎙️ [RECORDING] Downloaded ${audioBuffer.length} bytes of audio`);
+      
+      // Process with direct audio service
+      const call = await storage.getCallByTwilioSid(callSid);
+      if (call) {
+        const twimlResponse = await directAudioService.processRecordedAudio(
+          audioBuffer,
+          callSid,
+          call.campaignId
+        );
+        return res.type('text/xml').send(twimlResponse);
+      }
+      
+      // Fallback response
+      res.type('text/xml').send(`
+        <Response>
+          <Say voice="alice">Thank you for calling.</Say>
+          <Hangup/>
+        </Response>
+      `);
+      
+    } catch (error) {
+      console.error('❌ [RECORDING] Error processing recording:', error);
+      res.type('text/xml').send(`
+        <Response>
+          <Say voice="alice">Thank you for your time.</Say>
+          <Hangup/>
+        </Response>
+      `);
+    }
+  });
+
+  // Recording status callback
+  app.post('/api/twilio/recording-status', (req, res) => {
+    const { CallSid, RecordingSid, RecordingStatus } = req.body;
+    console.log(`🎙️ [RECORDING-STATUS] Call: ${CallSid}, Recording: ${RecordingSid}, Status: ${RecordingStatus}`);
+    res.sendStatus(200);
+  });
+
   app.post('/api/twilio/gather', async (req, res) => {
     try {
       const { CallSid, SpeechResult, Confidence } = req.body;
@@ -740,10 +796,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.type('text/xml').send(twiml);
       }
       
-      // Check for very low confidence and ask to repeat
-      if (Confidence && parseFloat(Confidence) < 0.4) {
-        console.log(`⚠️ [LOW CONFIDENCE] Speech confidence too low: ${Confidence}`);
-        const retryPrompt = "Thoda aur saaf boliye. Can you repeat that?";
+      // For direct audio mode, accept lower confidence speech
+      if (Confidence && parseFloat(Confidence) < 0.2) {
+        console.log(`⚠️ [VERY LOW CONFIDENCE] Speech confidence extremely low: ${Confidence}`);
+        const retryPrompt = "I didn't catch that clearly. Please speak again.";
         const twiml = await twilioService.generateTwiML(retryPrompt);
         return res.type('text/xml').send(twiml);
       }
