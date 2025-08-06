@@ -667,11 +667,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customerInput = transcription.text.trim();
       console.log(`🗣️ [CUSTOMER SAID] "${customerInput}"`);
 
-      // STEP 2: MANDATORY OPENAI PROCESSING
+      // STEP 2: MANDATORY OPENAI PROCESSING WITH RETRY
       const modelStart = Date.now();
       console.log(`🧠 [AI] Processing customer input through OpenAI...`);
       
-      const responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
+      let responseTwiml;
+      try {
+        responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
+      } catch (aiError) {
+        console.error(`🚨 [AI ERROR] ${aiError.message}`);
+        console.log(`🔄 [AI RETRY] Attempting simplified processing...`);
+        
+        // Retry with simplified approach
+        try {
+          const { openaiService } = await import('./services/openai');
+          const aiResponse = await openaiService.generateResponse(customerInput, []);
+          responseTwiml = await twilioService.generateTwiML(aiResponse.message);
+        } catch (retryError) {
+          console.error(`🚨 [RETRY FAILED] ${retryError.message}`);
+          // Last resort - continue recording without response
+          return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
+</Response>`);
+        }
+      }
       
       const modelTime = Date.now() - modelStart;
       const totalTime = Date.now() - startTime;

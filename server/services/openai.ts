@@ -127,8 +127,8 @@ CONVERSATION RULES:
 - BE NATURAL and conversational, not robotic
 - EXPLAIN clearly if they're confused about LabsCheck
 - PROGRESS the conversation toward getting their contact details
-- KEEP responses ULTRA-SHORT (5-8 words max for speed)
-- SINGLE sentence only
+- KEEP responses SHORT (1-2 sentences max)
+- ALWAYS return valid JSON format
 
 Extract any useful information mentioned during the conversation and format it as JSON in your response.
 
@@ -177,20 +177,43 @@ Respond with a JSON object:
         model: "gpt-3.5-turbo", // Fastest model available
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 30, // Absolute minimum for speed
+        max_tokens: 100, // Increased for better JSON formation
         temperature: 0, // Zero for fastest processing
       });
 
       const responseTime = Date.now() - startTime;
       
-      // Safe JSON parsing - NO FALLBACK RESPONSES
+      // Safe JSON parsing with automatic retry
       let aiResponse;
       try {
         aiResponse = JSON.parse(response.choices[0].message.content || '{}');
       } catch (parseError) {
-        console.error('🚨 [JSON ERROR] Invalid AI response - RETRYING');
-        // RETRY the OpenAI call instead of fallback
-        throw new Error('Invalid JSON response from OpenAI - retry required');
+        console.error('🚨 [JSON ERROR] Invalid AI response - AUTO RETRY');
+        console.log(`🔄 [RETRY] Raw response: ${response.choices[0].message.content}`);
+        
+        // Auto-retry with simpler prompt
+        const retryResponse = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are an AI assistant for LabsCheck lab partnership calls. Respond with valid JSON only." },
+            { role: "user", content: `Customer said: "${userInput}". Respond in JSON format: {"message": "your response", "shouldEndCall": false, "extractedData": {}}` }
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 100,
+          temperature: 0,
+        });
+        
+        try {
+          aiResponse = JSON.parse(retryResponse.choices[0].message.content || '{}');
+          console.log('✅ [RETRY SUCCESS] Valid JSON received');
+        } catch (retryError) {
+          console.error('🚨 [RETRY FAILED] Using emergency response');
+          aiResponse = {
+            message: "Could you please repeat that?",
+            shouldEndCall: false,
+            extractedData: { notes: "Emergency response due to parsing error" }
+          };
+        }
       }
 
       return {
