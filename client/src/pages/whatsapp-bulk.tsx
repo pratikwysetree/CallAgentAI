@@ -65,9 +65,26 @@ export default function WhatsAppBulk() {
     text: ''
   });
 
-  // Fetch templates
-  const { data: templates = [], isLoading: templatesLoading } = useQuery({
+  // Fetch templates with refresh
+  const { data: templates = [], isLoading: templatesLoading, refetch: refetchTemplates } = useQuery({
     queryKey: ['/api/whatsapp/templates'],
+    refetchOnWindowFocus: true,
+  });
+
+  // Sync templates mutation
+  const syncTemplatesMutation = useMutation({
+    mutationFn: () => apiRequest('/api/whatsapp/templates/sync', 'POST'),
+    onSuccess: () => {
+      toast({ title: 'Templates synced successfully' });
+      refetchTemplates();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to sync templates', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    }
   });
 
   // Fetch template examples
@@ -230,6 +247,30 @@ export default function WhatsAppBulk() {
               <CardDescription>
                 Send template messages to multiple recipients. Templates must be approved by Meta before use.
               </CardDescription>
+              <div className="flex gap-2 mt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => syncTemplatesMutation.mutate()}
+                  disabled={syncTemplatesMutation.isPending}
+                >
+                  {syncTemplatesMutation.isPending ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Sync Templates
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => refetchTemplates()}
+                  disabled={templatesLoading}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -237,18 +278,62 @@ export default function WhatsAppBulk() {
                   <Label htmlFor="template">Template</Label>
                   <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select approved template" />
+                      <SelectValue placeholder={`Select template (${(templates as WhatsAppTemplate[]).filter(t => t.status === 'APPROVED').length} available)`} />
                     </SelectTrigger>
                     <SelectContent>
-                      {(templates as WhatsAppTemplate[])
+                      {templatesLoading ? (
+                        <SelectItem value="loading" disabled>Loading templates...</SelectItem>
+                      ) : (templates as WhatsAppTemplate[]).length === 0 ? (
+                        <SelectItem value="none" disabled>No templates found - Click sync button</SelectItem>
+                      ) : (templates as WhatsAppTemplate[])
                         .filter((t: WhatsAppTemplate) => t.status === 'APPROVED')
                         .map((template: WhatsAppTemplate) => (
                           <SelectItem key={template.id} value={template.name}>
-                            {template.name} ({template.category})
+                            {template.name} ({template.category}) - {template.status}
                           </SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
+                  {(templates as WhatsAppTemplate[]).length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {(templates as WhatsAppTemplate[]).filter(t => t.status === 'APPROVED').length} approved templates available
+                    </p>
+                  )}
+                  
+                  {/* Template Preview */}
+                  {selectedTemplate && (
+                    <div className="mt-3 p-3 border rounded-lg bg-muted/50">
+                      <h4 className="font-medium mb-2">Template Preview: {selectedTemplate}</h4>
+                      {(() => {
+                        const template = (templates as WhatsAppTemplate[]).find(t => t.name === selectedTemplate);
+                        if (!template) return <p className="text-sm text-muted-foreground">Template not found</p>;
+                        
+                        return (
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Badge variant={template.status === 'APPROVED' ? 'default' : 'secondary'}>
+                                {template.status}
+                              </Badge>
+                              <Badge variant="outline">{template.category}</Badge>
+                              <Badge variant="outline">{template.language}</Badge>
+                            </div>
+                            <div className="text-sm">
+                              {template.components?.map((component: any, index: number) => (
+                                <div key={index} className="mb-2">
+                                  <div className="font-medium text-xs text-muted-foreground uppercase">
+                                    {component.type} {component.format && `(${component.format})`}
+                                  </div>
+                                  <div className="text-sm">
+                                    {component.text || 'Media content'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
