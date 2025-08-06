@@ -97,39 +97,31 @@ SPEECH PATTERN UNDERSTANDING:
 - "abhi kam Lenge tab about u" = "I'm busy now, will take details later about you"
 - Broken English/Hindi mix is common due to phone quality
 
-CONVERSATION FLOW - DRIVE THE CONVERSATION TOWARD PARTNERSHIP:
+CONVERSATION FLOW - Respond naturally to what customer actually says:
 
-1. ALWAYS steer conversation back to lab partnership opportunities
-2. LEAD with qualifying questions: "Do you run a pathology lab?" 
-3. FOCUS on partnership benefits regardless of customer's questions
-4. If they ask unrelated questions, briefly answer then redirect to partnership
-5. COLLECT WhatsApp and email to close partnership enrollment
+1. UNDERSTAND first what customer is saying/asking
+2. ACKNOWLEDGE their specific concern or question  
+3. PROVIDE helpful explanation if they're confused
+4. GUIDE conversation toward partnership benefits
+5. ASK for contact information when appropriate
 
-PARTNERSHIP-FOCUSED RESPONSES:
-- ANY question → "Do you operate a pathology lab? We help labs get more customers."
-- "What is LabsCheck?" → "We help labs get customers. Do you run a lab?"
-- "What is a lab?" → "Pathology labs do medical tests. Do you have one?"
-- Any confusion → Brief answer + "Are you interested in lab partnership opportunities?"
-- If interested → "Great! We offer zero commission. What's your WhatsApp?"
-- Contact given → "Perfect! Also need your email for partnership details."
-- If busy → "Just your WhatsApp then? I'll send partnership info."
+NATURAL RESPONSES:
+- If customer is confused/doesn't understand: First EXPLAIN clearly what LabsCheck does, then ask if they run a lab
+- If asking about what LabsCheck is: Explain we help labs get more customers through our platform  
+- If asking about partnership: Explain it's completely free, they get direct customer bookings
+- If interested: Share partnership benefits and ask for WhatsApp
+- If giving contact details: Thank them and ask for the other detail (WhatsApp or email)
+- If busy: Be understanding, ask for just WhatsApp number to send details later
 
-ALWAYS: Brief answer (if needed) → Redirect to partnership → Ask qualifying question
-
-LANGUAGE SWITCHING RULES:
-- DETECT customer's primary language from their speech
-- Hindi-dominant customer → respond primarily in Hindi: "Namaste! LabsCheck se call hai. Hum labs ko customers se connect karte hain."
-- English-dominant customer → respond primarily in English: "Hello! Calling from LabsCheck. We connect labs with customers."
-- Mixed/unclear → match their natural style
+ALWAYS: Understand → Acknowledge → Explain (if needed) → Move conversation forward
 
 CONVERSATION RULES:
 - READ what customer actually said carefully
-- RESPOND to their specific question in THEIR preferred language
+- RESPOND to their specific question or concern  
 - BE NATURAL and conversational, not robotic
 - EXPLAIN clearly if they're confused about LabsCheck
 - PROGRESS the conversation toward getting their contact details
 - KEEP responses SHORT (1-2 sentences max)
-- ALWAYS return valid JSON format
 
 Extract any useful information mentioned during the conversation and format it as JSON in your response.
 
@@ -146,21 +138,9 @@ Respond with a JSON object:
   }
 }`;
 
-      // Detect customer's primary language for adaptive responses
-      const detectLanguage = (text: string): 'hindi' | 'english' | 'mixed' => {
-        const hindiWords = (text.match(/\b(namaste|kya|haan|nahi|theek|accha|matlab|samjha|mera|aap|kaise|main|hai|hoon|se|ka|ke|ki|ko|me|pe|par|aur|ya|jo|kuch|koi|kyun|kahan|kab|kaun|kaam|ghar|office|paisa|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time)\b/gi) || []).length;
-        const englishWords = (text.match(/\b(hello|hi|what|yes|no|good|okay|my|you|how|i|am|is|are|the|and|or|that|some|any|why|where|when|who|work|home|office|money|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time)\b/gi) || []).length;
-        
-        if (hindiWords > englishWords) return 'hindi';
-        if (englishWords > hindiWords) return 'english';
-        return 'mixed';
-      };
-
-      const customerLanguage = detectLanguage(userInput);
-
-      // Natural conversation flow with language detection
+      // Natural conversation flow - let AI understand customer directly
       const messages = [
-        { role: "system" as const, content: systemPrompt + `\n\nCUSTOMER LANGUAGE: ${customerLanguage.toUpperCase()}\n- Hindi: Respond primarily in Hindi - "Namaste! LabsCheck se call hai. Hum labs ko customers connect karte hain."\n- English: Respond primarily in English - "Hello! Calling from LabsCheck. We connect labs with customers."\n- Mixed: Match their natural style` },
+        { role: "system" as const, content: systemPrompt },
         ...context.conversationHistory.map(msg => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content
@@ -172,50 +152,17 @@ Respond with a JSON object:
       const model = "gpt-4o"; // Full model for better language understanding
       console.log(`🧠 [AI MODEL] Using ${model} for Hinglish conversation`);
       console.log(`🧠 [EXACT INPUT TO AI] Customer's exact words: "${userInput}"`);
-      console.log(`🗣️ [DETECTED LANGUAGE] Customer language: ${customerLanguage.toUpperCase()}`);
       
       const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo", // Fastest model available
+        model,
         messages,
         response_format: { type: "json_object" },
-        max_tokens: 100, // Increased for better JSON formation
-        temperature: 0, // Zero for fastest processing
+        max_tokens: 200,
+        temperature: 0.3, // Lower temperature for more predictable responses
       });
 
       const responseTime = Date.now() - startTime;
-      
-      // Safe JSON parsing with automatic retry
-      let aiResponse;
-      try {
-        aiResponse = JSON.parse(response.choices[0].message.content || '{}');
-      } catch (parseError) {
-        console.error('🚨 [JSON ERROR] Invalid AI response - AUTO RETRY');
-        console.log(`🔄 [RETRY] Raw response: ${response.choices[0].message.content}`);
-        
-        // Auto-retry with simpler prompt
-        const retryResponse = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "You are an AI assistant for LabsCheck lab partnership calls. Respond with valid JSON only." },
-            { role: "user", content: `Customer said: "${userInput}". Respond in JSON format: {"message": "your response", "shouldEndCall": false, "extractedData": {}}` }
-          ],
-          response_format: { type: "json_object" },
-          max_tokens: 100,
-          temperature: 0,
-        });
-        
-        try {
-          aiResponse = JSON.parse(retryResponse.choices[0].message.content || '{}');
-          console.log('✅ [RETRY SUCCESS] Valid JSON received');
-        } catch (retryError) {
-          console.error('🚨 [RETRY FAILED] Using emergency response');
-          aiResponse = {
-            message: "Could you please repeat that?",
-            shouldEndCall: false,
-            extractedData: { notes: "Emergency response due to parsing error" }
-          };
-        }
-      }
+      const aiResponse = JSON.parse(response.choices[0].message.content || '{}');
 
       return {
         message: aiResponse.message || "I'm sorry, could you repeat that?",

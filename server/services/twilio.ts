@@ -126,39 +126,8 @@ export class TwilioService {
     }
   }
 
-  /**
-   * Generate TwiML with speech recognition (no recordings)
-   */
-  async generateSpeechTwiML(message: string): Promise<string> {
-    console.log(`🎤 [SPEECH MODE] Using Gather instead of Record - No delays!`);
-    
-    const voice = "alice";
-    
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="${voice}">${message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
-    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
-        <Pause length="6"/>
-        <Say voice="${voice}">Please tell me about your business</Say>
-    </Gather>
-</Response>`;
-  }
-
   async generateTwiML(message: string, campaignId?: string): Promise<string> {
     try {
-      // Detect language of AI response to match customer's language for ElevenLabs
-      const detectLanguage = (text: string): 'hindi' | 'english' | 'mixed' => {
-        const hindiWords = (text.match(/\b(namaste|kya|haan|nahi|theek|accha|matlab|samjha|mera|aap|kaise|main|hai|hoon|se|ka|ke|ki|ko|me|pe|par|aur|ya|jo|kuch|koi|kyun|kahan|kab|kaun|kaam|ghar|office|paisa|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time|dhanyawad|thank|english|hindi|boliye|suniye|bataye|dijiye|milega|hoga|karenge|karte|dete|lete|denge|lenge|bhej|send|message|details|labscheck)\b/gi) || []).length;
-        const englishWords = (text.match(/\b(hello|hi|what|yes|no|good|okay|my|you|how|i|am|is|are|the|and|or|that|some|any|why|where|when|who|work|home|office|money|free|partner|company|whatsapp|gmail|call|calling|business|lab|pathology|doctor|hospital|test|checkup|report|result|medical|health|busy|time|thank|thanks|english|hindi|speak|tell|give|will|can|get|send|message|details|labscheck)\b/gi) || []).length;
-        
-        if (hindiWords > englishWords) return 'hindi';
-        if (englishWords > hindiWords) return 'english';
-        return 'mixed';
-      };
-
-      const responseLanguage = detectLanguage(message);
-      console.log(`🌐 [AI RESPONSE LANGUAGE] Detected: ${responseLanguage.toUpperCase()} for message: "${message}"`);
-
       // Check if campaign has specific voice configuration
       let voiceConfig = null;
       if (campaignId) {
@@ -192,8 +161,10 @@ export class TwilioService {
           return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Pause length="0.1"/>
-    <Record action="/api/twilio/record" maxLength="10" timeout="2" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
+    <Pause length="1"/>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="6" timeout="15" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
+        <Say voice="alice" language="hi-IN">Boliye...</Say>
+    </Gather>
 </Response>`;
         } catch (error) {
           console.error('🎤 [ELEVENLABS] ERROR:', error);
@@ -203,21 +174,24 @@ export class TwilioService {
         console.log(`🎤 [TWILIO-VOICE] Using Twilio's built-in English voice - ElevenLabs not configured`);
       }
 
-      // Fallback to Twilio's built-in voice synthesis with Whisper recording
+      // Fallback to Twilio's built-in voice synthesis for conversational flow
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice" language="en-IN" rate="fast">${message}</Say>
-    <Pause length="0.1"/>
-    <Record action="/api/twilio/record" maxLength="10" timeout="2" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
+    <Say voice="alice" language="en-IN" rate="medium">${message}</Say>
+    <Pause length="1"/>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="6" timeout="15" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
+        <Say voice="alice" language="hi-IN">Boliye...</Say>
+    </Gather>
 </Response>`;
     } catch (error) {
       console.error('Error generating TwiML:', error);
-      // Fallback to simple TwiML with recording
+      // Fallback to simple TwiML
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice" rate="fast">${message}</Say>
-    <Pause length="0.1"/>
-    <Record action="/api/twilio/record" maxLength="10" timeout="2" playBeep="false" recordingStatusCallback="/api/twilio/recording-status" />
+    <Say voice="alice">${message}</Say>
+    <Gather input="speech" action="/api/twilio/gather" speechTimeout="6" timeout="15" language="hi-IN" enhanced="true" profanityFilter="false" partialResultCallback="/api/twilio/partial" speechModel="experimental_conversations" hints="lab,laboratory,pathology,partner,partnership,owner,manager,WhatsApp,email,number,kya,why,what,fine,good,theek,nahi,busy,time,haan,accha,matlab,samjha,phone,gmail,business,labscheck,diagnostic,test">
+        <Say voice="alice" language="hi-IN">Kuch boliye...</Say>
+    </Gather>
 </Response>`;
     }
   }

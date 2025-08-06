@@ -8,7 +8,6 @@ import { contacts } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import { callManager } from "./services/callManager";
 import { twilioService } from "./services/twilio";
-import { openaiService } from "./services/openai";
 import { 
   insertContactSchema, 
   insertCampaignSchema, 
@@ -605,13 +604,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, contactId } = req.query;
       console.log(`🔥 [WEBHOOK START] Campaign ID: ${campaignId}, Contact ID: ${contactId}`);
       
-      // Create call record first
-      const { CallSid, From, To } = req.body;
-      console.log(`📞 [CALL DETAILS] SID: ${CallSid}, From: ${From}, To: ${To}`);
-      
-      // Skip call creation for now - focus on speech generation
-      console.log(`📞 [CALL PROCESSING] SID: ${CallSid}, proceeding with speech generation`)
-      
       // Get campaign to use actual script content
       const campaign = await storage.getCampaign(campaignId as string);
       console.log(`📋 [CAMPAIGN FOUND] Campaign exists: ${!!campaign}, Name: ${campaign?.name || 'null'}`);
@@ -624,43 +616,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🚫 [NO SCRIPTS] All campaign scripts ignored - using simple greeting only`);
 
       console.log(`🎙️ [FINAL SCRIPT] Speaking: "${scriptToSpeak}"`);
+      const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
       
-      // Use speech recognition instead of recordings for better reliability
-      const useSpeechMode = true; // Toggle this to switch between modes
-      
-      if (useSpeechMode) {
-        console.log(`🎤 [SPEECH MODE] Using Gather - No recordings needed!`);
-        
-        // Use ElevenLabs for initial greeting too
-        let greetingTwiml = '';
-        try {
-          console.log(`🎙️ [ELEVENLABS] Generating greeting voice for: "${scriptToSpeak}"`);
-          const audioUrl = await elevenLabsService.textToSpeech(scriptToSpeak);
-          console.log(`🎙️ [ELEVENLABS] Greeting audio generated: ${audioUrl}`);
-          
-          greetingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Play>${audioUrl}</Play>
-    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
-        <Pause length="10"/>
-    </Gather>
-</Response>`;
-        } catch (elevenLabsError: any) {
-          console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError?.message || elevenLabsError}, using Twilio voice`);
-          greetingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="alice">${scriptToSpeak.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
-    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
-        <Pause length="10"/>
-    </Gather>
-</Response>`;
-        }
-        
-        res.type('text/xml').send(greetingTwiml);
-      } else {
-        const twiml = await twilioService.generateTwiML(scriptToSpeak, campaignId as string);
-        res.type('text/xml').send(twiml);
-      }
+      res.type('text/xml').send(twiml);
     } catch (error) {
       console.error('Error handling Twilio voice webhook:', error);
       const errorTwiml = await twilioService.generateHangupTwiML();
@@ -668,211 +626,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Alternative speech endpoint (bypasses recordings completely)
-  app.post('/api/twilio/speech-result', async (req, res) => {
-    try {
-      const { CallSid, SpeechResult, Confidence } = req.body;
-      const startTime = Date.now();
-      
-      console.log(`🎤 [SPEECH GATHER] Call: ${CallSid} - No recordings needed!`);
-      console.log(`🎤 [SPEECH TEXT] "${SpeechResult}"`);
-      console.log(`🎤 [CONFIDENCE] ${Confidence || 'N/A'}`);
-      
-      if (!SpeechResult || SpeechResult.trim() === '') {
-        console.log('❌ [NO SPEECH] Using partnership-focused response');
-        const partnershipTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="alice">Do you operate a pathology lab?</Say>
-    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
-        <Pause length="5"/>
-        <Say voice="alice">Please tell me about your business</Say>
-    </Gather>
-</Response>`;
-        return res.type('text/xml').send(partnershipTwiml);
-      }
-
-      const customerInput = SpeechResult.trim();
-      console.log(`🗣️ [CUSTOMER SAID] "${customerInput}"`);
-
-      // Process with OpenAI directly (no Whisper needed!)
-      const modelStart = Date.now();
-      
-      // Use OpenAI service directly instead of CallManager for better reliability
-      const { campaignId } = req.query;
-      const campaign = await storage.getCampaign(campaignId as string);
-      
-      const conversationContext = {
-        campaignPrompt: campaign?.script || "You are Aavika from LabsCheck. Your goal is to recruit pathology labs as partners on our platform. We connect labs with patients and charge zero commission - labs keep 100% of payments. Ask about their lab, explain our partnership benefits, and try to get their contact details.",
-        conversationHistory: [
-          { role: 'assistant' as const, content: 'Hi this is Aavika from LabsCheck, how are you doing today' },
-          { role: 'user' as const, content: customerInput }
-        ],
-        contactName: '',
-        phoneNumber: ''
-      };
-      
-      const response = await openaiService.generateResponse(conversationContext, customerInput);
-      
-      const modelTime = Date.now() - modelStart;
-      const totalTime = Date.now() - startTime;
-      
-      console.log(`🧠 [AI] OpenAI response generated (${modelTime}ms): "${response}"`);
-      console.log(`⚡ [TOTAL] Speech processing: ${totalTime}ms - Much faster!`);
-      
-      broadcast({ 
-        type: 'conversation_update', 
-        callSid: CallSid, 
-        userInput: customerInput 
-      });
-
-      // Use ElevenLabs for better voice quality
-      let responseTwiml = '';
-      try {
-        console.log(`🎙️ [ELEVENLABS] Generating voice for: "${response}"`);
-        const audioUrl = await elevenLabsService.textToSpeech(response);
-        console.log(`🎙️ [ELEVENLABS] Audio generated: ${audioUrl}`);
-        
-        responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Play>${audioUrl}</Play>
-    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
-        <Pause length="10"/>
-    </Gather>
-</Response>`;
-      } catch (elevenLabsError: any) {
-        console.log(`⚠️ [ELEVENLABS] Error: ${elevenLabsError?.message || elevenLabsError}, using Twilio voice`);
-        responseTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="alice">${String(response).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Say>
-    <Gather input="speech" action="/api/twilio/speech-result?campaignId=${campaignId}" speechTimeout="8" language="en-IN">
-        <Pause length="10"/>
-    </Gather>
-</Response>`;
-      }
-
-      res.type('text/xml').send(responseTwiml);
-
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`❌ [SPEECH ERROR] ${errorMsg}`);
-      
-      const continueTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Gather input="speech" action="/api/twilio/speech-result" speechTimeout="4" language="en-IN">
-        <Say voice="alice">Are you interested in lab partnerships?</Say>
-    </Gather>
-</Response>`;
-      
-      res.type('text/xml').send(continueTwiml);
-    }
-  });
-
-  // Twilio recording endpoint with ultra-fast Whisper transcription
-  app.post('/api/twilio/record', async (req, res) => {
-    const startTime = Date.now();
-    try {
-      const { CallSid, RecordingUrl, RecordingDuration } = req.body;
-      
-      console.log(`🎙️ [RECORDING START] Call: ${CallSid} - Duration: ${RecordingDuration}s`);
-      console.log(`🎙️ [PERFORMANCE] Target: <2s total response time`);
-      
-      if (!RecordingUrl || !RecordingDuration || parseFloat(RecordingDuration) < 0.5) {
-        console.log('❌ [NO RECORDING] No recording or too short - NO RESPONSE');
-        // NO RESPONSE - Wait for proper recording
-        return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
-</Response>`);
-      }
-
-      // STEP 1: WHISPER TRANSCRIPTION - MANDATORY
-      const transcriptionStart = Date.now();
-      const { whisperService } = await import('./services/whisperService');
-      const transcription = await whisperService.transcribeFromUrl(RecordingUrl, {
-        language: 'hi',
-        prompt: "Hindi English mixed lab business call"
-      });
-
-      const transcriptionTime = Date.now() - transcriptionStart;
-      console.log(`🎙️ [WHISPER] "${transcription.text}" (${transcriptionTime}ms)`);
-
-      if (!transcription.text || transcription.text.trim().length < 2) {
-        console.log('❌ [EMPTY TRANSCRIPTION] No speech detected - NO RESPONSE');
-        // NO RESPONSE - Wait for clear speech
-        return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
-</Response>`);
-      }
-
-      const customerInput = transcription.text.trim();
-      console.log(`🗣️ [CUSTOMER SAID] "${customerInput}"`);
-
-      // STEP 2: MANDATORY OPENAI PROCESSING WITH RETRY
-      const modelStart = Date.now();
-      console.log(`🧠 [AI] Processing customer input through OpenAI...`);
-      
-      let responseTwiml;
-      try {
-        responseTwiml = await callManager.handleUserInput(CallSid, customerInput);
-      } catch (aiError) {
-        console.error(`🚨 [AI ERROR] ${aiError.message}`);
-        console.log(`🔄 [AI RETRY] Attempting simplified processing...`);
-        
-        // Retry with simplified approach
-        try {
-          const { openaiService } = await import('./services/openai');
-          const aiResponse = await openaiService.generateResponse(customerInput, []);
-          responseTwiml = await twilioService.generateTwiML(aiResponse.message);
-        } catch (retryError) {
-          console.error(`🚨 [RETRY FAILED] ${retryError.message}`);
-          // Last resort - continue recording without response
-          return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
-</Response>`);
-        }
-      }
-      
-      const modelTime = Date.now() - modelStart;
-      const totalTime = Date.now() - startTime;
-      
-      console.log(`🧠 [AI] OpenAI response generated (${modelTime}ms)`);
-      console.log(`⚡ [TOTAL] End-to-end with OpenAI: ${totalTime}ms`);
-      
-      // Broadcast update
-      broadcast({ 
-        type: 'conversation_update', 
-        callSid: CallSid, 
-        userInput: customerInput 
-      });
-
-      res.type('text/xml').send(responseTwiml);
-
-    } catch (error) {
-      const errorTime = Date.now() - startTime;
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`❌ [RECORD ERROR] ${errorMsg} (${errorTime}ms)`);
-      
-      // For Whisper download errors, continue recording instead of hanging up
-      if (errorMsg.includes('Whisper download failed') || errorMsg.includes('Failed to download audio')) {
-        console.log('🔄 [WHISPER ERROR] Continuing recording instead of hanging up');
-        return res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Record action="/api/twilio/record" maxLength="8" timeout="2" playBeep="false" />
-</Response>`);
-      }
-      
-      const errorTwiml = await twilioService.generateHangupTwiML();
-      res.type('text/xml').send(errorTwiml);
-    }
-  });
-
-  // Recording status callback
-  app.post('/api/twilio/recording-status', (req, res) => {
-    const { CallSid, RecordingStatus } = req.body;
-    console.log(`🎙️ [RECORDING STATUS] Call ${CallSid}: ${RecordingStatus}`);
-    res.status(200).send('OK');
+  // Twilio partial results endpoint for better speech recognition
+  app.post('/api/twilio/partial', (req, res) => {
+    const { SpeechResult, Confidence, CallSid } = req.body;
+    console.log(`🎯 [PARTIAL SPEECH] Call ${CallSid}: "${SpeechResult}" (confidence: ${Confidence})`);
+    
+    // Send empty TwiML to continue gathering
+    res.set('Content-Type', 'text/xml');
+    res.send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
   });
 
   app.post('/api/twilio/gather', async (req, res) => {
@@ -904,11 +665,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.type('text/xml').send(twiml);
       }
       
-      // Clean up speech result and preserve exact customer language
+      // Clean up speech result
       const cleanedInput = SpeechResult.trim();
       console.log(`✅ [PROCESSING] Clean customer input: "${cleanedInput}"`);
-      console.log(`🗣️ [SPEECH-TO-TEXT] Exact customer speech captured: "${cleanedInput}"`);
-      console.log(`🔄 [STEP 1] Sending exact speech to AI model via callManager.handleUserInput()...`);
+      console.log(`🔄 [STEP 1] About to call callManager.handleUserInput()...`);
 
       const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
       

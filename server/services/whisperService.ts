@@ -1,187 +1,319 @@
-import OpenAI from 'openai';
-import fs from 'fs';
+import { spawn } from 'child_process';
+import { promises as fs } from 'fs';
 import path from 'path';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+export interface WhisperConfig {
+  model: 'tiny' | 'base' | 'small' | 'medium' | 'large' | 'large-v2' | 'large-v3';
+  language?: string; // Auto-detect if not specified
+  task: 'transcribe' | 'translate';
+  outputFormat: 'txt' | 'json' | 'srt' | 'vtt';
+  temperature: number;
+  beamSize: number;
+  patience: number;
+  suppressTokens: string;
+  initialPrompt?: string;
+  conditionOnPreviousText: boolean;
+  fp16: boolean;
+  compressionRatioThreshold: number;
+  logprobThreshold: number;
+  noSpeechThreshold: number;
+}
+
+export interface TranscriptionResult {
+  text: string;
+  language?: string;
+  segments?: Array<{
+    id: number;
+    start: number;
+    end: number;
+    text: string;
+    confidence?: number;
+  }>;
+  duration?: number;
+  confidence?: number;
+}
 
 export class WhisperService {
-  constructor() {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable is required for Whisper service');
-    }
+  private configPath: string;
+  private defaultConfig: WhisperConfig = {
+    model: 'base',
+    task: 'transcribe',
+    outputFormat: 'json',
+    temperature: 0.0,
+    beamSize: 5,
+    patience: 1.0,
+    suppressTokens: '-1',
+    conditionOnPreviousText: true,
+    fp16: true,
+    compressionRatioThreshold: 2.4,
+    logprobThreshold: -1.0,
+    noSpeechThreshold: 0.6,
+  };
+
+  constructor(configPath?: string) {
+    this.configPath = configPath || path.join(process.cwd(), 'config', 'whisper-config.json');
   }
 
-  /**
-   * Transcribe audio using OpenAI Whisper with enhanced support for Indian languages
-   */
-  async transcribeAudio(audioBuffer: Buffer, options: {
-    language?: string;
-    format?: 'wav' | 'mp3' | 'webm' | 'mp4';
-    prompt?: string;
-  } = {}): Promise<{
-    text: string;
-    language: string;
-    confidence: number;
-  }> {
+  async loadConfig(): Promise<WhisperConfig> {
     try {
-      console.log(`🎙️ [WHISPER] Starting transcription...`);
-      console.log(`🎙️ [WHISPER] Audio buffer size: ${audioBuffer.length} bytes`);
-      
-      // Create temporary audio file
-      const tempDir = path.join(process.cwd(), 'temp');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
-      
-      const tempFilename = `whisper_${Date.now()}_${Math.random().toString(36).substring(7)}.${options.format || 'wav'}`;
-      const tempFilePath = path.join(tempDir, tempFilename);
-      
-      // Write audio buffer to temporary file
-      fs.writeFileSync(tempFilePath, audioBuffer);
-      console.log(`🎙️ [WHISPER] Temporary audio file created: ${tempFilename}`);
-      
-      // Ultra-fast transcription prompt
-      const transcriptionPrompt = options.prompt || 
-        "Hindi English mixed pathology lab business call. Common: lab, pathology, partner, WhatsApp, email, haan, nahi, accha, kya, main, aap.";
-      
-      // Ultra-fast Whisper transcription (maximum speed)
-      const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tempFilePath),
-        model: 'whisper-1',
-        language: options.language || 'hi',
-        prompt: options.prompt || "lab business call", // Minimal prompt
-        response_format: 'text', // Fastest format
-        temperature: 0,
-      }) as any;
-      
-      // Clean up temporary file
-      fs.unlinkSync(tempFilePath);
-      console.log(`🎙️ [WHISPER] Temporary file cleaned up`);
-      
-      // Handle both text and object responses
-      const transcribedText = typeof transcription === 'string' ? transcription.trim() : transcription.text?.trim() || '';
-      const detectedLanguage = typeof transcription === 'object' ? transcription.language || 'unknown' : 'unknown';
-      
-      // Calculate confidence based on text quality and length
-      const confidence = this.calculateConfidence(transcribedText);
-      
-      console.log(`🎙️ [WHISPER] SUCCESS - Transcribed: "${transcribedText}"`);
-      console.log(`🎙️ [WHISPER] Detected language: ${detectedLanguage}`);
-      console.log(`🎙️ [WHISPER] Confidence: ${confidence}`);
-      
-      return {
-        text: transcribedText,
-        language: detectedLanguage,
-        confidence
-      };
-      
+      const configData = await fs.readFile(this.configPath, 'utf-8');
+      return { ...this.defaultConfig, ...JSON.parse(configData) };
     } catch (error) {
-      console.error('🎙️ [WHISPER] Error during transcription:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Whisper transcription failed: ${errorMessage}`);
+      console.log('Using default Whisper configuration');
+      return this.defaultConfig;
     }
   }
 
-  /**
-   * Calculate confidence score based on transcription quality
-   */
-  private calculateConfidence(text: string): number {
-    if (!text || text.length < 2) return 0.1;
+  async saveConfig(config: Partial<WhisperConfig>): Promise<void> {
+    const currentConfig = await this.loadConfig();
+    const newConfig = { ...currentConfig, ...config };
     
-    // Basic confidence calculation
-    let confidence = 0.7; // Base confidence for Whisper
+    // Ensure config directory exists
+    const configDir = path.dirname(this.configPath);
+    await fs.mkdir(configDir, { recursive: true });
     
-    // Boost confidence for longer, coherent text
-    if (text.length > 10) confidence += 0.1;
-    if (text.length > 20) confidence += 0.1;
-    
-    // Reduce confidence for very short or unclear text
-    if (text.length < 5) confidence -= 0.2;
-    if (text.includes('...') || text.includes('[inaudible]')) confidence -= 0.3;
-    
-    // Boost confidence for known business terms
-    const businessTerms = ['lab', 'laboratory', 'pathology', 'partner', 'business', 'whatsapp', 'email', 'labscheck'];
-    const hindiTerms = ['haan', 'nahi', 'theek', 'accha', 'kya', 'main', 'aap', 'hai'];
-    
-    businessTerms.forEach(term => {
-      if (text.toLowerCase().includes(term)) confidence += 0.05;
-    });
-    
-    hindiTerms.forEach(term => {
-      if (text.toLowerCase().includes(term)) confidence += 0.05;
-    });
-    
-    return Math.min(0.95, Math.max(0.1, confidence));
+    await fs.writeFile(this.configPath, JSON.stringify(newConfig, null, 2));
   }
 
-  /**
-   * Download audio from Twilio recording URL and transcribe
-   */
-  async transcribeFromUrl(recordingUrl: string, options: {
-    language?: string;
-    prompt?: string;
-  } = {}): Promise<{
-    text: string;
-    language: string;
-    confidence: number;
-  }> {
+  async transcribeAudio(
+    audioPath: string,
+    customConfig?: Partial<WhisperConfig>
+  ): Promise<{ success: boolean; result?: TranscriptionResult; error?: string }> {
     try {
-      console.log(`🎙️ [WHISPER] Downloading audio from URL: ${recordingUrl}`);
+      const config = { ...await this.loadConfig(), ...customConfig };
       
-      // Add Twilio authentication for downloading recordings
-      const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
-      
-      // Add retry mechanism for Twilio recording availability
-      let response;
-      let attempts = 0;
-      const maxAttempts = 3;
-      
-      while (attempts < maxAttempts) {
-        response = await fetch(recordingUrl, {
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'User-Agent': 'LabsCheck-Whisper/1.0'
+      // Prepare command arguments for Whisper
+      const args = [
+        audioPath,
+        '--model', config.model,
+        '--task', config.task,
+        '--output_format', config.outputFormat,
+        '--temperature', config.temperature.toString(),
+        '--beam_size', config.beamSize.toString(),
+        '--patience', config.patience.toString(),
+        '--suppress_tokens', config.suppressTokens,
+        '--condition_on_previous_text', config.conditionOnPreviousText.toString(),
+        '--compression_ratio_threshold', config.compressionRatioThreshold.toString(),
+        '--logprob_threshold', config.logprobThreshold.toString(),
+        '--no_speech_threshold', config.noSpeechThreshold.toString(),
+      ];
+
+      if (config.language) {
+        args.push('--language', config.language);
+      }
+
+      if (config.initialPrompt) {
+        args.push('--initial_prompt', config.initialPrompt);
+      }
+
+      if (config.fp16) {
+        args.push('--fp16');
+      }
+
+      return new Promise((resolve) => {
+        // In production, this would call the actual Whisper CLI or Python API
+        const process = spawn('whisper', args);
+        
+        let stdout = '';
+        let stderr = '';
+        
+        process.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+        
+        process.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+        
+        process.on('close', (code) => {
+          if (code === 0) {
+            try {
+              const result = this.parseWhisperOutput(stdout, config.outputFormat);
+              resolve({ success: true, result });
+            } catch (parseError) {
+              resolve({ 
+                success: false, 
+                error: `Failed to parse Whisper output: ${parseError}` 
+              });
+            }
+          } else {
+            resolve({ 
+              success: false, 
+              error: `Whisper transcription failed: ${stderr}` 
+            });
           }
         });
 
-        if (response.ok) {
-          break;
-        }
-
-        attempts++;
-        if (attempts < maxAttempts && response.status === 404) {
-          console.log(`🎙️ [WHISPER] Recording not ready (attempt ${attempts}), waiting 1s...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } else {
-          console.error(`🎙️ [WHISPER] Download failed: ${response.status} ${response.statusText}`);
-          throw new Error(`Failed to download audio: ${response.statusText}`);
-        }
-      }
-      
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
-      console.log(`🎙️ [WHISPER] Downloaded ${audioBuffer.length} bytes`);
-      
-      if (audioBuffer.length === 0) {
-        throw new Error('Downloaded audio file is empty');
-      }
-      
-      // Determine format from URL
-      const format = recordingUrl.includes('.mp3') ? 'mp3' : 
-                   recordingUrl.includes('.wav') ? 'wav' : 'wav';
-      
-      return await this.transcribeAudio(audioBuffer, {
-        ...options,
-        format
+        process.on('error', (error) => {
+          resolve({ 
+            success: false, 
+            error: `Failed to start Whisper process: ${error.message}` 
+          });
+        });
       });
-      
     } catch (error) {
-      console.error('🎙️ [WHISPER] Error downloading and transcribing:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Whisper download failed: ${errorMessage}`);
+      return { 
+        success: false, 
+        error: `Whisper error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      };
     }
   }
-}
 
-export const whisperService = new WhisperService();
+  private parseWhisperOutput(output: string, format: string): TranscriptionResult {
+    switch (format) {
+      case 'json':
+        const jsonOutput = JSON.parse(output);
+        return {
+          text: jsonOutput.text || '',
+          language: jsonOutput.language,
+          segments: jsonOutput.segments?.map((seg: any) => ({
+            id: seg.id,
+            start: seg.start,
+            end: seg.end,
+            text: seg.text,
+            confidence: seg.avg_logprob ? Math.exp(seg.avg_logprob) : undefined,
+          })),
+          duration: jsonOutput.segments?.length > 0 
+            ? jsonOutput.segments[jsonOutput.segments.length - 1].end 
+            : undefined,
+        };
+      
+      case 'txt':
+        return {
+          text: output.trim(),
+        };
+      
+      default:
+        return {
+          text: output.trim(),
+        };
+    }
+  }
+
+  async getAvailableModels(): Promise<Array<{ name: string; size: string; description: string }>> {
+    return [
+      {
+        name: 'tiny',
+        size: '~39 MB',
+        description: 'Fastest, lowest accuracy. Good for real-time applications.'
+      },
+      {
+        name: 'base',
+        size: '~74 MB',
+        description: 'Good balance of speed and accuracy.'
+      },
+      {
+        name: 'small',
+        size: '~244 MB',
+        description: 'Better accuracy, moderate speed.'
+      },
+      {
+        name: 'medium',
+        size: '~769 MB',
+        description: 'High accuracy, slower processing.'
+      },
+      {
+        name: 'large',
+        size: '~1550 MB',
+        description: 'Highest accuracy, slowest processing.'
+      },
+      {
+        name: 'large-v2',
+        size: '~1550 MB',
+        description: 'Improved version of large model.'
+      },
+      {
+        name: 'large-v3',
+        size: '~1550 MB',
+        description: 'Latest and most accurate model.'
+      },
+    ];
+  }
+
+  async getSupportedLanguages(): Promise<Array<{ code: string; name: string }>> {
+    // Based on Whisper's supported languages
+    return [
+      { code: 'af', name: 'Afrikaans' },
+      { code: 'ar', name: 'Arabic' },
+      { code: 'hy', name: 'Armenian' },
+      { code: 'az', name: 'Azerbaijani' },
+      { code: 'be', name: 'Belarusian' },
+      { code: 'bs', name: 'Bosnian' },
+      { code: 'bg', name: 'Bulgarian' },
+      { code: 'ca', name: 'Catalan' },
+      { code: 'zh', name: 'Chinese' },
+      { code: 'hr', name: 'Croatian' },
+      { code: 'cs', name: 'Czech' },
+      { code: 'da', name: 'Danish' },
+      { code: 'nl', name: 'Dutch' },
+      { code: 'en', name: 'English' },
+      { code: 'et', name: 'Estonian' },
+      { code: 'fi', name: 'Finnish' },
+      { code: 'fr', name: 'French' },
+      { code: 'gl', name: 'Galician' },
+      { code: 'de', name: 'German' },
+      { code: 'el', name: 'Greek' },
+      { code: 'he', name: 'Hebrew' },
+      { code: 'hi', name: 'Hindi' },
+      { code: 'hu', name: 'Hungarian' },
+      { code: 'is', name: 'Icelandic' },
+      { code: 'id', name: 'Indonesian' },
+      { code: 'it', name: 'Italian' },
+      { code: 'ja', name: 'Japanese' },
+      { code: 'kn', name: 'Kannada' },
+      { code: 'kk', name: 'Kazakh' },
+      { code: 'ko', name: 'Korean' },
+      { code: 'lv', name: 'Latvian' },
+      { code: 'lt', name: 'Lithuanian' },
+      { code: 'mk', name: 'Macedonian' },
+      { code: 'ms', name: 'Malay' },
+      { code: 'mr', name: 'Marathi' },
+      { code: 'mi', name: 'Maori' },
+      { code: 'ne', name: 'Nepali' },
+      { code: 'no', name: 'Norwegian' },
+      { code: 'fa', name: 'Persian' },
+      { code: 'pl', name: 'Polish' },
+      { code: 'pt', name: 'Portuguese' },
+      { code: 'ro', name: 'Romanian' },
+      { code: 'ru', name: 'Russian' },
+      { code: 'sr', name: 'Serbian' },
+      { code: 'sk', name: 'Slovak' },
+      { code: 'sl', name: 'Slovenian' },
+      { code: 'es', name: 'Spanish' },
+      { code: 'sw', name: 'Swahili' },
+      { code: 'sv', name: 'Swedish' },
+      { code: 'tl', name: 'Tagalog' },
+      { code: 'ta', name: 'Tamil' },
+      { code: 'th', name: 'Thai' },
+      { code: 'tr', name: 'Turkish' },
+      { code: 'uk', name: 'Ukrainian' },
+      { code: 'ur', name: 'Urdu' },
+      { code: 'vi', name: 'Vietnamese' },
+      { code: 'cy', name: 'Welsh' },
+    ];
+  }
+
+  async validateConfig(config: Partial<WhisperConfig>): Promise<{ valid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+    const availableModels = await this.getAvailableModels();
+    const supportedLanguages = await this.getSupportedLanguages();
+
+    if (config.model && !availableModels.some(m => m.name === config.model)) {
+      errors.push(`Unsupported model: ${config.model}`);
+    }
+
+    if (config.language && !supportedLanguages.some(l => l.code === config.language)) {
+      errors.push(`Unsupported language: ${config.language}`);
+    }
+
+    if (config.temperature !== undefined && (config.temperature < 0 || config.temperature > 1)) {
+      errors.push('Temperature must be between 0 and 1');
+    }
+
+    if (config.beamSize !== undefined && (config.beamSize < 1 || config.beamSize > 10)) {
+      errors.push('Beam size must be between 1 and 10');
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+}
