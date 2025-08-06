@@ -813,7 +813,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       });
       
-      const responseTwiml = await callManager.handleUserInput(CallSid, cleanedInput);
+      // Use enhanced direct audio service for language-matched responses
+      console.log(`🎙️ [GATHER-TO-ENHANCED] Processing with enhanced service: "${cleanedInput}"`);
+      const { enhancedDirectAudioService } = await import('./services/enhancedDirectAudioService');
+      
+      // Get call info for enhanced processing
+      const call = await storage.getCallByTwilioSid(CallSid);
+      if (!call) {
+        throw new Error('Call not found');
+      }
+      
+      const responseTwiml = await enhancedDirectAudioService.processDirectSpeech(
+        cleanedInput,
+        CallSid,
+        call.campaignId
+      );
       
       // Broadcast conversation update
       broadcast({ 
