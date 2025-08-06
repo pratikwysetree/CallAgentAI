@@ -119,9 +119,7 @@ export class RealtimeCallManager {
       <?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Play>${audioData.toString('base64')}</Play>
-        <Gather input="speech" speechTimeout="3" action="/api/twilio/realtime/speech/${twilioCallSid}" method="POST">
-          <Say voice="alice">Please continue.</Say>
-        </Gather>
+        <Record action="/api/twilio/realtime/recording/${twilioCallSid}" maxLength="10" playBeep="false" timeout="8" />
       </Response>
     `;
 

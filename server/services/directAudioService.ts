@@ -244,9 +244,7 @@ RESPONSE FORMAT: {"message": "your response", "collected_data": {"contact_person
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" rate="normal">${aiData.message}</Say>
-  <Gather input="speech" speechTimeout="auto" timeout="8" language="en-IN" action="/api/twilio/direct-audio/${callSid}" method="POST">
-    <Say voice="alice">Please continue</Say>
-  </Gather>
+  <Record action="/api/twilio/recording/${callSid}" maxLength="10" playBeep="false" timeout="8" />
 </Response>`;
 
       // 6. Store conversation data if collected
