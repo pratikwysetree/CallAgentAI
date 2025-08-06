@@ -48,6 +48,15 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 - All campaign configurations now instantly available to AI conversation system
 - Users can modify intro lines and agent names without technical knowledge through Campaign Settings page
 
+### Voice Configuration & Call Flow Fixes
+- Added comprehensive ElevenLabs voice synthesis options to Campaign Settings
+- Implemented custom voice support with API integration to fetch user's ElevenLabs voices
+- Fixed critical async/await syntax errors in freshConversationService
+- Fixed voice ID validation to use existing voices from user's account (Z6TUNPsOxhTPtqLx81EX)
+- Updated call initiation to properly use campaign intro lines instead of hardcoded greetings
+- Verified typing sound effects work correctly to fill conversation gaps
+- All voice parameters (model, stability, similarity boost, style, speaker boost) now configurable per campaign
+
 ## External Dependencies
 
 ### Core Infrastructure

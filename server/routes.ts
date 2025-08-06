@@ -670,10 +670,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let scriptToSpeak = "Hello! How are you today?";
       
-      // Always use the same simple greeting - ignore all campaign scripts
-      scriptToSpeak = "Hi this is Aavika from LabsCheck, how are you doing today";
-      console.log(`🎯 [SIMPLE GREETING] Using exact prompt: "${scriptToSpeak}"`);
-      console.log(`🚫 [NO SCRIPTS] All campaign scripts ignored - using simple greeting only`);
+      // Use campaign intro line if available
+      if (campaign?.introLine) {
+        scriptToSpeak = campaign.introLine;
+        console.log(`🎯 [CAMPAIGN INTRO] Using campaign intro: "${scriptToSpeak}"`);
+      } else {
+        scriptToSpeak = "Hi this is Anvika from LabsCheck, how are you doing today";
+        console.log(`🎯 [FALLBACK INTRO] Using default intro: "${scriptToSpeak}"`);
+      }
 
       console.log(`🎙️ [FINAL SCRIPT] Speaking: "${scriptToSpeak}"`);
       const callSid = req.body.CallSid;

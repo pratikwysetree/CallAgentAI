@@ -146,7 +146,7 @@ RESPONSE FORMAT: Just provide your response naturally - no JSON formatting neede
     // Common greetings/responses - only for simple greetings without owner context
     if (/(^hello$|^hi$|^namaste$)/i.test(text)) {
       return {
-        message: await this.getGreetingMessage(isHindi),
+        message: isHindi ? "हैलो! मैं अन्विका हूँ LabsCheck से। क्या आप लैब के owner या manager हैं?" : "Hi! This is Anvika from LabsCheck. Are you the owner or manager of the lab?",
         collected_data: {},
         should_end: false
       };
