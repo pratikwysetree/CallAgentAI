@@ -175,8 +175,42 @@ export class FreshConversationService {
       
       // Check if transcription is empty
       if (!customerText || customerText.length < 2) {
-        console.log('⚠️ [WHISPER] Empty or very short transcription, using default response');
-        return this.generateTwiMLResponse(null, "I didn't catch that. Could you please repeat?", false, callSid);
+        console.log('⚠️ [WHISPER] Empty or very short transcription, using ElevenLabs voice for consistency');
+        
+        // Generate the "didn't catch" response with ElevenLabs to maintain voice consistency
+        const fallbackResponse = {
+          message: "I didn't catch that clearly. Could you please repeat?",
+          collected_data: {},
+          should_end: false
+        };
+        
+        // Use ElevenLabs for this response too to maintain voice consistency
+        let audioUrl: string | null = null;
+        try {
+          const voiceSettings = {
+            voiceId: voiceConfig?.voiceId || 'Z6TUNPsOxhTPtqLx81EX',
+            model: voiceConfig?.model || 'eleven_turbo_v2',
+            stability: voiceConfig?.stability || 0.5,
+            similarityBoost: voiceConfig?.similarityBoost || 0.75,
+            style: voiceConfig?.style || 0,
+            useSpeakerBoost: voiceConfig?.useSpeakerBoost || true,
+          };
+          
+          const { elevenLabsService } = await import('./elevenLabsService');
+          const audioFilename = await elevenLabsService.generateAudioFile(fallbackResponse.message, voiceSettings);
+          
+          if (audioFilename && typeof audioFilename === 'string') {
+            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+            const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+            audioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+            console.log(`🎵 [ELEVENLABS] Fallback response generated: ${audioUrl}`);
+          }
+        } catch (fallbackError) {
+          console.error('❌ [ELEVENLABS] Fallback generation failed:', fallbackError);
+          audioUrl = null;
+        }
+        
+        return this.generateTwiMLResponse(audioUrl, fallbackResponse.message, false, callSid, voiceConfig);
       }
       
       // Broadcast customer speech event
@@ -369,10 +403,37 @@ Use JSON format for all responses.`
       console.error('❌ [FRESH-SERVICE] Error:', error);
       this.broadcastConversationEvent(callSid, 'error', `Processing failed: ${(error as Error).message}`);
       
-      // Return safe fallback TwiML
+      // Return safe fallback TwiML - but try to maintain voice consistency even in errors
+      let fallbackAudioUrl: string | null = null;
+      const fallbackMessage = "Thank you for your time. We will contact you soon.";
+      
+      try {
+        // Even for error fallback, try to use ElevenLabs voice to maintain consistency
+        const voiceSettings = {
+          voiceId: voiceConfig?.voiceId || 'Z6TUNPsOxhTPtqLx81EX',
+          model: voiceConfig?.model || 'eleven_turbo_v2',
+          stability: voiceConfig?.stability || 0.5,
+          similarityBoost: voiceConfig?.similarityBoost || 0.75,
+          style: voiceConfig?.style || 0,
+          useSpeakerBoost: voiceConfig?.useSpeakerBoost || true,
+        };
+        
+        const { elevenLabsService } = await import('./elevenLabsService');
+        const audioFilename = await elevenLabsService.generateAudioFile(fallbackMessage, voiceSettings);
+        
+        if (audioFilename && typeof audioFilename === 'string') {
+          const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+          const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+          fallbackAudioUrl = `${protocol}://${baseUrl}/api/audio/${audioFilename}`;
+          console.log(`🎵 [ELEVENLABS] Error fallback generated: ${fallbackAudioUrl}`);
+        }
+      } catch (fallbackError) {
+        console.error('❌ [ELEVENLABS] Error fallback generation failed:', fallbackError);
+      }
+      
       return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-IN">Thank you for your time. We will contact you soon.</Say>
+  ${fallbackAudioUrl ? `<Play>${fallbackAudioUrl}</Play>` : `<Say voice="alice" language="en-IN">${fallbackMessage}</Say>`}
   <Hangup/>
 </Response>`;
     }
