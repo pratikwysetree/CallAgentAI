@@ -615,37 +615,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📋 [SCRIPT DEBUG] Script exists: ${!!campaign.script}, length: ${campaign.script?.length || 0}`);
         console.log(`📋 [PROMPT DEBUG] AI Prompt exists: ${!!campaign.aiPrompt}, length: ${campaign.aiPrompt?.length || 0}`);
         
-        // Use simple conversational opening - no script reading
-        if (campaign.script && campaign.script.trim()) {
-          // Don't use script content - just natural greeting
-          scriptToSpeak = "Hi! This is Aavika from LabsCheck. How are you doing today?";
-          console.log(`🎯 [CONVERSATION START] Using natural greeting instead of script`);
-          console.log(`🎯 [NO SCRIPT READING] AI will have conversational flow only`);
-        } else if (campaign.aiPrompt && campaign.aiPrompt.trim()) {
-          // Extract speaking content from AI prompt - convert to first person speech
-          let speakingScript = campaign.aiPrompt;
-          
-          // Convert prompts to natural speaking
-          speakingScript = speakingScript
-            .replace(/You are/gi, "I am")
-            .replace(/Your goal is to/gi, "I will")
-            .replace(/assistant/gi, "representative")
-            .replace(/agent/gi, "representative")
-            .replace(/calling to/gi, "calling to");
-          
-          // If it's a long prompt, take first meaningful part
-          const sentences = speakingScript.split(/[.!?]+/);
-          scriptToSpeak = sentences.slice(0, 3).join('. ').trim();
-          if (scriptToSpeak.length > 200) {
-            scriptToSpeak = scriptToSpeak.substring(0, 200) + "...";
-          }
-          
-          console.log(`🎯 [AI PROMPT] Converting AI prompt to speech (${scriptToSpeak.length} chars)`);
-          console.log(`🎯 [PROMPT PREVIEW] "${scriptToSpeak}"`);
-        } else {
-          scriptToSpeak = `Hello! I'm calling regarding ${campaign.name}. How are you today?`;
-          console.log(`🎯 [FALLBACK] Using campaign name fallback: "${scriptToSpeak}"`);
-        }
+        // Always use natural conversational opening - NEVER read scripts
+        scriptToSpeak = "Hi! This is Aavika from LabsCheck. How are you doing today?";
+        console.log(`🎯 [NATURAL CONVERSATION] Using greeting - NO script reading allowed`);
+        console.log(`🎯 [AI FLOW] Conversation will be 100% natural with LabsCheck reference info only`);
       } else {
         console.log(`❌ [NO CAMPAIGN] Campaign ${campaignId} not found, using generic greeting`);
       }
