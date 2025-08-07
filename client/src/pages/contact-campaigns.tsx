@@ -71,7 +71,7 @@ export default function ContactCampaigns() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('contacts');
   const [campaignConfig, setCampaignConfig] = useState({
     channel: 'BOTH',
@@ -364,11 +364,20 @@ export default function ContactCampaigns() {
   };
 
   // Handle contact selection
-  const handleContactSelect = (contactId: number, selected: boolean) => {
+  const handleContactSelect = (contactId: string, selected: boolean) => {
+    console.log('handleContactSelect called:', { contactId, selected, currentSelected: selectedContacts });
     if (selected) {
-      setSelectedContacts([...selectedContacts, contactId]);
+      setSelectedContacts(prev => {
+        const newSelection = [...prev, contactId];
+        console.log('Adding contact, new selection:', newSelection);
+        return newSelection;
+      });
     } else {
-      setSelectedContacts(selectedContacts.filter(id => id !== contactId));
+      setSelectedContacts(prev => {
+        const newSelection = prev.filter(id => id !== contactId);
+        console.log('Removing contact, new selection:', newSelection);
+        return newSelection;
+      });
     }
   };
 
@@ -892,11 +901,14 @@ export default function ContactCampaigns() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedContacts(filteredContacts.map((contact: any) => contact.id))}
+                    onClick={() => {
+                      console.log('Select All Filtered clicked - selecting all contacts');
+                      setSelectedContacts(filteredContacts.map((contact: any) => contact.id));
+                    }}
                     disabled={filteredContacts.length === 0}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Select All Filtered
+                    Select All Filtered ({filteredContacts.length})
                   </Button>
                 </div>
               </div>
