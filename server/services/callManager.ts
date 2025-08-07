@@ -248,7 +248,9 @@ export class CallManager {
             similarityBoost: voiceConfig?.similarityBoost || 0.75,
             style: voiceConfig?.style || 0.0,
             speakerBoost: voiceConfig?.useSpeakerBoost || true,
-            model: campaign.elevenlabsModel || 'eleven_turbo_v2'
+            addTypingSound: true, // ENABLE typing sound for customer to hear
+            model: campaign.elevenlabsModel || 'eleven_turbo_v2',
+            language: campaign.language || 'en'
           }
         );
 

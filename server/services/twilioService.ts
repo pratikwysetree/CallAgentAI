@@ -68,16 +68,34 @@ export class TwilioService {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
 
-    // Add natural typing sounds throughout entire conversation for human-like experience
-    console.log('🎹 Adding continuous background typing effects throughout conversation');
+    // Add natural typing sounds that customers will actually hear during conversation
+    console.log('🎹 Adding REAL background typing effects that customers will hear');
 
-    // Add initial thinking pause with typing sounds
+    // Add subtle typing sound before responses to simulate human-like behavior
+    if (options.addTypingSound !== false) {
+      // Add typing sound URL that customers will hear
+      const fs = require('fs');
+      const path = require('path');
+      const typingPath = path.join(process.cwd(), 'temp', 'static-audio', 'typing-sound.mp3');
+      
+      if (fs.existsSync(typingPath)) {
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
+          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+        const typingUrl = `${baseUrl}/audio/typing-sound.mp3`;
+        
+        console.log('🎵 Playing actual typing sound for customer to hear');
+        twiml.play(typingUrl);
+      }
+    }
+
+    // Add thinking pause with typing sounds
     twiml.pause({ length: 1 });
 
     // Add additional natural pauses for extended typing effect
     if (action === 'gather') {
-      twiml.pause({ length: 1.5 }); // Extended thinking with typing
-      console.log('💭 Added extended thinking pause with natural typing ambiance');
+      twiml.pause({ length: 1 }); // Extended thinking with typing
+      console.log('💭 Added extended thinking pause with actual typing ambiance');
     }
 
     switch (action) {

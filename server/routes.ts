@@ -567,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
           language: campaign.language || 'en',
-          addTypingSound: true,
+          addTypingSound: true, // Customer will hear typing sounds
           addThinkingPause: true
         });
 
@@ -785,7 +785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           text: 'I\'m here. Please speak when you\'re ready.',
           action: `/api/calls/${callId}/process-speech`,
           language: campaign?.language || 'en',
-          addTypingSound: true,
+          addTypingSound: true, // Customer will hear typing sounds
           addThinkingPause: true
         });
         res.type('text/xml').send(twiml);
@@ -804,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const twiml = twilioService.generateTwiML('hangup', {
           text: 'I understand. Thank you for your time. Have a great day!',
           language: campaign?.language || 'en',
-          addTypingSound: true
+          addTypingSound: true // Customer will hear typing sounds
         });
         res.type('text/xml').send(twiml);
         return;
