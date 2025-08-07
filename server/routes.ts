@@ -572,15 +572,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       } catch (elevenlabsError) {
-        console.error('❌ ElevenLabs intro failed:', elevenlabsError);
+        console.error('❌ ElevenLabs intro failed, using fallback:', elevenlabsError);
 
-        // Return error TwiML that will end call gracefully
-        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" language="en">I apologize, there was a technical issue. Please try again later.</Say>
-  <Hangup/>
-</Response>`;
-        return res.type('text/xml').send(errorTwiml);
+        // Quick fallback with Twilio TTS to prevent application error
+        twiml = await twilioService.generateTwiML('gather', {
+          text: introText,
+          action: `/api/calls/${callId}/process-speech`,
+          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+          language: campaign.language || 'en',
+          voice: 'alice',
+          addTypingSound: false // Skip typing sound for fallback
+        });
+        console.log('✅ Using Twilio TTS fallback to prevent application error');
       }
 
       console.log(`🎙️ Returning TwiML for intro: "${introText}"`);
@@ -591,9 +594,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('🚨 ANSWER WEBHOOK ERROR:', error instanceof Error ? error.message : String(error));
-      const fallbackTwiml = await twilioService.generateTwiML('hangup', {
-        text: 'Sorry, there was an error. Please try again later.'
-      });
+      console.error('🚨 Stack trace:', error instanceof Error ? error.stack : 'No stack');
+      
+      // Provide a more robust fallback TwiML
+      const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en">Hello, this is an AI assistant from LabsCheck. How can I help you today?</Say>
+  <Gather input="speech" language="en-US" speechTimeout="5" action="/api/calls/${callId || 'unknown'}/process-speech" method="POST">
+    <Say voice="alice">Please speak after the tone.</Say>
+  </Gather>
+</Response>`;
       res.type('text/xml').send(fallbackTwiml);
     }
   });

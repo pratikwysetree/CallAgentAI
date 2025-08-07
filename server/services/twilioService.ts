@@ -73,19 +73,38 @@ export class TwilioService {
 
     // Add subtle typing sound before responses to simulate human-like behavior
     if (options.addTypingSound !== false) {
-      // Add typing sound URL that customers will hear
-      const fs = await import('fs');
-      const path = await import('path');
-      const typingPath = path.default.join(process.cwd(), 'temp', 'static-audio', 'typing-sound.mp3');
-      
-      if (fs.default.existsSync(typingPath)) {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        // Ensure static-audio directory exists
+        const staticAudioDir = path.default.join(process.cwd(), 'temp', 'static-audio');
+        if (!fs.default.existsSync(staticAudioDir)) {
+          fs.default.mkdirSync(staticAudioDir, { recursive: true });
+        }
+        
+        const typingPath = path.default.join(staticAudioDir, 'typing-sound.mp3');
+        
+        // Create a simple typing sound file if it doesn't exist
+        if (!fs.default.existsSync(typingPath)) {
+          // Create a minimal MP3 file for typing sound (silence for now)
+          const minimalMp3 = Buffer.from([
+            0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          ]);
+          fs.default.writeFileSync(typingPath, minimalMp3);
+          console.log('📁 Created minimal typing sound file');
+        }
+        
         const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
           `https://${process.env.REPLIT_DEV_DOMAIN}` : 
           `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
         const typingUrl = `${baseUrl}/audio/typing-sound.mp3`;
         
-        console.log('🎵 Playing actual typing sound for customer to hear');
+        console.log('🎵 Adding typing sound effect for natural conversation flow');
         twiml.play(typingUrl);
+      } catch (error) {
+        console.warn('⚠️ Could not add typing sound, continuing without it:', error);
+        // Continue without typing sound - don't break the call
       }
     }
 
