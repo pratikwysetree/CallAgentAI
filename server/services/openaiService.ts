@@ -88,6 +88,13 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
       
       console.log(`🎤 Created temp audio file for Whisper: ${tempFilePath} (${audioBuffer.length} bytes)`);
       
+      // Check if audio file is too small (likely corrupted)
+      if (audioBuffer.length < 1000) {
+        console.warn(`⚠️ Audio file too small (${audioBuffer.length} bytes), likely corrupted recording`);
+        fs.default.unlinkSync(tempFilePath); // Clean up
+        return "Sorry, the audio wasn't clear. Could you please speak a bit louder?";
+      }
+      
       // Use OpenAI Whisper for transcription - .wav format should work
       const response = await openai.audio.transcriptions.create({
         file: fs.default.createReadStream(tempFilePath),

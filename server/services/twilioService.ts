@@ -26,19 +26,23 @@ export class TwilioService {
         throw new Error('Twilio phone number not configured');
       }
 
-      // Create webhook URL for handling call events - use Replit domain
+      // Create webhook URLs for handling call events - use Replit domain
       const replitDomain = process.env.REPLIT_DOMAINS ? 
         `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 
         `https://${process.env.REPL_SLUG || 'app'}.${process.env.REPL_OWNER || 'user'}.repl.co`;
-      const webhookUrl = `${replitDomain}/api/calls/webhook`;
       
-      console.log(`🔗 Using webhook URL: ${webhookUrl}`); // Debug log
+      // CRITICAL FIX: Use answer webhook to play ElevenLabs intro first
+      const answerWebhookUrl = `${replitDomain}/api/calls/webhook/answer`;
+      const statusWebhookUrl = `${replitDomain}/api/calls/webhook/status`;
+      
+      console.log(`🔗 Using answer webhook URL: ${answerWebhookUrl}`); // Debug log
+      console.log(`📊 Using status webhook URL: ${statusWebhookUrl}`); // Debug log
       
       const call = await this.client.calls.create({
         to: phoneNumber,
         from: fromNumber,
-        url: `${webhookUrl}?callId=${callId}&campaignId=${campaignId}`,
-        statusCallback: `${webhookUrl}/status?callId=${callId}`,
+        url: `${answerWebhookUrl}?callId=${callId}&campaignId=${campaignId}`,
+        statusCallback: `${statusWebhookUrl}?callId=${callId}`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
         statusCallbackMethod: 'POST',
         timeout: 20, // Reduce timeout to speed up call connection
@@ -65,7 +69,7 @@ export class TwilioService {
     const twiml = new VoiceResponse();
 
     // Use campaign-defined language settings (default to en-IN for Indian market)
-    const language = options.language ? `${options.language}-IN` : 'en-IN';
+    const language = options.language || 'en';
 
     // Add natural typing sounds throughout entire conversation for human-like experience
     if (options.addTypingSound) {
@@ -91,7 +95,7 @@ export class TwilioService {
           console.log('⚠️ Falling back to Twilio voice - no ElevenLabs audio provided');
           twiml.say({
             voice: 'alice', // Twilio fallback voice
-            language: language
+            language: language as any
           }, options.text || 'Hello');
         }
         break;
@@ -113,7 +117,7 @@ export class TwilioService {
             console.log('⚠️ Falling back to Twilio voice - no ElevenLabs audio provided');
             twiml.say({
               voice: 'alice', // Twilio fallback voice
-              language: language
+              language: language as any
             }, options.text);
           }
         }
@@ -138,7 +142,7 @@ export class TwilioService {
         // Fallback if no speech detected
         twiml.say({
           voice: 'alice', // Always use Twilio for fallback messages
-          language: language
+          language: language as any
         }, "I didn't catch that. Let me continue.");
         break;
         
@@ -152,7 +156,7 @@ export class TwilioService {
             console.log('⚠️ Falling back to Twilio voice for hangup - no ElevenLabs audio provided');
             twiml.say({
               voice: 'alice', // Twilio fallback voice
-              language: language
+              language: language as any
             }, options.text);
           }
         }
