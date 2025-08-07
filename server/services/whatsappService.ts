@@ -26,66 +26,16 @@ export class WhatsAppService {
     this.phoneNumberId = phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || '';
   }
 
-  // Get WABA ID from phone number (try multiple methods)
+  // Get WABA ID from environment variable
   private async getWABAId(): Promise<string> {
-    if (!this.accessToken || !this.phoneNumberId) {
-      throw new Error('WhatsApp credentials not configured');
+    const wabaId = process.env.WHATSAPP_WABA_ID;
+    
+    if (!wabaId) {
+      throw new Error('WHATSAPP_WABA_ID environment variable not configured');
     }
 
-    try {
-      // Method 1: Try direct phone number query
-      const url1 = `${this.baseUrl}/${this.phoneNumberId}?fields=whatsapp_business_account_id`;
-      const response1 = await fetch(url1, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response1.ok) {
-        const data = await response1.json();
-        if (data.whatsapp_business_account_id) {
-          return data.whatsapp_business_account_id;
-        }
-      }
-
-      // Method 2: Try getting phone number details first
-      const url2 = `${this.baseUrl}/${this.phoneNumberId}`;
-      const response2 = await fetch(url2, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response2.ok) {
-        const phoneData = await response2.json();
-        console.log('📱 Phone number data:', phoneData);
-        
-        // Look for WABA ID in different fields
-        const wabaId = phoneData.whatsapp_business_account_id || 
-                      phoneData.waba_id || 
-                      phoneData.account_id;
-        
-        if (wabaId) {
-          return wabaId;
-        }
-      }
-
-      // Method 3: Extract from phone number ID itself (sometimes contains WABA ID)
-      // Phone number IDs often follow pattern: {WABA_ID}:{PHONE_ID}
-      if (this.phoneNumberId.includes(':')) {
-        const wabaId = this.phoneNumberId.split(':')[0];
-        console.log('📋 Extracted WABA ID from phone number ID:', wabaId);
-        return wabaId;
-      }
-
-      throw new Error('Could not determine WABA ID from available data');
-    } catch (error) {
-      throw new Error(`Failed to get WABA ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    console.log('📋 Using WABA ID from environment:', wabaId);
+    return wabaId;
   }
 
   // Fetch approved message templates from Meta Business API
@@ -101,7 +51,8 @@ export class WhatsAppService {
       const wabaId = await this.getWABAId();
       console.log('📋 WABA ID:', wabaId);
       
-      const url = `${this.baseUrl}/${wabaId}/message_templates?fields=name,status,category,components,language,id`;
+      const url = `${this.baseUrl}/${wabaId}/message_templates?fields=name,status,category,components,language,id&limit=50`;
+      console.log('📋 Requesting URL:', url);
       
       const response = await fetch(url, {
         method: 'GET',
@@ -111,14 +62,17 @@ export class WhatsAppService {
         },
       });
 
+      const responseText = await response.text();
+      console.log('📋 Meta API response status:', response.status);
+      console.log('📋 Meta API response:', responseText);
+
       if (!response.ok) {
-        const error = await response.text();
-        console.error('❌ Meta API error:', error);
-        throw new Error(`Failed to fetch templates: ${error}`);
+        console.error('❌ Meta API error response:', responseText);
+        throw new Error(`Failed to fetch templates: ${responseText}`);
       }
 
-      const data = await response.json();
-      console.log('📋 Raw Meta API response:', JSON.stringify(data, null, 2));
+      const data = JSON.parse(responseText);
+      console.log('📋 Parsed Meta API data:', JSON.stringify(data, null, 2));
       
       const templates = data.data || [];
       console.log(`📋 Found ${templates.length} templates from Meta Business API`);

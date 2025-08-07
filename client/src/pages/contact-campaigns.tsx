@@ -426,8 +426,13 @@ export default function ContactCampaigns() {
   // Extract variables from template content (looking for {{variable}} patterns)
   const extractTemplateVariables = (content: string) => {
     if (!content) return [];
-    const matches = content.match(/\{\{[^}]+\}\}/g) || [];
-    return matches.map(match => match.replace(/[{}]/g, ''));
+    const matches = content.match(/\{\{([^}]+)\}\}/g) || [];
+    const variables = matches
+      .map(match => match.replace(/[{}]/g, '').trim())
+      .filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+    
+    console.log(`📋 Extracted variables from template: ${variables.join(', ')}`);
+    return variables;
   };
 
   const templateVariables = selectedTemplate ? extractTemplateVariables(selectedTemplate.content || '') : [];
@@ -1110,7 +1115,43 @@ export default function ContactCampaigns() {
 
                 {(campaignConfig.channel === 'WHATSAPP' || campaignConfig.channel === 'BOTH') && (
                   <div className="space-y-2">
-                    <Label>WhatsApp Template</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>WhatsApp Template</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            console.log('🔄 Syncing templates from Meta Business API...');
+                            const response = await fetch('/api/whatsapp/templates/sync', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' }
+                            });
+                            const result = await response.json();
+                            console.log('✅ Template sync result:', result);
+                            
+                            // Refresh templates after sync
+                            await queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/templates'] });
+                            toast({
+                              title: "Templates Synced",
+                              description: result.message
+                            });
+                          } catch (error) {
+                            console.error('❌ Template sync error:', error);
+                            toast({
+                              title: "Sync Failed",
+                              description: "Could not sync templates from Meta Business API",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                        className="text-xs"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Sync Templates
+                      </Button>
+                    </div>
                     <Select 
                       value={campaignConfig.whatsappTemplate} 
                       onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, whatsappTemplate: value, variableMapping: {} }))}
@@ -1121,7 +1162,12 @@ export default function ContactCampaigns() {
                       <SelectContent>
                         {approvedTemplates.map((template: any) => (
                           <SelectItem key={template.id} value={template.name}>
-                            {template.name}
+                            <div className="flex flex-col">
+                              <span className="font-medium">{template.name}</span>
+                              <span className="text-xs text-gray-500 truncate max-w-60">
+                                {template.content?.substring(0, 80)}...
+                              </span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
