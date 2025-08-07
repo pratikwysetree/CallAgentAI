@@ -25,7 +25,9 @@ import {
   XCircle,
   Clock,
   RefreshCw,
-  PlayCircle
+  PlayCircle,
+  Plus,
+  UserPlus
 } from 'lucide-react';
 
 interface Contact {
@@ -66,6 +68,15 @@ export default function ContactCampaigns() {
     channel: 'BOTH',
     whatsappTemplate: '',
     followUpDays: 7
+  });
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [newContact, setNewContact] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    city: '',
+    state: '',
+    company: ''
   });
 
   // Fetch contacts with engagement data
@@ -144,6 +155,36 @@ export default function ContactCampaigns() {
     }
   });
 
+  // Create single contact mutation
+  const createContactMutation = useMutation({
+    mutationFn: async (contactData: typeof newContact) => {
+      return apiRequest('/api/contacts', 'POST', contactData);
+    },
+    onSuccess: () => {
+      toast({ 
+        title: 'Contact added',
+        description: 'New contact has been successfully added to your database.'
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts/enhanced'] });
+      setNewContact({
+        name: '',
+        phone: '',
+        email: '',
+        city: '',
+        state: '',
+        company: ''
+      });
+      setShowAddContact(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to add contact', 
+        description: error.message || 'Failed to create contact',
+        variant: 'destructive' 
+      });
+    }
+  });
+
   // Handle CSV file upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -181,6 +222,19 @@ export default function ContactCampaigns() {
     } else {
       setSelectedContacts(selectedContacts.filter(id => id !== contactId));
     }
+  };
+
+  // Handle adding single contact
+  const handleAddContact = () => {
+    if (!newContact.name || !newContact.phone) {
+      toast({ 
+        title: 'Missing required fields',
+        description: 'Please provide at least name and phone number',
+        variant: 'destructive' 
+      });
+      return;
+    }
+    createContactMutation.mutate(newContact);
   };
 
   const getStatusColor = (status: string) => {
@@ -286,41 +340,146 @@ export default function ContactCampaigns() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Upload Contacts
+                Add Contacts
               </CardTitle>
               <CardDescription>
-                Upload CSV file with columns: name, phone, email, city, state
+                Upload CSV file or add individual contacts manually
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4">
-                <Input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={csvUploadMutation.isPending}
-                >
-                  {csvUploadMutation.isPending ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Choose CSV File
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Template
-                </Button>
+            <CardContent className="space-y-4">
+              {/* Bulk Upload Section */}
+              <div>
+                <h4 className="text-sm font-medium mb-2">Bulk Upload</h4>
+                <div className="flex items-center gap-4">
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={csvUploadMutation.isPending}
+                  >
+                    {csvUploadMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Choose CSV File
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Template
+                  </Button>
+                </div>
+              </div>
+
+              {/* Single Contact Section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium">Add Single Contact</h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddContact(!showAddContact)}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    {showAddContact ? 'Cancel' : 'Add Contact'}
+                  </Button>
+                </div>
+
+                {showAddContact && (
+                  <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="contact-name">Name *</Label>
+                        <Input
+                          id="contact-name"
+                          value={newContact.name}
+                          onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                          placeholder="Lab name or contact person"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-phone">Phone *</Label>
+                        <Input
+                          id="contact-phone"
+                          value={newContact.phone}
+                          onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                          placeholder="+919876543210"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-email">Email</Label>
+                        <Input
+                          id="contact-email"
+                          type="email"
+                          value={newContact.email}
+                          onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                          placeholder="contact@lab.com"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-company">Company</Label>
+                        <Input
+                          id="contact-company"
+                          value={newContact.company}
+                          onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                          placeholder="Lab or company name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-city">City</Label>
+                        <Input
+                          id="contact-city"
+                          value={newContact.city}
+                          onChange={(e) => setNewContact({ ...newContact, city: e.target.value })}
+                          placeholder="Mumbai"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-state">State</Label>
+                        <Input
+                          id="contact-state"
+                          value={newContact.state}
+                          onChange={(e) => setNewContact({ ...newContact, state: e.target.value })}
+                          placeholder="Maharashtra"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowAddContact(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleAddContact}
+                        disabled={createContactMutation.isPending}
+                      >
+                        {createContactMutation.isPending ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Contact
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
