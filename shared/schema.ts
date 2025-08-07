@@ -53,7 +53,7 @@ export const calls = pgTable("calls", {
   startTime: timestamp("start_time").defaultNow().notNull(),
   endTime: timestamp("end_time"),
   twilioCallSid: text("twilio_call_sid"),
-  recordingUrl: text("recording_url"),
+  // recordingUrl removed - using direct speech processing only
   conversationSummary: text("conversation_summary"),
   extractedWhatsapp: text("extracted_whatsapp"), // WhatsApp number extracted from call
   extractedEmail: text("extracted_email"), // Email extracted from call
@@ -72,18 +72,7 @@ export const callMessages = pgTable("call_messages", {
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
-// New table for storing audio recordings directly in database
-export const audioRecordings = pgTable("audio_recordings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  callId: varchar("call_id").references(() => calls.id),
-  audioData: text("audio_data"), // Base64 encoded audio
-  duration: integer("duration"), // in seconds
-  format: text("format").default("wav"), // audio format
-  sampleRate: integer("sample_rate").default(8000),
-  transcription: text("transcription"),
-  messageIndex: integer("message_index"), // which turn in conversation
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+// Removed audio recordings table - using direct speech processing only
 
 export const whatsappTemplates = pgTable("whatsapp_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -186,7 +175,7 @@ export const callsRelations = relations(calls, ({ one, many }) => ({
     references: [campaigns.id],
   }),
   messages: many(callMessages),
-  audioRecordings: many(audioRecordings),
+  // audioRecordings removed - using direct speech processing only
 }));
 
 export const callMessagesRelations = relations(callMessages, ({ one }) => ({
@@ -196,12 +185,7 @@ export const callMessagesRelations = relations(callMessages, ({ one }) => ({
   }),
 }));
 
-export const audioRecordingsRelations = relations(audioRecordings, ({ one }) => ({
-  call: one(calls, {
-    fields: [audioRecordings.callId],
-    references: [calls.id],
-  }),
-}));
+// Removed audio recordings relations - using direct speech processing only
 
 export const campaignMetricsRelations = relations(campaignMetrics, ({ one }) => ({
   campaign: one(campaigns, {
@@ -226,8 +210,7 @@ export type InsertCall = typeof calls.$inferInsert;
 export type CallMessage = typeof callMessages.$inferSelect;
 export type InsertCallMessage = typeof callMessages.$inferInsert;
 
-export type AudioRecording = typeof audioRecordings.$inferSelect;
-export type InsertAudioRecording = typeof audioRecordings.$inferInsert;
+// Removed audio recording types - using direct speech processing only
 
 export type WhatsAppTemplate = typeof whatsappTemplates.$inferSelect;
 export type InsertWhatsAppTemplate = typeof whatsappTemplates.$inferInsert;
@@ -262,6 +245,6 @@ export const insertContactSchema = createInsertSchema(contacts);
 export const insertCampaignSchema = createInsertSchema(campaigns);
 export const insertCallSchema = createInsertSchema(calls);
 export const insertCallMessageSchema = createInsertSchema(callMessages);
-export const insertAudioRecordingSchema = createInsertSchema(audioRecordings);
+// Removed audio recording schema - using direct speech processing only
 export const insertWhatsAppTemplateSchema = createInsertSchema(whatsappTemplates);
 export const insertBulkMessageJobSchema = createInsertSchema(bulkMessageJobs);

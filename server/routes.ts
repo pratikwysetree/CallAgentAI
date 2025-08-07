@@ -493,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { callId } = req.params;
       
       // Import direct speech service
-      const { directSpeechService } = await import('../services/directSpeechService');
+      const { directSpeechService } = await import('./services/directSpeechService');
       
       // Process speech directly from Twilio webhook without any recording
       const rawSpeechText = directSpeechService.processTwilioSpeechInput(
