@@ -280,6 +280,28 @@ export default function WhatsAppChats() {
     setEditMessageText(message.message);
   };
 
+  // Edit message mutation
+  const editMessageMutation = useMutation({
+    mutationFn: (editData: { messageId: string; message: string }) => 
+      apiRequest("PUT", `/api/whatsapp/messages/${editData.messageId}`, { message: editData.message }),
+    onSuccess: () => {
+      toast({
+        title: "Message updated!",
+        description: "Your message has been updated successfully.",
+      });
+      setEditingMessage(null);
+      setEditMessageText("");
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to update message",
+        description: "There was an error updating your message.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleSaveEdit = () => {
     if (!editingMessage || !editMessageText.trim()) return;
     editMessageMutation.mutate({
@@ -522,7 +544,7 @@ export default function WhatsAppChats() {
                           </span>
                           {message.direction === 'outbound' && (
                             <>
-                              {getStatusIcon(message.status)}
+                              {getStatusIcon(message.status, message.direction)}
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button
@@ -631,11 +653,11 @@ export default function WhatsAppChats() {
                   />
                   <div className="flex justify-end">
                     <Button 
-                      onClick={handleSendContactMessage}
-                      disabled={!newContactMessage.trim() || sendContactMessageMutation.isPending}
+                      onClick={handleSendNewMessage}
+                      disabled={!newContactMessage.trim() || sendNewMessageMutation.isPending}
                       className="min-w-24"
                     >
-                      {sendContactMessageMutation.isPending ? (
+                      {sendNewMessageMutation.isPending ? (
                         "Sending..."
                       ) : (
                         <>
