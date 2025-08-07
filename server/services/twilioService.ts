@@ -63,13 +63,10 @@ export class TwilioService {
     }
   }
 
-  // Generate TwiML for call handling with ElevenLabs integration
+  // Generate TwiML for call handling with ElevenLabs-only voice synthesis
   generateTwiML(action: 'gather' | 'say' | 'hangup', options: any = {}): string {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
-
-    // Use campaign-defined language settings (default to en-IN for Indian market)
-    const language = options.language || 'en';
 
     // Add natural typing sounds throughout entire conversation for human-like experience
     if (options.addTypingSound) {
@@ -87,16 +84,14 @@ export class TwilioService {
 
     switch (action) {
       case 'say':
-        // Check if we have ElevenLabs audio URL, otherwise use Twilio voice as fallback
+        // ONLY use ElevenLabs audio - no Twilio TTS fallback
         if (options.audioUrl) {
           console.log('🎵 Using ElevenLabs audio for TTS');
           twiml.play(options.audioUrl);
         } else {
-          console.log('⚠️ Falling back to Twilio voice - no ElevenLabs audio provided');
-          twiml.say({
-            voice: 'alice', // Twilio fallback voice
-            language: language as any
-          }, options.text || 'Hello');
+          console.error('❌ ERROR: No ElevenLabs audio URL provided - ElevenLabs is required');
+          // Add silence instead of Twilio TTS
+          twiml.pause({ length: 2 });
         }
         break;
         
@@ -109,16 +104,14 @@ export class TwilioService {
             console.log('⌨️ Added pre-response typing pause for natural conversation flow');
           }
           
-          // Check if we have ElevenLabs audio URL, otherwise use Twilio voice as fallback
+          // ONLY use ElevenLabs audio - no Twilio TTS fallback
           if (options.audioUrl) {
             console.log('🎵 Using ElevenLabs audio for TTS');
             twiml.play(options.audioUrl);
           } else {
-            console.log('⚠️ Falling back to Twilio voice - no ElevenLabs audio provided');
-            twiml.say({
-              voice: 'alice', // Twilio fallback voice
-              language: language as any
-            }, options.text);
+            console.error('❌ ERROR: No ElevenLabs audio URL provided - ElevenLabs is required');
+            // Add silence instead of Twilio TTS
+            twiml.pause({ length: 2 });
           }
         }
         
@@ -139,25 +132,19 @@ export class TwilioService {
           method: 'POST'
         });
         
-        // Fallback if no speech detected
-        twiml.say({
-          voice: 'alice', // Always use Twilio for fallback messages
-          language: language as any
-        }, "I didn't catch that. Let me continue.");
+        // No fallback speech - just silence if no audio provided
         break;
         
       case 'hangup':
         if (options.text) {
-          // Check if we have ElevenLabs audio URL, otherwise use Twilio voice as fallback
+          // ONLY use ElevenLabs audio - no Twilio TTS fallback
           if (options.audioUrl) {
             console.log('🎵 Using ElevenLabs audio for hangup message');
             twiml.play(options.audioUrl);
           } else {
-            console.log('⚠️ Falling back to Twilio voice for hangup - no ElevenLabs audio provided');
-            twiml.say({
-              voice: 'alice', // Twilio fallback voice
-              language: language as any
-            }, options.text);
+            console.error('❌ ERROR: No ElevenLabs audio URL provided for hangup - ElevenLabs is required');
+            // Add silence instead of Twilio TTS
+            twiml.pause({ length: 1 });
           }
         }
         twiml.hangup();

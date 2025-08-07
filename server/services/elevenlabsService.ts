@@ -2,7 +2,7 @@ export class ElevenLabsService {
   private static readonly API_BASE = 'https://api.elevenlabs.io/v1';
   private static readonly FALLBACK_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice (fallback only)
 
-  // Convert text to speech using ElevenLabs
+  // Convert text to speech using ElevenLabs with campaign-specific settings
   static async textToSpeech(
     text: string, 
     voiceId?: string, // Campaign voice should be passed explicitly
@@ -13,6 +13,7 @@ export class ElevenLabsService {
       speakerBoost?: boolean;
       addTypingSound?: boolean;
       model?: string;
+      language?: string; // Campaign language setting
     } = {}
   ): Promise<Buffer> {
     try {
@@ -27,11 +28,16 @@ export class ElevenLabsService {
         style = 0.0,
         speakerBoost = false,
         addTypingSound = true,
-        model = 'eleven_turbo_v2' // Default to fast model
+        model = 'eleven_turbo_v2', // Default to fast model
+        language = 'en' // Campaign language
       } = settings;
 
-      // Use provided voiceId or fallback
-      const finalVoiceId = voiceId || this.FALLBACK_VOICE_ID;
+      // REQUIRE campaign voice - no fallback allowed
+      if (!voiceId) {
+        throw new Error('Campaign voice ID is required - no fallback voice allowed');
+      }
+      
+      console.log(`🎤 Using campaign voice: ${voiceId}, model: ${model}, language: ${language}`);
 
       const response = await fetch(`${this.API_BASE}/text-to-speech/${finalVoiceId}`, {
         method: 'POST',

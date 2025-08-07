@@ -114,9 +114,9 @@ export class CallManager {
       console.log(`🔍 Looking for active call: ${callId}`);
       console.log(`📊 Active calls count: ${this.activeCalls.size}`);
       console.log(`📋 Active call IDs: ${Array.from(this.activeCalls.keys()).join(', ')}`);
-      
+
       let activeCall = this.activeCalls.get(callId);
-      
+
       // If call not in memory, try to reconstruct from database
       if (!activeCall) {
         console.log(`⚠️ Call ${callId} not found in active calls, reconstructing from database`);
@@ -169,14 +169,14 @@ export class CallManager {
 
       // Extract contact information from speech (optimized for speed)
       const contactInfo = directSpeechService.extractContactInfo(speechText);
-      
+
       // Get current call data to check existing contact info
       const currentCall = await storage.getCall(callId);
       const hasContactInfo = {
         whatsapp: currentCall?.extractedWhatsapp || contactInfo.whatsapp,
         email: currentCall?.extractedEmail || contactInfo.email
       };
-      
+
       // Update call with any new contact info
       if (contactInfo.whatsapp || contactInfo.email) {
         await storage.updateCall(callId, {
@@ -185,7 +185,7 @@ export class CallManager {
         });
         console.log(`✅ Updated contact info - WhatsApp: ${hasContactInfo.whatsapp}, Email: ${hasContactInfo.email}`);
       }
-      
+
       // Generate AI response quickly using campaign settings
       const aiResult = await OpenAIService.generateResponse(
         speechText,
@@ -197,7 +197,7 @@ export class CallManager {
         hasContactInfo,
         campaign.openaiModel
       );
-      
+
       const aiResponse = aiResult.response;
 
       // Add AI response to conversation history
@@ -233,10 +233,10 @@ export class CallManager {
                            )) ||
                            speechText.toLowerCase().includes('not interested') ||
                            speechText.toLowerCase().includes('hang up');
-      
+
       // Generate ElevenLabs audio with fast fallback to Twilio if it fails
       let twiml;
-      
+
       try {
         console.log(`🎤 Generating ElevenLabs audio with campaign voice: ${campaign.voiceId}`);
         const voiceConfig = campaign.voiceConfig as any;
@@ -262,7 +262,7 @@ export class CallManager {
         }
         const audioFilePath = path.default.join(tempDir, audioFileName);
         fs.default.writeFileSync(audioFilePath, audioBuffer);
-        
+
         // Create accessible URL
         const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
           `https://${process.env.REPLIT_DEV_DOMAIN}` : 
@@ -287,24 +287,14 @@ export class CallManager {
         }
 
       } catch (elevenlabsError) {
-        console.error('❌ ElevenLabs failed, using Twilio TTS fallback:', elevenlabsError);
-        
-        if (shouldEndCall) {
-          twiml = twilioService.generateTwiML('hangup', {
-            text: aiResponse,
-            language: campaign.language,
-            voice: 'alice'
-          });
-          setTimeout(() => this.completeCall(callId), 1000);
-        } else {
-          twiml = twilioService.generateTwiML('gather', {
-            text: aiResponse,
-            action: `/api/calls/${callId}/process-speech`,
-            recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
-            language: campaign.language,
-            voice: 'alice'
-          });
-        }
+        console.error('❌ ElevenLabs TTS failed - NO TWILIO FALLBACK ALLOWED:', elevenlabsError);
+
+        // End call if ElevenLabs fails - DO NOT use Twilio TTS
+        twiml = twilioService.generateTwiML('hangup', {
+          text: 'Voice synthesis error. Call ending.',
+          language: campaign.language
+        });
+        setTimeout(() => this.completeCall(callId), 1000);
       }
 
       // Broadcast real-time update
@@ -404,7 +394,7 @@ export class CallManager {
         if (extractedWhatsapp) {
           const message = "Thank you for your time during our call. We'll follow up with the information discussed about LabsCheck partnerships.";
           const result = await twilioService.sendWhatsAppMessage(extractedWhatsapp, message);
-          
+
           if (result.success) {
             await storage.updateCall(callId, { whatsappSent: true });
           }
