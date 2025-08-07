@@ -1192,100 +1192,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Recording not found" });
       }
 
-      // Handle different recording URL types
-      if (recording.recordingUrl.includes('api.twilio.com')) {
-        console.log('🎙️ Fetching actual recording from Twilio:', recording.recordingUrl);
-        
-        // Create Basic Auth header for Twilio
-        const accountSid = process.env.TWILIO_ACCOUNT_SID;
-        const authToken = process.env.TWILIO_AUTH_TOKEN;
-        
-        if (!accountSid || !authToken) {
-          return res.status(500).json({ error: "Twilio credentials not configured" });
-        }
-        
-        const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-        
-        try {
-          const response = await fetch(recording.recordingUrl, {
-            headers: {
-              'Authorization': authHeader
-            }
-          });
-          
-          if (!response.ok) {
-            console.error('Twilio recording fetch failed:', response.status, response.statusText);
-            return res.status(404).json({ error: "Recording not accessible from Twilio" });
-          }
-          
-          // Set appropriate headers for file download
-          res.setHeader('Content-Disposition', `attachment; filename="call-recording-${req.params.id}.${recording.mp4Url ? 'mp4' : 'wav'}"`);
-          res.setHeader('Content-Type', recording.mp4Url ? 'video/mp4' : 'audio/wav');
-          
-          // Stream the recording directly to response
-          const buffer = await response.arrayBuffer();
-          res.send(Buffer.from(buffer));
-          return;
-          
-        } catch (error) {
-          console.error('Error fetching Twilio recording:', error);
-          return res.status(500).json({ error: "Failed to fetch recording from Twilio" });
-        }
+      // Only handle actual Twilio recordings - no demo/sample files
+      if (!recording.recordingUrl.includes('api.twilio.com')) {
+        return res.status(404).json({ error: "No actual recording available - only demo data exists" });
       }
 
-      // Handle sample/demo recordings
-      if (recording.recordingUrl.includes('sample://')) {
-        console.log('🎙️ Creating sample recording file for demo purposes');
+      console.log('🎙️ Fetching actual recording from Twilio:', recording.recordingUrl);
+      
+      // Create Basic Auth header for Twilio
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      
+      if (!accountSid || !authToken) {
+        return res.status(500).json({ error: "Twilio credentials not configured" });
+      }
+      
+      const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      
+      try {
+        const response = await fetch(recording.recordingUrl, {
+          headers: {
+            'Authorization': authHeader
+          }
+        });
+        
+        if (!response.ok) {
+          console.error('Twilio recording fetch failed:', response.status, response.statusText);
+          return res.status(404).json({ error: "Recording not accessible from Twilio" });
+        }
         
         // Set appropriate headers for file download
-        res.setHeader('Content-Disposition', `attachment; filename="call-recording-${req.params.id}.wav"`);
-        res.setHeader('Content-Type', 'audio/wav');
+        res.setHeader('Content-Disposition', `attachment; filename="call-recording-${req.params.id}.${recording.mp4Url ? 'mp4' : 'wav'}"`);
+        res.setHeader('Content-Type', recording.mp4Url ? 'video/mp4' : 'audio/wav');
         
-        // Create a proper WAV file with 2 minutes of silence (sample duration matches the call)
-        const sampleRate = 8000;
-        const duration = recording.duration || 127; // Use actual duration from DB
-        const numSamples = sampleRate * duration;
-        const dataSize = numSamples * 2; // 16-bit samples
-        const fileSize = 36 + dataSize;
+        // Stream the recording directly to response
+        const buffer = await response.arrayBuffer();
+        res.send(Buffer.from(buffer));
         
-        // WAV header (44 bytes)
-        const wavHeader = Buffer.alloc(44);
-        wavHeader.write('RIFF', 0);
-        wavHeader.writeUInt32LE(fileSize, 4);
-        wavHeader.write('WAVE', 8);
-        wavHeader.write('fmt ', 12);
-        wavHeader.writeUInt32LE(16, 16); // PCM header size
-        wavHeader.writeUInt16LE(1, 20); // Audio format (PCM)
-        wavHeader.writeUInt16LE(1, 22); // Number of channels (mono)
-        wavHeader.writeUInt32LE(sampleRate, 24); // Sample rate
-        wavHeader.writeUInt32LE(sampleRate * 2, 28); // Byte rate
-        wavHeader.writeUInt16LE(2, 32); // Block align
-        wavHeader.writeUInt16LE(16, 34); // Bits per sample
-        wavHeader.write('data', 36);
-        wavHeader.writeUInt32LE(dataSize, 40);
-        
-        // Create audio data (silence representing the call duration)
-        const audioData = Buffer.alloc(dataSize, 0);
-        
-        // Combine header and audio data
-        const fullWav = Buffer.concat([wavHeader, audioData]);
-        res.send(fullWav);
-        return;
+      } catch (error) {
+        console.error('Error fetching Twilio recording:', error);
+        return res.status(500).json({ error: "Failed to fetch recording from Twilio" });
       }
-
-      // If it's a real accessible URL, proxy it
-      const response = await fetch(recording.recordingUrl);
-      if (!response.ok) {
-        return res.status(404).json({ error: "Recording file not accessible" });
-      }
-
-      // Set appropriate headers
-      res.setHeader('Content-Disposition', `attachment; filename="call-recording-${req.params.id}.${recording.mp4Url ? 'mp4' : 'wav'}"`);
-      res.setHeader('Content-Type', recording.mp4Url ? 'video/mp4' : 'audio/wav');
-
-      // Stream the recording
-      const buffer = await response.arrayBuffer();
-      res.send(Buffer.from(buffer));
       
     } catch (error) {
       console.error('Error downloading call recording:', error);
