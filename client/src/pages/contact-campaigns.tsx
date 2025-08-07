@@ -121,7 +121,7 @@ export default function ContactCampaigns() {
   // Start campaign mutation
   const startCampaignMutation = useMutation({
     mutationFn: (campaignData: any) => 
-      apiRequest('/api/campaigns/start', 'POST', campaignData),
+      apiRequest('POST', '/api/campaigns/start', campaignData),
     onSuccess: () => {
       toast({ title: 'Campaign started successfully' });
       setSelectedContacts([]);
@@ -138,7 +138,7 @@ export default function ContactCampaigns() {
 
   // Sync templates mutation
   const syncTemplatesMutation = useMutation({
-    mutationFn: () => apiRequest('/api/whatsapp/templates/sync', 'POST'),
+    mutationFn: () => apiRequest('POST', '/api/whatsapp/templates/sync'),
     onSuccess: (data: any) => {
       toast({ 
         title: 'Templates synced',
@@ -158,7 +158,15 @@ export default function ContactCampaigns() {
   // Create single contact mutation
   const createContactMutation = useMutation({
     mutationFn: async (contactData: typeof newContact) => {
-      return apiRequest('/api/contacts', 'POST', contactData);
+      console.log('Making API request with data:', contactData);
+      try {
+        const result = await apiRequest('POST', '/api/contacts', contactData);
+        console.log('API request successful:', result);
+        return result;
+      } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({ 
