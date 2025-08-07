@@ -15,8 +15,8 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'WhatsApp Bulk', href: '/', icon: MessageSquare },
-  { name: 'Contact Campaigns', href: '/contact-campaigns', icon: Target },
+  { name: 'Contact Campaigns', href: '/', icon: Target },
+  { name: 'WhatsApp Bulk', href: '/whatsapp-bulk', icon: MessageSquare },
   { name: 'WhatsApp Chats', href: '/whatsapp-chats', icon: MessageCircle },
   { name: 'App Settings', href: '/enhanced-settings', icon: Upload },
 ];

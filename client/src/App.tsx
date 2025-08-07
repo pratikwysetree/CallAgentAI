@@ -23,10 +23,10 @@ function Navigation({ children }: { children: React.ReactNode }) {
 
   const navigation = [
     {
-      name: "Dashboard",
-      href: "/campaign-dashboard",
-      icon: Home,
-      current: location === "/campaign-dashboard" || location === "/",
+      name: "Contact Campaigns",
+      href: "/contact-campaigns",
+      icon: Users,
+      current: location === "/contact-campaigns" || location === "/",
     },
     {
       name: "Live Calls",
@@ -47,10 +47,10 @@ function Navigation({ children }: { children: React.ReactNode }) {
       current: location === "/campaign-manager",
     },
     {
-      name: "Contact Campaigns",
-      href: "/contact-campaigns",
-      icon: Users,
-      current: location === "/contact-campaigns",
+      name: "Dashboard",
+      href: "/campaign-dashboard",
+      icon: Home,
+      current: location === "/campaign-dashboard",
     },
     {
       name: "Settings",
@@ -145,7 +145,7 @@ function Router() {
   return (
     <Navigation>
       <Switch>
-        <Route path="/" component={CampaignDashboard} />
+        <Route path="/" component={ContactCampaigns} />
         <Route path="/campaign-dashboard" component={CampaignDashboard} />
         <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
         <Route path="/live-calls" component={LiveCallsPage} />
