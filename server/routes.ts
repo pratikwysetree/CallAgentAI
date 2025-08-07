@@ -187,13 +187,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve audio files for Twilio to play
   app.get('/audio/:filename', (req, res) => {
     try {
-      const fs = require('fs');
-      const path = require('path');
-      
       const filename = req.params.filename;
       const audioFilePath = path.join(process.cwd(), 'temp', filename);
       
       if (!fs.existsSync(audioFilePath)) {
+        console.log('Audio file not found:', audioFilePath);
         return res.status(404).send('Audio file not found');
       }
       
@@ -774,23 +772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Global reference for broadcasting
   (global as any).broadcastToClients = broadcast;
 
-  // Serve temporary audio files for TwiML playback
-  app.get('/audio/:filename', (req, res) => {
-    try {
-      const filename = req.params.filename;
-      const audioPath = path.join(process.cwd(), 'temp', filename);
-      
-      if (fs.existsSync(audioPath)) {
-        res.set('Content-Type', 'audio/mpeg');
-        res.sendFile(audioPath);
-      } else {
-        res.status(404).send('Audio file not found');
-      }
-    } catch (error) {
-      console.error('Error serving audio file:', error);
-      res.status(500).send('Error serving audio');
-    }
-  });
+
 
   return httpServer;
 }
