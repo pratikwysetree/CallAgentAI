@@ -1,172 +1,55 @@
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, isToday, isTomorrow, addDays } from 'date-fns';
-import Sidebar from '@/components/sidebar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-  Calendar,
-  Phone,
-  MessageSquare,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  TrendingUp,
-  Users,
-  Target,
-  Activity,
-  Eye,
+  Calendar, 
+  Users, 
+  TrendingUp, 
+  Clock, 
+  Phone, 
+  MessageSquare, 
+  Eye, 
   Edit,
-  MoreHorizontal
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+import { format, isToday, isTomorrow } from 'date-fns';
 
-interface CampaignContact {
-  id: string;
-  contactId: string;
-  contactName: string;
-  phone: string;
-  email: string;
-  city: string;
-  company: string;
-  callStatus: 'pending' | 'completed' | 'failed' | 'scheduled';
-  callTime?: string;
-  callDuration?: number;
-  messageStatus: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
-  messageTime?: string;
-  conversationSummary?: string;
-  nextAction: 'follow_up_call' | 'send_brochure' | 'schedule_demo' | 'close_deal' | 'nurture' | 'no_interest';
-  nextFollowUp?: string;
-  engagementScore: number;
-  status: 'active' | 'converted' | 'closed' | 'paused';
-}
-
-interface Campaign {
-  id: string;
-  name: string;
-  channel: 'CALL' | 'WHATSAPP' | 'BOTH' | 'EMAIL';
-  startDate: string;
-  endDate?: string;
-  totalContacts: number;
-  completedContacts: number;
-  successRate: number;
-  status: 'active' | 'paused' | 'completed';
-  template?: string;
-  contacts: CampaignContact[];
-}
+const formatToDateDisplayString = (date: Date) => {
+  return format(date, 'MMM dd, yyyy');
+};
 
 export default function CampaignDashboard() {
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedCampaign, setSelectedCampaign] = useState<string>('');
-  const [contactFilter, setContactFilter] = useState('all');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activeTab, setActiveTab] = useState("today");
 
-  // Fetch campaigns data
-  const { data: campaigns, isLoading } = useQuery({
-    queryKey: ['/api/campaigns/dashboard', selectedDate],
-    queryFn: async () => {
-      // Mock data for now - replace with actual API call
-      const mockCampaigns: Campaign[] = [
-        {
-          id: 'campaign_1754568606271',
-          name: 'LabsCheck Onboarding - December',
-          channel: 'BOTH',
-          startDate: '2025-08-07',
-          totalContacts: 150,
-          completedContacts: 45,
-          successRate: 68,
-          status: 'active',
-          template: 'account_created',
-          contacts: [
-            {
-              id: '1',
-              contactId: 'de105f74-24e6-49cf-bb90-bc5248b5e2a0',
-              contactName: 'Pratik',
-              phone: '+919325025730',
-              email: 'pratik@example.com',
-              city: 'Mumbai',
-              company: 'City Diagnostics',
-              callStatus: 'completed',
-              callTime: '2025-08-07T10:30:00Z',
-              callDuration: 480,
-              messageStatus: 'read',
-              messageTime: '2025-08-07T10:10:00Z',
-              conversationSummary: 'Interested in platform. Lab owner confirmed. Wants demo next week.',
-              nextAction: 'schedule_demo',
-              nextFollowUp: '2025-08-14T10:00:00Z',
-              engagementScore: 85,
-              status: 'active'
-            },
-            {
-              id: '2',
-              contactId: 'contact-2',
-              contactName: 'Dr. Sharma',
-              phone: '+919876543210',
-              email: 'sharma@labcenter.com',
-              city: 'Delhi',
-              company: 'Advanced Lab Center',
-              callStatus: 'completed',
-              callTime: '2025-08-07T11:15:00Z',
-              callDuration: 720,
-              messageStatus: 'delivered',
-              messageTime: '2025-08-07T11:00:00Z',
-              conversationSummary: 'Very interested. Already using competitor. Needs pricing comparison.',
-              nextAction: 'send_brochure',
-              nextFollowUp: '2025-08-09T14:00:00Z',
-              engagementScore: 92,
-              status: 'active'
-            },
-            {
-              id: '3',
-              contactId: 'contact-3',
-              contactName: 'Rajesh Kumar',
-              phone: '+919123456789',
-              email: 'rajesh@healthlab.in',
-              city: 'Bangalore',
-              company: 'Health First Lab',
-              callStatus: 'failed',
-              callTime: '2025-08-07T09:45:00Z',
-              messageStatus: 'sent',
-              messageTime: '2025-08-07T09:30:00Z',
-              conversationSummary: 'Call disconnected. Left voicemail. WhatsApp message sent.',
-              nextAction: 'follow_up_call',
-              nextFollowUp: '2025-08-08T15:00:00Z',
-              engagementScore: 30,
-              status: 'active'
-            }
-          ]
-        }
-      ];
-      return mockCampaigns;
-    }
+  // Get campaigns data with query - only real data
+  const { data: campaigns, isLoading, error } = useQuery({
+    queryKey: ['/api/campaigns/dashboard', selectedDate.toISOString()],
+    select: (data) => data || []
   });
 
+  // Get follow-ups data
+  const { data: followUps } = useQuery({
+    queryKey: ['/api/campaigns/followups'],
+    select: (data) => data || []
+  });
+
+  // Filter campaigns based on actual data only
   const todaysCampaigns = campaigns?.filter(campaign => 
     campaign.contacts.some(contact => 
-      contact.callTime && isToday(new Date(contact.callTime)) ||
       contact.messageTime && isToday(new Date(contact.messageTime))
     )
   ) || [];
 
   const todaysContacts = campaigns?.flatMap(campaign => 
     campaign.contacts.filter(contact => 
-      contact.callTime && isToday(new Date(contact.callTime)) ||
-      contact.messageTime && isToday(new Date(contact.messageTime)) ||
-      contact.nextFollowUp && isToday(new Date(contact.nextFollowUp))
-    )
-  ) || [];
-
-  const upcomingFollowUps = campaigns?.flatMap(campaign => 
-    campaign.contacts.filter(contact => 
-      contact.nextFollowUp && (
-        isToday(new Date(contact.nextFollowUp)) ||
-        isTomorrow(new Date(contact.nextFollowUp))
-      )
+      contact.messageTime && isToday(new Date(contact.messageTime))
     )
   ) || [];
 
@@ -188,370 +71,349 @@ export default function CampaignDashboard() {
       case 'send_brochure': return 'Send Brochure';
       case 'schedule_demo': return 'Schedule Demo';
       case 'close_deal': return 'Close Deal';
-      case 'nurture': return 'Nurture Lead';
-      case 'no_interest': return 'No Interest';
-      default: return action;
+      default: return 'Pending Review';
     }
   };
 
   const getNextActionColor = (action: string) => {
     switch (action) {
-      case 'schedule_demo': 
-      case 'close_deal': return 'bg-green-100 text-green-800';
-      case 'follow_up_call': 
-      case 'send_brochure': return 'bg-blue-100 text-blue-800';
-      case 'nurture': return 'bg-yellow-100 text-yellow-800';
-      case 'no_interest': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'follow_up_call': return 'bg-blue-500';
+      case 'send_brochure': return 'bg-green-500';
+      case 'schedule_demo': return 'bg-purple-500';
+      case 'close_deal': return 'bg-yellow-500';
+      default: return 'bg-gray-500';
     }
+  };
+
+  const goToPreviousDay = () => {
+    const previousDay = new Date(selectedDate);
+    previousDay.setDate(previousDay.getDate() - 1);
+    setSelectedDate(previousDay);
+  };
+
+  const goToNextDay = () => {
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    setSelectedDate(nextDay);
+  };
+
+  const goToToday = () => {
+    setSelectedDate(new Date());
   };
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-100">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p>Loading campaign dashboard...</p>
-            </div>
-          </div>
-        </main>
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading campaign data...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Campaign Dashboard</h1>
-              <p className="text-gray-600 mt-1">Monitor and manage your active campaigns</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-auto"
-              />
-            </div>
+    <div className="flex-1 space-y-4 p-4 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Campaign Dashboard</h2>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={goToPreviousDay}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={goToToday}>
+            Today
+          </Button>
+          <Button variant="outline" size="sm" onClick={goToNextDay}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <div className="text-sm font-medium">
+            {formatToDateDisplayString(selectedDate)}
           </div>
+        </div>
+      </div>
 
-          {/* Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Campaigns</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{todaysCampaigns.length}</div>
-                <p className="text-xs text-muted-foreground">Active campaigns today</p>
-              </CardContent>
-            </Card>
+      {/* Overview Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today's Campaigns</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{todaysCampaigns.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {todaysCampaigns.length > 0 ? 'Active campaigns running' : 'No campaigns today'}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Contacts Reached</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{todaysContacts.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {todaysContacts.length > 0 ? 'From real campaign activity' : 'No contacts reached today'}
+            </p>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Contacts Processed</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{todaysContacts.length}</div>
-                <p className="text-xs text-muted-foreground">Calls and messages today</p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {todaysContacts.length > 0 
+                ? Math.round((todaysContacts.filter(c => c.engagementScore > 70).length / todaysContacts.length) * 100)
+                : 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {todaysContacts.length > 0 ? 'Based on engagement scores' : 'No data available'}
+            </p>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {campaigns?.[0]?.successRate || 0}%
-                </div>
-                <p className="text-xs text-muted-foreground">Average engagement</p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Follow-ups</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{followUps?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {followUps?.length > 0 ? 'Contacts need follow-up' : 'No follow-ups needed'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Follow-ups Due</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{upcomingFollowUps.length}</div>
-                <p className="text-xs text-muted-foreground">Today and tomorrow</p>
-              </CardContent>
-            </Card>
-          </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="today">Today's Activity</TabsTrigger>
+          <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
+          <TabsTrigger value="followups">Follow-ups</TabsTrigger>
+        </TabsList>
 
-          <Tabs defaultValue="today" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="today">Today's Activity</TabsTrigger>
-              <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
-              <TabsTrigger value="followups">Follow-ups</TabsTrigger>
-            </TabsList>
+        <TabsContent value="today" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Today's Contact Activities</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Call Status</TableHead>
+                    <TableHead>Message Status</TableHead>
+                    <TableHead>Summary</TableHead>
+                    <TableHead>Next Action</TableHead>
+                    <TableHead>Follow-up</TableHead>
+                    <TableHead>Score</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {todaysContacts.length > 0 ? (
+                    todaysContacts.map((contact) => (
+                      <TableRow key={contact.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{contact.contactName}</div>
+                            <div className="text-sm text-gray-500">{contact.company || 'Unknown Company'}</div>
+                            <div className="text-xs text-gray-400">{contact.phone}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(contact.callStatus)}>
+                            {contact.callStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <Badge className={getStatusColor(contact.messageStatus)}>
+                              {contact.messageStatus}
+                            </Badge>
+                            {contact.messageTime && (
+                              <div className="text-xs text-gray-500">
+                                {format(new Date(contact.messageTime), 'HH:mm')}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-xs text-sm">
+                            {contact.conversationSummary || 'WhatsApp message sent'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getNextActionColor(contact.nextAction)}>
+                            {getNextActionLabel(contact.nextAction)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-gray-500">
+                            Recommended
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-medium">{contact.engagementScore}</div>
+                            <Progress 
+                              value={contact.engagementScore} 
+                              className="w-16"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="text-gray-500">
+                          No campaign activities for today. Start a new campaign to see data here.
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <TabsContent value="today" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Today's Campaign Contacts</CardTitle>
-                  <CardDescription>
-                    Detailed view of all contacts processed today
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Select value={contactFilter} onValueChange={setContactFilter}>
-                        <SelectTrigger className="w-48">
-                          <SelectValue placeholder="Filter by status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Contacts</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="failed">Failed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Call Status</TableHead>
-                            <TableHead>Message Status</TableHead>
-                            <TableHead>Conversation Summary</TableHead>
-                            <TableHead>Next Action</TableHead>
-                            <TableHead>Follow-up</TableHead>
-                            <TableHead>Score</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {todaysContacts.map((contact) => (
-                            <TableRow key={contact.id}>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{contact.contactName}</div>
-                                  <div className="text-sm text-gray-500">{contact.company}</div>
-                                  <div className="text-xs text-gray-400">{contact.phone}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="space-y-1">
-                                  <Badge className={getStatusColor(contact.callStatus)}>
-                                    {contact.callStatus}
-                                  </Badge>
-                                  {contact.callTime && (
-                                    <div className="text-xs text-gray-500">
-                                      {format(new Date(contact.callTime), 'HH:mm')}
-                                      {contact.callDuration && (
-                                        <span> ({Math.floor(contact.callDuration / 60)}min)</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="space-y-1">
-                                  <Badge className={getStatusColor(contact.messageStatus)}>
-                                    {contact.messageStatus}
-                                  </Badge>
-                                  {contact.messageTime && (
-                                    <div className="text-xs text-gray-500">
-                                      {format(new Date(contact.messageTime), 'HH:mm')}
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="max-w-xs text-sm">
-                                  {contact.conversationSummary || 'No summary available'}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={getNextActionColor(contact.nextAction)}>
-                                  {getNextActionLabel(contact.nextAction)}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {contact.nextFollowUp && (
-                                  <div className="text-sm">
-                                    <div>{format(new Date(contact.nextFollowUp), 'MMM dd')}</div>
-                                    <div className="text-xs text-gray-500">
-                                      {format(new Date(contact.nextFollowUp), 'HH:mm')}
-                                    </div>
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm font-medium">{contact.engagementScore}</div>
-                                  <Progress 
-                                    value={contact.engagementScore} 
-                                    className="w-16"
-                                  />
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Button variant="ghost" size="sm">
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="campaigns" className="space-y-4">
-              <div className="grid gap-4">
-                {campaigns?.map((campaign) => (
-                  <Card key={campaign.id}>
-                    <CardHeader>
+        <TabsContent value="campaigns" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {todaysCampaigns.length > 0 ? (
+                  todaysCampaigns.map((campaign) => (
+                    <div key={campaign.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle>{campaign.name}</CardTitle>
-                          <CardDescription>
-                            {campaign.channel} Campaign • {campaign.totalContacts} contacts
-                          </CardDescription>
+                          <h3 className="font-medium">{campaign.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {campaign.totalContacts} contacts • {campaign.completedContacts} completed • {campaign.successRate}% success rate
+                          </p>
                         </div>
-                        <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+                        <Badge className={campaign.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}>
                           {campaign.status}
                         </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <div className="text-2xl font-bold">{campaign.completedContacts}</div>
-                          <p className="text-xs text-muted-foreground">Completed</p>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold">{campaign.totalContacts - campaign.completedContacts}</div>
-                          <p className="text-xs text-muted-foreground">Remaining</p>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold">{campaign.successRate}%</div>
-                          <p className="text-xs text-muted-foreground">Success Rate</p>
-                        </div>
-                        <div>
-                          <Progress 
-                            value={(campaign.completedContacts / campaign.totalContacts) * 100} 
-                            className="mt-2"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">Progress</p>
-                        </div>
+                      <div className="mt-2">
+                        <Progress value={(campaign.completedContacts / campaign.totalContacts) * 100} className="w-full" />
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="followups" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Upcoming Follow-ups</CardTitle>
-                  <CardDescription>
-                    Scheduled follow-up activities for today and tomorrow
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Contact</TableHead>
-                          <TableHead>Action Required</TableHead>
-                          <TableHead>Scheduled</TableHead>
-                          <TableHead>Last Interaction</TableHead>
-                          <TableHead>Priority</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {upcomingFollowUps.map((contact) => (
-                          <TableRow key={contact.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{contact.contactName}</div>
-                                <div className="text-sm text-gray-500">{contact.company}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={getNextActionColor(contact.nextAction)}>
-                                {getNextActionLabel(contact.nextAction)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {contact.nextFollowUp && (
-                                <div>
-                                  <div className="font-medium">
-                                    {isToday(new Date(contact.nextFollowUp)) ? 'Today' : 
-                                     isTomorrow(new Date(contact.nextFollowUp)) ? 'Tomorrow' :
-                                     format(new Date(contact.nextFollowUp), 'MMM dd')}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    {format(new Date(contact.nextFollowUp), 'HH:mm')}
-                                  </div>
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                Call: {contact.callStatus}
-                                <br />
-                                Message: {contact.messageStatus}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={contact.engagementScore > 70 ? 'default' : 'secondary'}>
-                                {contact.engagementScore > 70 ? 'High' : 'Medium'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm">
-                                  <Phone className="h-4 w-4 mr-1" />
-                                  Call
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  <MessageSquare className="h-4 w-4 mr-1" />
-                                  Message
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No active campaigns for today.
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="followups" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Follow-ups</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Next Action</TableHead>
+                    <TableHead>Scheduled</TableHead>
+                    <TableHead>Last Activity</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {followUps && followUps.length > 0 ? (
+                    followUps.map((contact) => (
+                      <TableRow key={contact.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{contact.contactName}</div>
+                            <div className="text-sm text-gray-500">{contact.phone}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getNextActionColor(contact.nextAction)}>
+                            {getNextActionLabel(contact.nextAction)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {contact.nextFollowUp && (
+                            <div>
+                              <div className="font-medium">
+                                {isToday(new Date(contact.nextFollowUp)) ? 'Today' : 
+                                 isTomorrow(new Date(contact.nextFollowUp)) ? 'Tomorrow' :
+                                 format(new Date(contact.nextFollowUp), 'MMM dd')}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {format(new Date(contact.nextFollowUp), 'HH:mm')}
+                              </div>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">Recent message activity</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={contact.engagementScore > 70 ? 'default' : 'secondary'}>
+                            {contact.engagementScore > 70 ? 'High' : 'Medium'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm">
+                              <Phone className="h-4 w-4 mr-1" />
+                              Call
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <MessageSquare className="h-4 w-4 mr-1" />
+                              Message
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="text-gray-500">
+                          No follow-ups needed at this time. Check back after running campaigns.
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
