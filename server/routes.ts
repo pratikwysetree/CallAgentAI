@@ -623,44 +623,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process speech input during call - directly from Twilio speech recognition
-  app.post("/api/calls/:callId/process-speech", async (req, res) => {
+  // Process recording using OpenAI Whisper for speech recognition
+  app.post("/api/calls/recording-complete", async (req, res) => {
     try {
-      const { callId } = req.params;
+      const { callId } = req.query;
+      const recordingUrl = req.body.RecordingUrl;
       
-      // Import direct speech service
+      if (!callId || !recordingUrl) {
+        return res.status(400).json({ error: 'Missing callId or recording URL' });
+      }
+
+      console.log(`🎙️ Processing recording for call ${callId}: ${recordingUrl}`);
+      
+      // Download and transcribe audio using OpenAI Whisper
+      const audioResponse = await fetch(recordingUrl);
+      const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+      
+      // Import OpenAI service for transcription
+      const { OpenAIService } = await import('./services/openaiService');
+      const speechText = await OpenAIService.transcribeAudio(audioBuffer);
+      
+      console.log(`🎤 OpenAI Whisper transcription for call ${callId}: "${speechText}"`);
+
+      // Import direct speech service for validation
       const { directSpeechService } = await import('./services/directSpeechService');
       
-      // Process speech directly from Twilio webhook without any recording
-      const rawSpeechText = directSpeechService.processTwilioSpeechInput(
-        req.body.SpeechResult,
-        req.body.UnstableSpeechResult, 
-        req.body.Digits
-      );
-      
-      // Validate and clean the speech input
-      const speechText = directSpeechService.validateSpeechInput(rawSpeechText);
-      
-      console.log(`🎤 Processed speech for call ${callId}: "${speechText}"`);
-      console.log('🎹 Processing with background typing simulation enabled');
-
       // Check if call should end based on speech content
       if (directSpeechService.shouldEndCall(speechText)) {
         console.log('🔚 User indicated call should end');
         // Get campaign for language settings
-        const dbCall = await storage.getCall(callId);
+        const dbCall = await storage.getCall(callId as string);
         const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
         
         const twiml = twilioService.generateTwiML('hangup', {
           text: 'I understand. Thank you for your time. Have a great day!',
-          language: campaign?.language || 'en',
-          voice: 'alice' // Twilio voice
+          language: campaign?.language || 'en'
         });
         res.type('text/xml').send(twiml);
         return;
       }
 
-      // Process with AI
+      // Process with AI using campaign settings
+      const result = await callManager.processSpeechInput(callId as string, speechText);
+      
+      console.log(`🤖 AI response generated successfully using campaign settings`);
+      
+      res.type('text/xml').send(result.twiml);
+    } catch (error) {
+      console.error('Recording processing error:', error);
+      const twiml = twilioService.generateTwiML('hangup', {
+        text: 'Thank you for your time. Goodbye.'
+      });
+      res.type('text/xml').send(twiml);
+    }
+  });
+
+  // Fallback: Process speech input during call (for backward compatibility) 
+  app.post("/api/calls/:callId/process-speech", async (req, res) => {
+    try {
+      const { callId } = req.params;
+      
+      // Try to get speech result from Twilio first (if available)
+      let speechText = "";
+      if (req.body.SpeechResult) {
+        const { directSpeechService } = await import('./services/directSpeechService');
+        const rawSpeechText = directSpeechService.processTwilioSpeechInput(
+          req.body.SpeechResult,
+          req.body.UnstableSpeechResult, 
+          req.body.Digits
+        );
+        speechText = directSpeechService.validateSpeechInput(rawSpeechText);
+      }
+      
+      console.log(`🎤 Processing speech for call ${callId}: "${speechText}"`);
+
+      if (!speechText) {
+        // Continue listening
+        const twiml = twilioService.generateTwiML('gather', {
+          text: 'I didn\'t catch that. Please continue.',
+          action: `/api/calls/${callId}/process-speech`
+        });
+        res.type('text/xml').send(twiml);
+        return;
+      }
+
+      // Import direct speech service for validation
+      const { directSpeechService } = await import('./services/directSpeechService');
+      
+      // Check if call should end based on speech content
+      if (directSpeechService.shouldEndCall(speechText)) {
+        console.log('🔚 User indicated call should end');
+        const dbCall = await storage.getCall(callId);
+        const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
+        
+        const twiml = twilioService.generateTwiML('hangup', {
+          text: 'I understand. Thank you for your time. Have a great day!',
+          language: campaign?.language || 'en'
+        });
+        res.type('text/xml').send(twiml);
+        return;
+      }
+
+      // Process with AI using campaign settings
       const result = await callManager.processSpeechInput(callId, speechText);
       
       console.log(`🤖 AI response generated successfully`);

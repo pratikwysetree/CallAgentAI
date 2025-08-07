@@ -1,6 +1,5 @@
 import { OpenAIService } from './openaiService';
 import { ElevenLabsService } from './elevenlabsService';
-import { ElevenLabsService } from './elevenlabsService';
 import { twilioService } from './twilioService';
 import { directSpeechService } from './directSpeechService';
 // Removed OpenAI speech service import - using Twilio direct speech recognition
@@ -191,9 +190,10 @@ export class CallManager {
         console.log(`✅ Updated contact info - WhatsApp: ${hasContactInfo.whatsapp}, Email: ${hasContactInfo.email}`);
       }
       
-      // Generate AI response  
+      // Generate AI response using campaign's OpenAI model
       console.log(`🤖 Generating AI response for: "${speechText}"`);
       console.log(`📋 Using campaign context: "${campaign.aiPrompt?.substring(0, 50)}..."`);
+      console.log(`⚙️ Using OpenAI model: ${campaign.openaiModel}`);
       
       const aiResult = await OpenAIService.generateResponse(
         speechText,
@@ -202,7 +202,8 @@ export class CallManager {
           role: turn.role,
           content: turn.content
         })),
-        hasContactInfo
+        hasContactInfo,
+        campaign.openaiModel // Pass campaign's OpenAI model
       );
       
       const aiResponse = aiResult.response;
@@ -245,6 +246,7 @@ export class CallManager {
       
       // Generate TTS audio using ElevenLabs with campaign voice settings
       console.log('🎤 Generating AI response audio with campaign voice settings');
+      console.log(`📋 Campaign settings - Voice: ${campaign.voiceId}, Model: ${campaign.elevenlabsModel}, Language: ${campaign.language}`);
       
       let twiml;
       try {
@@ -252,7 +254,7 @@ export class CallManager {
         const voiceConfig = campaign.voiceConfig as any;
         const audioBuffer = await ElevenLabsService.textToSpeech(
           aiResponse,
-          campaign.voiceId, // Use campaign voice (e.g., Pratik Heda)
+          campaign.voiceId, // Use campaign voice (e.g., custom voice)
           {
             stability: voiceConfig?.stability || 0.5,
             similarityBoost: voiceConfig?.similarityBoost || 0.75,
@@ -263,25 +265,32 @@ export class CallManager {
           }
         );
 
-        console.log(`🎵 Generated ElevenLabs audio with voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
+        console.log(`✅ Generated ElevenLabs audio (${audioBuffer.length} bytes) with voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
+
+        // Store audio temporarily and create accessible URL
+        // For now, we'll use base64 data URL (not ideal for production but works for testing)
+        const audioBase64 = audioBuffer.toString('base64');
+        const audioUrl = `data:audio/mpeg;base64,${audioBase64}`;
+
+        console.log('🔗 Created audio data URL for ElevenLabs TTS');
 
         if (shouldEndCall) {
-          // End the call gracefully - use TTS fallback for final message
+          // End the call gracefully - use ElevenLabs audio
           twiml = twilioService.generateTwiML('hangup', {
             text: aiResponse,
+            audioUrl: audioUrl, // Use ElevenLabs audio
             language: campaign.language, // Use campaign language
-            voice: 'alice' // Twilio voice for final message
+            addTypingSound: true
           });
           // Mark call for completion
           setTimeout(() => this.completeCall(callId), 1000);
         } else {
-          // Continue conversation - ideally we'd use the ElevenLabs audio
-          // For now using TTS fallback until audio streaming is implemented
+          // Continue conversation - use ElevenLabs audio
           twiml = twilioService.generateTwiML('gather', {
             text: aiResponse,
+            audioUrl: audioUrl, // Use ElevenLabs audio
             action: `/api/calls/${callId}/process-speech`,
             language: campaign.language, // Use campaign language
-            voice: 'alice', // Twilio voice fallback
             addTypingSound: true // Enable background typing sounds
           });
         }
@@ -292,7 +301,7 @@ export class CallManager {
           twiml = twilioService.generateTwiML('hangup', {
             text: aiResponse,
             language: campaign.language,
-            voice: 'alice'
+            addTypingSound: true
           });
           setTimeout(() => this.completeCall(callId), 1000);
         } else {
@@ -300,7 +309,6 @@ export class CallManager {
             text: aiResponse,
             action: `/api/calls/${callId}/process-speech`,
             language: campaign.language,
-            voice: 'alice',
             addTypingSound: true
           });
         }

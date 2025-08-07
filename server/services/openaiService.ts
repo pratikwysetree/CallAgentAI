@@ -10,7 +10,8 @@ export class OpenAIService {
     userMessage: string,
     campaignScript: string,
     conversationHistory: Array<{ role: 'user' | 'assistant', content: string }> = [],
-    hasContactInfo: { whatsapp?: string; email?: string } = {}
+    hasContactInfo: { whatsapp?: string; email?: string } = {},
+    model: string = "gpt-4o"
   ): Promise<{ response: string; requestingContactInfo: boolean }> {
     try {
       const systemPrompt = `You are Priya, an AI calling agent for LabsCheck, India's diagnostic aggregator platform.
@@ -47,7 +48,7 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
       ];
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // Latest OpenAI model  
+        model: model, // Use campaign's OpenAI model
         messages,
         temperature: 0.7, // Higher temperature for more natural conversation
         max_tokens: 100, // Keep responses very concise for voice calls
@@ -71,8 +72,34 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
   // Transcribe audio using Whisper
   static async transcribeAudio(audioBuffer: Buffer): Promise<string> {
     try {
+      const fs = require('fs');
+      const path = require('path');
+      
       // Create a temporary file for the audio
-      const fs = await import('fs');
+      const tempDir = path.join(process.cwd(), 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const tempFilePath = path.join(tempDir, `audio_${Date.now()}.wav`);
+      fs.writeFileSync(tempFilePath, audioBuffer);
+      
+      // Use OpenAI Whisper for transcription
+      const response = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(tempFilePath),
+        model: "whisper-1",
+        language: "en", // Can be made configurable based on campaign
+      });
+      
+      // Clean up temporary file
+      fs.unlinkSync(tempFilePath);
+      
+      return response.text || "";
+    } catch (error) {
+      console.error('OpenAI Whisper transcription error:', error);
+      throw error;
+    }
+  }
       const path = await import('path');
       const tempFilePath = path.join(process.cwd(), 'temp', `audio_${Date.now()}.wav`);
       

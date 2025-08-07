@@ -59,7 +59,7 @@ export class TwilioService {
     }
   }
 
-  // Generate TwiML for call handling with background typing simulation
+  // Generate TwiML for call handling with ElevenLabs integration
   generateTwiML(action: 'gather' | 'say' | 'hangup', options: any = {}): string {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
@@ -76,50 +76,69 @@ export class TwilioService {
 
     switch (action) {
       case 'say':
-        twiml.say({
-          voice: 'alice', // Twilio built-in voice (not ElevenLabs)
-          language: language
-        }, options.text || 'Hello');
+        // Check if we have ElevenLabs audio URL, otherwise use Twilio voice as fallback
+        if (options.audioUrl) {
+          console.log('🎵 Using ElevenLabs audio for TTS');
+          twiml.play(options.audioUrl);
+        } else {
+          console.log('⚠️ Falling back to Twilio voice - no ElevenLabs audio provided');
+          twiml.say({
+            voice: 'alice', // Twilio fallback voice
+            language: language
+          }, options.text || 'Hello');
+        }
         break;
         
       case 'gather':
-        // Use Twilio speech recognition but process results directly
-        const gather = twiml.gather({
-          input: ['speech'], // Enable speech input
-          timeout: 10, // Give user time to speak
-          speechTimeout: 'auto',
-          speechModel: 'phone_call', // Optimized for phone calls
-          enhanced: true,
-          language: language, // Use campaign language
-          action: options.action || '/api/calls/process-speech',
-          method: 'POST'
-        });
-        
+        // Play response and record for OpenAI Whisper processing
         if (options.text) {
           // Add subtle pause before speaking to simulate thinking/typing
           if (options.addTypingSound) {
-            gather.pause({ length: 0.5 });
+            twiml.pause({ length: 0.5 });
           }
           
-          gather.say({
-            voice: 'alice', // Twilio built-in voice (not ElevenLabs)
-            language: language
-          }, options.text);
+          // Check if we have ElevenLabs audio URL, otherwise use Twilio voice as fallback
+          if (options.audioUrl) {
+            console.log('🎵 Using ElevenLabs audio for TTS');
+            twiml.play(options.audioUrl);
+          } else {
+            console.log('⚠️ Falling back to Twilio voice - no ElevenLabs audio provided');
+            twiml.say({
+              voice: 'alice', // Twilio fallback voice
+              language: language
+            }, options.text);
+          }
         }
+        
+        // Record user response for OpenAI Whisper processing
+        twiml.record({
+          timeout: 10, // Give user time to speak
+          transcribe: false, // We'll use OpenAI Whisper instead
+          recordingStatusCallback: options.recordingCallback || '/api/calls/recording-complete',
+          recordingStatusCallbackMethod: 'POST',
+          playBeep: false // No beep sound
+        });
         
         // Fallback if no speech detected
         twiml.say({
-          voice: 'alice', // Twilio built-in voice (not ElevenLabs)
+          voice: 'alice', // Always use Twilio for fallback messages
           language: language
         }, "I didn't catch that. Let me continue.");
         break;
         
       case 'hangup':
         if (options.text) {
-          twiml.say({
-            voice: 'alice', // Twilio built-in voice (not ElevenLabs)
-            language: language
-          }, options.text);
+          // Check if we have ElevenLabs audio URL, otherwise use Twilio voice as fallback
+          if (options.audioUrl) {
+            console.log('🎵 Using ElevenLabs audio for hangup message');
+            twiml.play(options.audioUrl);
+          } else {
+            console.log('⚠️ Falling back to Twilio voice for hangup - no ElevenLabs audio provided');
+            twiml.say({
+              voice: 'alice', // Twilio fallback voice
+              language: language
+            }, options.text);
+          }
         }
         twiml.hangup();
         break;
