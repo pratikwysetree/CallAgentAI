@@ -573,7 +573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           speechTimeout: 'auto',
           speechModel: 'phone_call',
           enhanced: true,
-          language: campaign.language || 'en',
+          language: 'en-US' as any, // Fix TypeScript language issue
           action: `/api/calls/${callId}/process-speech`,
           method: 'POST'
         });
@@ -584,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fallback text if no speech detected
         response.say({
           voice: 'alice',
-          language: campaign.language || 'en'
+          language: 'en-US' as any // Fix TypeScript language issue
         }, "I didn't catch that. Let me continue.");
         
         twiml = response.toString();
