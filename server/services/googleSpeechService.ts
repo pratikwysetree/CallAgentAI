@@ -75,36 +75,43 @@ export class OpenAISpeechService {
     }
   }
 
-  // Transcribe audio from URL (for Twilio recordings)
-  async transcribeFromUrl(audioUrl: string): Promise<string> {
+  // Transcribe audio from Twilio recording using Twilio SDK
+  async transcribeFromTwilioRecording(recordingSid: string): Promise<string> {
     try {
-      // Add Twilio authentication for recording download
-      const accountSid = process.env.TWILIO_ACCOUNT_SID;
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilio = require('twilio');
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       
-      if (!accountSid || !authToken) {
-        throw new Error('Twilio credentials not configured');
-      }
+      console.log(`🎙️ Fetching recording ${recordingSid} using Twilio SDK`);
       
-      // Create Basic Auth header for Twilio API
-      const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      // Get recording using Twilio SDK which handles auth automatically
+      const recording = await client.recordings(recordingSid).fetch();
+      const recordingUrl = `https://api.twilio.com${recording.uri.replace('.json', '')}`;
       
-      const response = await fetch(audioUrl, {
+      console.log(`📥 Recording URL: ${recordingUrl}`);
+      
+      // Download with proper Twilio SDK authentication
+      const response = await fetch(recordingUrl, {
         headers: {
-          'Authorization': `Basic ${auth}`
+          'Authorization': `Basic ${Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')}`
         }
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to download audio: ${response.statusText}`);
+        console.error(`Failed to download recording: ${response.status} ${response.statusText}`);
+        return 'Speech recognition failed - download error';
       }
       
       const audioBuffer = Buffer.from(await response.arrayBuffer());
-      console.log(`📥 Downloaded audio from Twilio: ${audioUrl} (${audioBuffer.length} bytes)`);
+      console.log(`📁 Downloaded recording: ${audioBuffer.length} bytes`);
+      
+      if (audioBuffer.length === 0) {
+        console.log('⚠️ Empty audio buffer - no speech detected');
+        return 'No speech detected';
+      }
       
       return await this.transcribeAudioBuffer(audioBuffer);
     } catch (error) {
-      console.error('Error transcribing from URL:', error);
+      console.error('Error transcribing Twilio recording:', error);
       return 'Speech recognition failed';
     }
   }
