@@ -325,18 +325,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WhatsApp messaging routes
   
-  // Get WhatsApp chats (mock data for now since we don't have actual WhatsApp integration)
-  app.get('/api/whatsapp/chats', async (req, res) => {
-    try {
-      // Return empty array for now since we don't have actual WhatsApp integration
-      // In a real implementation, this would fetch actual WhatsApp chats from Meta Business API
-      res.json([]);
-    } catch (error) {
-      console.error('Error fetching WhatsApp chats:', error);
-      res.status(500).json({ error: 'Failed to fetch WhatsApp chats' });
-    }
-  });
-  
   app.get('/api/whatsapp/templates', async (req, res) => {
     try {
       const templates = await storage.getWhatsAppTemplates();

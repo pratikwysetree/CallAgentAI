@@ -438,31 +438,77 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWhatsAppChatsByContact(): Promise<any[]> {
-    // Get latest message for each contact to create chat list
-    const chats = await db.select({
-      contactId: whatsappMessages.contactId,
-      contactName: contacts.name,
-      contactPhone: contacts.phone,
-      lastMessage: whatsappMessages.message,
-      lastMessageTime: whatsappMessages.createdAt,
-      status: whatsappMessages.status,
-      direction: whatsappMessages.direction,
-      unreadCount: count(whatsappMessages.id)
-    })
-    .from(whatsappMessages)
-    .leftJoin(contacts, eq(whatsappMessages.contactId, contacts.id))
-    .groupBy(
-      whatsappMessages.contactId, 
-      contacts.name, 
-      contacts.phone,
-      whatsappMessages.message,
-      whatsappMessages.createdAt,
-      whatsappMessages.status,
-      whatsappMessages.direction
-    )
-    .orderBy(desc(whatsappMessages.createdAt));
+    try {
+      // Get all messages with contact info, then organize by contact
+      const messages = await db.select({
+        id: whatsappMessages.id,
+        contactId: whatsappMessages.contactId,
+        contactName: contacts.name,
+        contactPhone: contacts.phone,
+        message: whatsappMessages.message,
+        createdAt: whatsappMessages.createdAt,
+        status: whatsappMessages.status,
+        direction: whatsappMessages.direction,
+        messageType: whatsappMessages.messageType
+      })
+      .from(whatsappMessages)
+      .innerJoin(contacts, eq(whatsappMessages.contactId, contacts.id))
+      .orderBy(desc(whatsappMessages.createdAt));
 
-    return chats;
+      console.log(`📱 Found ${messages.length} WhatsApp messages`);
+      
+      // Group messages by contact to create chats
+      const chatMap = new Map();
+      
+      messages.forEach(msg => {
+        const contactId = msg.contactId;
+        
+        if (!chatMap.has(contactId)) {
+          chatMap.set(contactId, {
+            id: contactId,
+            contactPhone: msg.contactPhone,
+            contactName: msg.contactName,
+            lastMessage: msg.message,
+            lastMessageTime: msg.createdAt.toISOString(),
+            unreadCount: 0,
+            status: 'active',
+            messages: []
+          });
+        }
+        
+        const chat = chatMap.get(contactId);
+        
+        // Add message to chat
+        chat.messages.push({
+          id: msg.id,
+          chatId: contactId,
+          contactPhone: msg.contactPhone,
+          contactName: msg.contactName,
+          message: msg.message,
+          direction: msg.direction,
+          status: msg.status,
+          timestamp: msg.createdAt.toISOString(),
+          messageType: msg.messageType || 'text'
+        });
+        
+        // Update last message if this is newer
+        if (new Date(msg.createdAt) > new Date(chat.lastMessageTime)) {
+          chat.lastMessage = msg.message;
+          chat.lastMessageTime = msg.createdAt.toISOString();
+        }
+      });
+      
+      // Convert map to array and sort by last message time
+      const chats = Array.from(chatMap.values())
+        .sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime());
+      
+      console.log(`💬 Returning ${chats.length} WhatsApp chats`);
+      return chats;
+      
+    } catch (error) {
+      console.error('Error fetching WhatsApp chats:', error);
+      return [];
+    }
   }
 }
 
