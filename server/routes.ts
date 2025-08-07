@@ -435,20 +435,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('⚠️ WhatsApp API not available, using simulation mode');
         console.log('WhatsApp Error:', whatsappError instanceof Error ? whatsappError.message : whatsappError);
         
-        // Fallback: simulate delivery with status updates for demo
-        await storage.updateWhatsAppMessage(message.id, { status: 'sent' });
+        // Fallback: simulate realistic message progression with status updates
+        console.log('🔄 Starting message status simulation for:', message.id);
         
+        // Step 1: Mark as sent immediately
+        await storage.updateWhatsAppMessage(message.id, { status: 'sent' });
+        console.log('✅ Step 1: Message marked as SENT:', message.id);
+        
+        // Step 2: Mark as delivered after 3 seconds (realistic timing)
         setTimeout(async () => {
           try {
             await storage.updateWhatsAppMessage(message.id, {
               status: 'delivered',
               deliveredAt: new Date()
             });
-            console.log('📱 Message marked as delivered (simulation):', message.id);
+            console.log('✅ Step 2: Message marked as DELIVERED:', message.id);
           } catch (err) {
-            console.error('Error updating message status:', err);
+            console.error('Error updating delivery status:', err);
           }
-        }, 2000);
+        }, 3000);
       }
 
       res.status(201).json(message);

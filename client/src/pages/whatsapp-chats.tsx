@@ -136,21 +136,46 @@ export default function WhatsAppChats() {
     });
   };
 
-  // Function to render message status indicator
+  // Function to render message status indicator with labels
   const getStatusIcon = (status: string, direction: string) => {
     if (direction === 'inbound') return null;
     
     switch (status) {
       case 'sent':
-        return <Check className="h-3 w-3 text-gray-400" />;
+        return (
+          <div className="flex items-center gap-1">
+            <Check className="h-3 w-3 text-gray-400" />
+            <span className="text-xs text-gray-500">Sent</span>
+          </div>
+        );
       case 'delivered':
-        return <CheckCheck className="h-3 w-3 text-gray-400" />;
+        return (
+          <div className="flex items-center gap-1">
+            <CheckCheck className="h-3 w-3 text-green-500" />
+            <span className="text-xs text-green-600">Delivered</span>
+          </div>
+        );
       case 'read':
-        return <CheckCheck className="h-3 w-3 text-blue-500" />;
+        return (
+          <div className="flex items-center gap-1">
+            <CheckCheck className="h-3 w-3 text-blue-500" />
+            <span className="text-xs text-blue-600">Read</span>
+          </div>
+        );
       case 'failed':
-        return <div className="h-3 w-3 rounded-full bg-red-500" />;
+        return (
+          <div className="flex items-center gap-1">
+            <div className="h-3 w-3 rounded-full bg-red-500" />
+            <span className="text-xs text-red-600">Failed</span>
+          </div>
+        );
       default:
-        return <Clock className="h-3 w-3 text-gray-400" />;
+        return (
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3 text-gray-400" />
+            <span className="text-xs text-gray-500">Sending</span>
+          </div>
+        );
     }
   };
 
