@@ -76,7 +76,8 @@ export default function ContactCampaigns() {
   const [campaignConfig, setCampaignConfig] = useState({
     channel: 'BOTH',
     whatsappTemplate: '',
-    followUpDays: 7
+    followUpDays: 7,
+    variableMapping: {} as Record<string, string>
   });
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContact, setNewContact] = useState({
@@ -418,6 +419,29 @@ export default function ContactCampaigns() {
   const approvedTemplates = (templates as any[]) || [];
   console.log('📋 Available templates:', templates);
   console.log('📋 Filtered templates:', approvedTemplates);
+
+  // Get selected template details
+  const selectedTemplate = approvedTemplates.find(t => t.name === campaignConfig.whatsappTemplate);
+  
+  // Extract variables from template content (looking for {{variable}} patterns)
+  const extractTemplateVariables = (content: string) => {
+    if (!content) return [];
+    const matches = content.match(/\{\{[^}]+\}\}/g) || [];
+    return matches.map(match => match.replace(/[{}]/g, ''));
+  };
+
+  const templateVariables = selectedTemplate ? extractTemplateVariables(selectedTemplate.content || '') : [];
+
+  // Available database columns for mapping
+  const availableColumns = [
+    { value: 'name', label: 'Contact Name' },
+    { value: 'phone', label: 'Phone Number' },
+    { value: 'email', label: 'Email Address' },
+    { value: 'city', label: 'City' },
+    { value: 'state', label: 'State' },
+    { value: 'company', label: 'Company/Lab Name' },
+    { value: 'website', label: 'Website' }
+  ];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -1050,7 +1074,7 @@ export default function ContactCampaigns() {
                     <Label>WhatsApp Template</Label>
                     <Select 
                       value={campaignConfig.whatsappTemplate} 
-                      onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, whatsappTemplate: value }))}
+                      onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, whatsappTemplate: value, variableMapping: {} }))}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select approved template" />
@@ -1058,7 +1082,7 @@ export default function ContactCampaigns() {
                       <SelectContent>
                         {approvedTemplates.map((template: any) => (
                           <SelectItem key={template.id} value={template.name}>
-                            {template.name} ({template.category})
+                            {template.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1066,6 +1090,83 @@ export default function ContactCampaigns() {
                   </div>
                 )}
               </div>
+
+              {/* Template Preview and Variable Mapping */}
+              {selectedTemplate && (
+                <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                  <div className="space-y-2">
+                    <Label className="text-base font-medium">Template Preview</Label>
+                    <div className="bg-white p-3 rounded border">
+                      <div className="text-sm font-medium text-gray-600 mb-2">Template: {selectedTemplate.name}</div>
+                      <div className="whitespace-pre-wrap text-sm">
+                        {selectedTemplate.content || 'Hello {{name}}, welcome to LabsCheck! We are excited to partner with your lab {{company}} in {{city}}. Please reply YES to get started with our zero-commission platform.'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Variable Mapping */}
+                  {templateVariables.length > 0 && (
+                    <div className="space-y-3">
+                      <Label className="text-base font-medium">Map Template Variables to Database Fields</Label>
+                      {templateVariables.map((variable) => (
+                        <div key={variable} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium bg-blue-100 px-2 py-1 rounded">
+                              {`{{${variable}}}`}
+                            </span>
+                          </div>
+                          <Select
+                            value={campaignConfig.variableMapping[variable] || ''}
+                            onValueChange={(value) => 
+                              setCampaignConfig(prev => ({
+                                ...prev,
+                                variableMapping: { ...prev.variableMapping, [variable]: value }
+                              }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select database field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableColumns.map((col) => (
+                                <SelectItem key={col.value} value={col.value}>
+                                  {col.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Example with mapped variables */}
+                  {templateVariables.length > 0 && Object.keys(campaignConfig.variableMapping).length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-base font-medium">Preview with Sample Data</Label>
+                      <div className="bg-green-50 p-3 rounded border">
+                        <div className="text-sm">
+                          {(selectedTemplate.content || 'Hello {{name}}, welcome to LabsCheck! We are excited to partner with your lab {{company}} in {{city}}. Please reply YES to get started with our zero-commission platform.')
+                            .replace(/\{\{(\w+)\}\}/g, (match, variable) => {
+                              const mapping = campaignConfig.variableMapping[variable];
+                              const sampleData: Record<string, string> = {
+                                name: 'Dr. Sharma',
+                                phone: '+91-9876543210',
+                                email: 'dr.sharma@example.com',
+                                city: 'Mumbai',
+                                state: 'Maharashtra',
+                                company: 'MediTest Labs',
+                                website: 'www.meditest.com'
+                              };
+                              return mapping ? `[${sampleData[mapping] || mapping}]` : match;
+                            })
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Follow-up Cycle (days)</Label>
