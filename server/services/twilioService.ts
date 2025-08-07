@@ -26,8 +26,13 @@ export class TwilioService {
         throw new Error('Twilio phone number not configured');
       }
 
-      // Create webhook URL for handling call events
-      const webhookUrl = `${process.env.REPL_URL || 'https://localhost:5000'}/api/calls/webhook`;
+      // Create webhook URL for handling call events - use Replit domain
+      const replitDomain = process.env.REPLIT_DOMAINS ? 
+        `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 
+        `https://${process.env.REPL_SLUG || 'app'}.${process.env.REPL_OWNER || 'user'}.repl.co`;
+      const webhookUrl = `${replitDomain}/api/calls/webhook`;
+      
+      console.log(`🔗 Using webhook URL: ${webhookUrl}`); // Debug log
       
       const call = await this.client.calls.create({
         to: phoneNumber,
