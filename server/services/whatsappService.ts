@@ -26,6 +26,104 @@ export class WhatsAppService {
     this.phoneNumberId = phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || '';
   }
 
+  // Get WABA ID from phone number
+  private async getWABAId(): Promise<string> {
+    if (!this.accessToken || !this.phoneNumberId) {
+      throw new Error('WhatsApp credentials not configured');
+    }
+
+    const url = `${this.baseUrl}/${this.phoneNumberId}?fields=whatsapp_business_account_id`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to get WABA ID: ${error}`);
+    }
+
+    const data = await response.json();
+    return data.whatsapp_business_account_id;
+  }
+
+  // Fetch approved message templates from Meta Business API
+  async fetchApprovedTemplates(): Promise<any[]> {
+    try {
+      console.log('🔄 Fetching approved templates from Meta Business API...');
+      
+      if (!this.accessToken || !this.phoneNumberId) {
+        console.log('❌ WhatsApp credentials not configured');
+        return [];
+      }
+
+      const wabaId = await this.getWABAId();
+      console.log('📋 WABA ID:', wabaId);
+      
+      const url = `${this.baseUrl}/${wabaId}/message_templates?fields=name,status,category,components,language,id`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('❌ Meta API error:', error);
+        throw new Error(`Failed to fetch templates: ${error}`);
+      }
+
+      const data = await response.json();
+      console.log('📋 Raw Meta API response:', JSON.stringify(data, null, 2));
+      
+      const templates = data.data || [];
+      console.log(`📋 Found ${templates.length} templates from Meta Business API`);
+      
+      // Filter only approved templates and parse content
+      const approvedTemplates = templates
+        .filter((template: any) => template.status === 'APPROVED')
+        .map((template: any) => {
+          const bodyComponent = template.components?.find((comp: any) => comp.type === 'BODY');
+          const content = bodyComponent?.text || '';
+          
+          // Extract variables from components
+          const variables = bodyComponent?.example?.body_text?.[0] || null;
+          
+          console.log(`📋 Template ${template.name}:`, {
+            status: template.status,
+            content: content,
+            variables: variables
+          });
+          
+          return {
+            id: template.id,
+            name: template.name,
+            status: template.status,
+            category: template.category,
+            content: content,
+            variables: variables,
+            language: template.language,
+            components: template.components,
+            createdAt: new Date().toISOString()
+          };
+        });
+
+      console.log(`✅ Processed ${approvedTemplates.length} approved templates`);
+      return approvedTemplates;
+      
+    } catch (error) {
+      console.error('❌ Error fetching templates from Meta:', error);
+      return [];
+    }
+  }
+
   // Send a WhatsApp message via Meta Business API
   async sendMessage(message: WhatsAppMessage): Promise<any> {
     if (!this.accessToken || !this.phoneNumberId) {

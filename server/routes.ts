@@ -364,6 +364,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync templates from Meta Business API
+  app.post('/api/whatsapp/templates/sync', async (req, res) => {
+    try {
+      console.log('🔄 Starting template sync from Meta Business API...');
+      const { whatsappService } = await import('./services/whatsappService');
+      
+      // Fetch approved templates from Meta
+      const metaTemplates = await whatsappService.fetchApprovedTemplates();
+      
+      if (metaTemplates.length === 0) {
+        return res.json({ 
+          message: 'No approved templates found in Meta Business account',
+          synced: 0 
+        });
+      }
+
+      // Update database with real templates
+      let syncedCount = 0;
+      for (const metaTemplate of metaTemplates) {
+        try {
+          // Check if template exists
+          const existingTemplates = await storage.getWhatsAppTemplates();
+          const existing = existingTemplates.find(t => t.name === metaTemplate.name);
+          
+          if (existing) {
+            // Update existing template with real content
+            await storage.updateWhatsAppTemplate(existing.id, {
+              content: metaTemplate.content,
+              status: metaTemplate.status,
+              components: metaTemplate.components,
+              variables: metaTemplate.variables
+            });
+            console.log(`✅ Updated template: ${metaTemplate.name}`);
+          } else {
+            // Create new template
+            await storage.createWhatsAppTemplate({
+              name: metaTemplate.name,
+              content: metaTemplate.content,
+              status: metaTemplate.status,
+              category: metaTemplate.category,
+              language: metaTemplate.language,
+              components: metaTemplate.components,
+              variables: metaTemplate.variables
+            });
+            console.log(`➕ Created template: ${metaTemplate.name}`);
+          }
+          syncedCount++;
+        } catch (error) {
+          console.error(`❌ Error syncing template ${metaTemplate.name}:`, error);
+        }
+      }
+
+      console.log(`✅ Template sync completed: ${syncedCount} templates synced`);
+      res.json({ 
+        message: `Successfully synced ${syncedCount} approved templates from Meta Business API`,
+        synced: syncedCount,
+        templates: metaTemplates.map(t => ({ name: t.name, status: t.status, content: t.content.substring(0, 100) + '...' }))
+      });
+    } catch (error) {
+      console.error('❌ Error syncing templates:', error);
+      res.status(500).json({ 
+        error: 'Failed to sync templates from Meta Business API',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   app.get('/api/whatsapp/bulk-jobs', async (req, res) => {
     try {
       const jobs = await storage.getBulkMessageJobs();
