@@ -77,17 +77,30 @@ export class OpenAISpeechService {
 
   // Transcribe audio from URL (for Twilio recordings)
   async transcribeFromUrl(audioUrl: string): Promise<string> {
-    let tempFilePath: string | null = null;
-    
     try {
-      // Download audio from URL
-      const response = await fetch(audioUrl);
+      // Add Twilio authentication for recording download
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      
+      if (!accountSid || !authToken) {
+        throw new Error('Twilio credentials not configured');
+      }
+      
+      // Create Basic Auth header for Twilio API
+      const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      
+      const response = await fetch(audioUrl, {
+        headers: {
+          'Authorization': `Basic ${auth}`
+        }
+      });
+      
       if (!response.ok) {
         throw new Error(`Failed to download audio: ${response.statusText}`);
       }
       
       const audioBuffer = Buffer.from(await response.arrayBuffer());
-      console.log(`📥 Downloaded audio from URL: ${audioUrl} (${audioBuffer.length} bytes)`);
+      console.log(`📥 Downloaded audio from Twilio: ${audioUrl} (${audioBuffer.length} bytes)`);
       
       return await this.transcribeAudioBuffer(audioBuffer);
     } catch (error) {

@@ -37,9 +37,17 @@ A WebSocket server facilitates bi-directional communication, broadcasting live c
 ### Development & Build
 The project emphasizes type safety with full TypeScript coverage. Development benefits from hot reloading (Vite HMR for frontend, TSX for backend) and organized imports via path aliases. The monorepo structure ensures shared schema and types between the client and server.
 
-## Recent Changes (August 6, 2025)
+## Recent Changes (August 7, 2025)
 
-### AI Calling Agent with Natural Conversation Flow (Latest)
+### Speech Processing Fix with OpenAI Whisper (Latest)
+- **CRITICAL FIX**: Replaced Twilio speech recognition with OpenAI Whisper for better accuracy
+- Fixed authentication issue: Added Twilio Basic Auth for downloading call recordings
+- Improved error handling: Calls now end gracefully when speech processing fails instead of dropping
+- Updated TwiML generation to use recording-based speech processing instead of real-time recognition
+- Enhanced conversation flow with better end conditions (user disinterest, max turns)
+- System now properly processes user speech through: Record → Download with Auth → OpenAI Whisper → AI Response
+
+### AI Calling Agent with Natural Conversation Flow (Previous)
 - **MAJOR ARCHITECTURAL CHANGE**: Rebuilt complete AI calling functionality from fresh implementation
 - Restored AI calling agent following exact flow: Start Call → ElevenLabs TTS → User speaks → Speech-to-Text → OpenAI GPT → ElevenLabs TTS → Play audio → Loop/End
 - **NEW FEATURE**: Added background typing sounds with lower intensity to make calls sound natural and human-like

@@ -479,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       console.log(`🎙️ Starting call with intro: "${campaign.introLine}"`);
-      console.log('🎹 Background typing sounds enabled with Google Speech processing');
+      console.log('🎹 Background typing sounds enabled with OpenAI Whisper processing');
 
       res.type('text/xml').send(twiml);
     } catch (error) {

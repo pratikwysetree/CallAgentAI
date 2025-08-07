@@ -164,9 +164,11 @@ export class CallManager {
       }
 
       // Check if conversation should end (after collecting contact info or max turns)
-      const shouldEndCall = activeCall.conversationHistory.length >= 10 || 
+      const shouldEndCall = activeCall.conversationHistory.length >= 8 || 
                            aiResponse.toLowerCase().includes('thank you for your time') ||
-                           aiResponse.toLowerCase().includes('goodbye');
+                           aiResponse.toLowerCase().includes('goodbye') ||
+                           speechText.toLowerCase().includes('not interested') ||
+                           speechText.toLowerCase().includes('hang up');
       
       let twiml;
       if (shouldEndCall) {
@@ -219,7 +221,13 @@ export class CallManager {
       return await this.processSpeechInput(callId, speechText);
     } catch (error) {
       console.error('❌ Error processing recording:', error);
-      return await this.processSpeechInput(callId, "I didn't catch that, could you repeat?");
+      // If recording processing fails, gracefully end the call
+      return {
+        twiml: twilioService.generateTwiML('hangup', {
+          text: 'Thank you for your time. We will follow up with you soon. Goodbye.'
+        }),
+        success: false
+      };
     }
   }
 
