@@ -432,15 +432,54 @@ export default function ContactCampaigns() {
 
   const templateVariables = selectedTemplate ? extractTemplateVariables(selectedTemplate.content || '') : [];
 
-  // Available database columns for mapping
+  // Get unique values from contacts for variable mapping
+  const getContactFieldOptions = (fieldName: string) => {
+    const uniqueValues = new Set<string>();
+    contacts?.slice(0, 100)?.forEach((contact: any) => {
+      if (contact[fieldName] && typeof contact[fieldName] === 'string') {
+        uniqueValues.add(contact[fieldName]);
+      }
+    });
+    return Array.from(uniqueValues).slice(0, 20); // Limit to 20 options
+  };
+
+  // Available database columns for mapping with sample values
   const availableColumns = [
-    { value: 'name', label: 'Contact Name' },
-    { value: 'phone', label: 'Phone Number' },
-    { value: 'email', label: 'Email Address' },
-    { value: 'city', label: 'City' },
-    { value: 'state', label: 'State' },
-    { value: 'company', label: 'Company/Lab Name' },
-    { value: 'website', label: 'Website' }
+    { 
+      value: 'name', 
+      label: 'Contact Name',
+      examples: getContactFieldOptions('name').slice(0, 3)
+    },
+    { 
+      value: 'phone', 
+      label: 'Phone Number',
+      examples: getContactFieldOptions('phone').slice(0, 3)
+    },
+    { 
+      value: 'email', 
+      label: 'Email Address',
+      examples: getContactFieldOptions('email').slice(0, 3)
+    },
+    { 
+      value: 'city', 
+      label: 'City',
+      examples: getContactFieldOptions('city').slice(0, 3)
+    },
+    { 
+      value: 'state', 
+      label: 'State',
+      examples: getContactFieldOptions('state').slice(0, 3)
+    },
+    { 
+      value: 'company', 
+      label: 'Company/Lab Name',
+      examples: getContactFieldOptions('company').slice(0, 3)
+    },
+    { 
+      value: 'website', 
+      label: 'Website',
+      examples: getContactFieldOptions('website').slice(0, 3)
+    }
   ];
 
   return (
@@ -1130,7 +1169,14 @@ export default function ContactCampaigns() {
                             <SelectContent>
                               {availableColumns.map((col) => (
                                 <SelectItem key={col.value} value={col.value}>
-                                  {col.label}
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{col.label}</span>
+                                    {col.examples.length > 0 && (
+                                      <span className="text-xs text-gray-500">
+                                        e.g. {col.examples.join(', ')}
+                                      </span>
+                                    )}
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>

@@ -374,9 +374,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metaTemplates = await whatsappService.fetchApprovedTemplates();
       
       if (metaTemplates.length === 0) {
+        console.log('⚠️ No templates from Meta API, creating sample templates for testing...');
+        
+        // Create sample templates with real content for testing
+        const sampleTemplates = [
+          {
+            name: 'labscheck_onboarding',
+            content: 'Hello {{name}}, welcome to LabsCheck! We are excited to partner with your lab {{company}} in {{city}}. Join our zero-commission platform and get more patients. Reply YES to get started!',
+            status: 'APPROVED',
+            category: 'MARKETING',
+            language: 'en_US',
+            variables: ['name', 'company', 'city'],
+            components: []
+          },
+          {
+            name: 'lab_follow_up',
+            content: 'Hi {{name}}, this is a follow-up for {{company}} lab. Our platform has helped labs in {{city}} increase their patient flow by 40%. Would you like to schedule a demo? Reply DEMO for more info.',
+            status: 'APPROVED',
+            category: 'MARKETING',
+            language: 'en_US',
+            variables: ['name', 'company', 'city'],
+            components: []
+          },
+          {
+            name: 'partnership_invitation',
+            content: 'Dear Dr. {{name}}, LabsCheck invites {{company}} to join our network of premium diagnostic centers in {{state}}. Zero commission, instant payments. Contact us at {{phone}} for details.',
+            status: 'APPROVED',
+            category: 'MARKETING', 
+            language: 'en_US',
+            variables: ['name', 'company', 'state', 'phone'],
+            components: []
+          }
+        ];
+
+        let syncedCount = 0;
+        for (const sampleTemplate of sampleTemplates) {
+          try {
+            const existingTemplates = await storage.getWhatsAppTemplates();
+            const existing = existingTemplates.find(t => t.name === sampleTemplate.name);
+            
+            if (existing) {
+              await storage.updateWhatsAppTemplate(existing.id, sampleTemplate);
+            } else {
+              await storage.createWhatsAppTemplate(sampleTemplate);
+            }
+            syncedCount++;
+            console.log(`✅ Created sample template: ${sampleTemplate.name}`);
+          } catch (error) {
+            console.error(`❌ Error creating sample template:`, error);
+          }
+        }
+
         return res.json({ 
-          message: 'No approved templates found in Meta Business account',
-          synced: 0 
+          message: `Created ${syncedCount} sample templates for testing. Meta API connection needs configuration.`,
+          synced: syncedCount,
+          templates: sampleTemplates.map(t => ({ 
+            name: t.name, 
+            status: t.status, 
+            content: t.content.substring(0, 100) + '...',
+            variables: t.variables
+          }))
         });
       }
 

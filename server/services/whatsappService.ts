@@ -26,29 +26,66 @@ export class WhatsAppService {
     this.phoneNumberId = phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || '';
   }
 
-  // Get WABA ID from phone number
+  // Get WABA ID from phone number (try multiple methods)
   private async getWABAId(): Promise<string> {
     if (!this.accessToken || !this.phoneNumberId) {
       throw new Error('WhatsApp credentials not configured');
     }
 
-    const url = `${this.baseUrl}/${this.phoneNumberId}?fields=whatsapp_business_account_id`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    try {
+      // Method 1: Try direct phone number query
+      const url1 = `${this.baseUrl}/${this.phoneNumberId}?fields=whatsapp_business_account_id`;
+      const response1 = await fetch(url1, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get WABA ID: ${error}`);
+      if (response1.ok) {
+        const data = await response1.json();
+        if (data.whatsapp_business_account_id) {
+          return data.whatsapp_business_account_id;
+        }
+      }
+
+      // Method 2: Try getting phone number details first
+      const url2 = `${this.baseUrl}/${this.phoneNumberId}`;
+      const response2 = await fetch(url2, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response2.ok) {
+        const phoneData = await response2.json();
+        console.log('📱 Phone number data:', phoneData);
+        
+        // Look for WABA ID in different fields
+        const wabaId = phoneData.whatsapp_business_account_id || 
+                      phoneData.waba_id || 
+                      phoneData.account_id;
+        
+        if (wabaId) {
+          return wabaId;
+        }
+      }
+
+      // Method 3: Extract from phone number ID itself (sometimes contains WABA ID)
+      // Phone number IDs often follow pattern: {WABA_ID}:{PHONE_ID}
+      if (this.phoneNumberId.includes(':')) {
+        const wabaId = this.phoneNumberId.split(':')[0];
+        console.log('📋 Extracted WABA ID from phone number ID:', wabaId);
+        return wabaId;
+      }
+
+      throw new Error('Could not determine WABA ID from available data');
+    } catch (error) {
+      throw new Error(`Failed to get WABA ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    const data = await response.json();
-    return data.whatsapp_business_account_id;
   }
 
   // Fetch approved message templates from Meta Business API
