@@ -145,6 +145,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced contacts with engagement data
+  app.get('/api/contacts/enhanced', async (req, res) => {
+    try {
+      const contacts = await storage.getContacts();
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error fetching enhanced contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch enhanced contacts' });
+    }
+  });
+
   app.post('/api/contacts', async (req, res) => {
     try {
       const contactData = insertContactSchema.parse(req.body);
