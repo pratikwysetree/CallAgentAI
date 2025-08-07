@@ -226,7 +226,6 @@ export default function CampaignDashboard() {
                   <TableRow>
                     <TableHead>Contact</TableHead>
                     <TableHead>Call Status</TableHead>
-                    <TableHead>Message Status</TableHead>
                     <TableHead>Summary</TableHead>
                     <TableHead>Next Action</TableHead>
                     <TableHead>Follow-up</TableHead>
