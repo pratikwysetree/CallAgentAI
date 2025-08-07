@@ -199,10 +199,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced contacts with engagement data
+  // Enhanced contacts with engagement data (optimized)
   app.get('/api/contacts/enhanced', async (req, res) => {
     try {
-      const contacts = await storage.getContacts();
+      console.log(`📊 Fetching enhanced contacts...`);
+      const startTime = Date.now();
+      
+      const contacts = await storage.getContacts(3000); // Reduced limit for better performance
+      
+      // Add aggressive caching headers
+      res.set({
+        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+        'ETag': `"contacts-${contacts.length}"`,
+        'Last-Modified': new Date().toUTCString()
+      });
+      
+      const endTime = Date.now();
+      console.log(`✅ Enhanced contacts fetched in ${endTime - startTime}ms - ${contacts.length} contacts`);
+      
       res.json(contacts);
     } catch (error) {
       console.error('Error fetching enhanced contacts:', error);

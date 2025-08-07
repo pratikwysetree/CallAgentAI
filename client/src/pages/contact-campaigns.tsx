@@ -100,9 +100,12 @@ export default function ContactCampaigns() {
   const [showStateFilter, setShowStateFilter] = useState(false);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
-  // Fetch contacts with engagement data
+  // Fetch contacts with engagement data (optimized with longer cache)
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/contacts/enhanced'],
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false, // Don't refetch when window gains focus
   });
 
   // Extract unique cities, states, and statuses for filtering

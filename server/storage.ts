@@ -135,17 +135,39 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async getContacts(limit = 5000): Promise<Contact[]> {
-    // Get unique contacts by phone number, keeping the most recent entry with optimized query
-    return await db.select()
-      .from(contacts)
-      .where(and(
-        sql`${contacts.phone} IS NOT NULL`,
-        sql`${contacts.phone} != ''`,
-        sql`${contacts.name} != 'Unknown Lab'`
-      ))
-      .orderBy(desc(contacts.createdAt))
-      .limit(limit);
+  async getContacts(limit = 3000): Promise<Contact[]> {
+    // Optimized query with reduced limit for better performance
+    const startTime = Date.now();
+    
+    const results = await db.select({
+      id: contacts.id,
+      name: contacts.name,
+      phone: contacts.phone,
+      email: contacts.email,
+      city: contacts.city,
+      state: contacts.state,
+      company: contacts.company,
+      status: contacts.status,
+      createdAt: contacts.createdAt,
+      updatedAt: contacts.updatedAt,
+      // Add mock engagement data for now to prevent frontend errors
+      lastContactedAt: sql<Date | null>`NULL`,
+      nextFollowUp: sql<Date | null>`NULL`,
+      totalEngagements: sql<number>`0`
+    })
+    .from(contacts)
+    .where(and(
+      sql`${contacts.phone} IS NOT NULL`,
+      sql`${contacts.phone} != ''`,
+      sql`${contacts.name} != 'Unknown Lab'`
+    ))
+    .orderBy(desc(contacts.createdAt))
+    .limit(limit);
+    
+    const endTime = Date.now();
+    console.log(`📊 Contacts query completed in ${endTime - startTime}ms - ${results.length} contacts`);
+    
+    return results;
   }
 
   // Campaigns
