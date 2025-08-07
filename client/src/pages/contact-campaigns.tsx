@@ -77,6 +77,7 @@ export default function ContactCampaigns() {
     channel: 'BOTH',
     whatsappTemplate: '',
     followUpDays: 7,
+    campaignTemplate: '',
     variableMapping: {} as Record<string, string>
   });
   const [showAddContact, setShowAddContact] = useState(false);
@@ -185,6 +186,11 @@ export default function ContactCampaigns() {
   // Fetch approved WhatsApp templates
   const { data: templates = [] } = useQuery({
     queryKey: ['/api/whatsapp/templates'],
+  });
+
+  // Fetch existing campaigns from campaign manager
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['/api/campaigns'],
   });
 
   // Fetch campaign analytics
@@ -364,7 +370,8 @@ export default function ContactCampaigns() {
       contactIds: selectedContacts,
       channel: campaignConfig.channel,
       whatsappTemplate: campaignConfig.whatsappTemplate,
-      followUpDays: campaignConfig.followUpDays
+      followUpDays: campaignConfig.followUpDays,
+      campaignTemplateId: campaignConfig.campaignTemplate
     });
   };
 
@@ -1113,6 +1120,33 @@ export default function ContactCampaigns() {
                   </Select>
                 </div>
 
+                {(campaignConfig.channel === 'CALL' || campaignConfig.channel === 'BOTH') && (
+                  <div className="space-y-2">
+                    <Label>Campaign Template (for AI Calls)</Label>
+                    <Select 
+                      value={campaignConfig.campaignTemplate} 
+                      onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, campaignTemplate: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select campaign template (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Use Default Template</SelectItem>
+                        {campaigns.map((campaign: any) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{campaign.name}</span>
+                              <span className="text-xs text-gray-500 truncate max-w-60">
+                                {campaign.script?.substring(0, 80)}...
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {(campaignConfig.channel === 'WHATSAPP' || campaignConfig.channel === 'BOTH') && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -1279,6 +1313,9 @@ export default function ContactCampaigns() {
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   <li>• Selected contacts: {selectedContacts.length}</li>
                   <li>• Channel: {campaignConfig.channel}</li>
+                  {campaignConfig.campaignTemplate && (
+                    <li>• Campaign template: {campaigns.find((c: any) => c.id === campaignConfig.campaignTemplate)?.name || 'Selected template'}</li>
+                  )}
                   {campaignConfig.whatsappTemplate && (
                     <li>• WhatsApp template: {campaignConfig.whatsappTemplate}</li>
                   )}

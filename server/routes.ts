@@ -656,7 +656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🚀 CAMPAIGN START ENDPOINT CALLED');
       console.log('📊 Request body:', req.body);
       
-      const { contactIds, channel, whatsappTemplate, followUpDays } = req.body;
+      const { contactIds, channel, whatsappTemplate, followUpDays, campaignTemplateId } = req.body;
       
       if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
         console.log('❌ Invalid contactIds:', contactIds);
@@ -666,9 +666,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 Starting campaign for ${contactIds.length} contacts`);
       console.log('📋 Contact IDs:', contactIds);
       console.log('📋 Channel:', channel);
-      console.log('📋 Template:', whatsappTemplate);
+      console.log('📋 WhatsApp Template:', whatsappTemplate);
+      console.log('📋 Campaign Template ID:', campaignTemplateId);
       
       const campaignId = `campaign_${Date.now()}`;
+      
+      // Get campaign template settings if provided
+      let campaignSettings = {
+        aiPrompt: 'You are Anvika from LabsCheck, a diagnostic comparison platform. Your goal is to onboard pathology labs to our free platform. Be professional, clear, and focus on the value proposition: no commission, increased visibility, and direct patient bookings.',
+        introLine: 'Hi, this is Anvika from LabsCheck. Am I speaking with the owner or manager of the lab?',
+        agentName: 'Anvika',
+        openaiModel: 'gpt-4o',
+        language: 'en-IN',
+        elevenlabsModel: 'eleven_multilingual_v2',
+        voiceId: '21m00Tcm4TlvDq8ikWAM'
+      };
+
+      if (campaignTemplateId) {
+        console.log(`📋 Using campaign template: ${campaignTemplateId}`);
+        try {
+          const template = await storage.getCampaign(campaignTemplateId);
+          if (template) {
+            console.log(`✅ Found campaign template: ${template.name}`);
+            campaignSettings = {
+              aiPrompt: template.aiPrompt,
+              introLine: template.introLine,
+              agentName: template.agentName,
+              openaiModel: template.openaiModel,
+              language: template.language,
+              elevenlabsModel: template.elevenlabsModel,
+              voiceId: template.voiceId
+            };
+          } else {
+            console.log(`⚠️ Campaign template not found: ${campaignTemplateId}, using defaults`);
+          }
+        } catch (error) {
+          console.error(`❌ Error fetching campaign template: ${error}`);
+          console.log('Using default campaign settings');
+        }
+      }
       
       // Create campaign record in database first
       await storage.createCampaign({
@@ -677,6 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         script: `Multi-channel campaign for ${contactIds.length} contacts`,
         status: 'active',
         targetAudience: 'pathology_labs',
+        ...campaignSettings,
         createdAt: new Date()
       });
       
