@@ -1200,24 +1200,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Content-Disposition', `attachment; filename="call-recording-${req.params.id}.wav"`);
         res.setHeader('Content-Type', 'audio/wav');
         
-        // Create a minimal WAV file header for demo
+        // Create a proper WAV file with 10 seconds of silence
+        const sampleRate = 8000;
+        const duration = 10; // seconds
+        const numSamples = sampleRate * duration;
+        const dataSize = numSamples * 2; // 16-bit samples
+        const fileSize = 36 + dataSize;
+        
+        // WAV header (44 bytes)
         const wavHeader = Buffer.alloc(44);
-        // WAV header with RIFF identifier
         wavHeader.write('RIFF', 0);
-        wavHeader.writeUInt32LE(36, 4); // File size - 8
+        wavHeader.writeUInt32LE(fileSize, 4);
         wavHeader.write('WAVE', 8);
         wavHeader.write('fmt ', 12);
         wavHeader.writeUInt32LE(16, 16); // PCM header size
         wavHeader.writeUInt16LE(1, 20); // Audio format (PCM)
-        wavHeader.writeUInt16LE(1, 22); // Number of channels
-        wavHeader.writeUInt32LE(8000, 24); // Sample rate
-        wavHeader.writeUInt32LE(16000, 28); // Byte rate
+        wavHeader.writeUInt16LE(1, 22); // Number of channels (mono)
+        wavHeader.writeUInt32LE(sampleRate, 24); // Sample rate
+        wavHeader.writeUInt32LE(sampleRate * 2, 28); // Byte rate
         wavHeader.writeUInt16LE(2, 32); // Block align
         wavHeader.writeUInt16LE(16, 34); // Bits per sample
         wavHeader.write('data', 36);
-        wavHeader.writeUInt32LE(0, 40); // Data size
+        wavHeader.writeUInt32LE(dataSize, 40);
         
-        res.send(wavHeader);
+        // Create audio data (silence)
+        const audioData = Buffer.alloc(dataSize, 0);
+        
+        // Combine header and audio data
+        const fullWav = Buffer.concat([wavHeader, audioData]);
+        res.send(fullWav);
         return;
       }
 
