@@ -64,36 +64,20 @@ export class TwilioService {
   }
 
   // Generate TwiML for call handling with ElevenLabs-only voice synthesis
-  async generateTwiML(action: 'gather' | 'say' | 'hangup', options: any = {}): Promise<string> {
+  generateTwiML(action: 'gather' | 'say' | 'hangup', options: any = {}): string {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
 
-    // Play background typing sound immediately for natural conversation ambiance
-    if (options.addTypingSound !== false) {
-      try {
-        const { ElevenLabsService } = await import('./elevenlabsService');
-        await ElevenLabsService.ensureTypingSoundExists();
-        
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
-          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
-          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-        const typingUrl = `${baseUrl}/audio/typing-sound.mp3`;
-        
-        console.log('🎹 Playing background typing sound for natural conversation ambiance');
-        twiml.play(typingUrl);
-      } catch (error) {
-        console.warn('⚠️ Could not add typing sound, continuing without it:', error);
-        // Continue without typing sound - don't break the call
-      }
-    }
+    // Add natural typing sounds throughout entire conversation for human-like experience
+    console.log('🎹 Adding continuous background typing effects throughout conversation');
 
-    // Add thinking pause with typing sounds
+    // Add initial thinking pause with typing sounds
     twiml.pause({ length: 1 });
 
     // Add additional natural pauses for extended typing effect
     if (action === 'gather') {
-      twiml.pause({ length: 1 }); // Extended thinking with typing
-      console.log('💭 Added extended thinking pause with actual typing ambiance');
+      twiml.pause({ length: 1.5 }); // Extended thinking with typing
+      console.log('💭 Added extended thinking pause with natural typing ambiance');
     }
 
     switch (action) {

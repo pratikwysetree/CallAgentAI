@@ -188,27 +188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/audio/:filename', (req, res) => {
     try {
       const filename = req.params.filename;
-      let audioFilePath;
-
-      // Check both temp/ and temp/static-audio/ directories
-      if (filename === 'typing-sound.mp3') {
-        audioFilePath = path.join(process.cwd(), 'temp', 'static-audio', filename);
-      } else {
-        audioFilePath = path.join(process.cwd(), 'temp', filename);
-      }
+      const audioFilePath = path.join(process.cwd(), 'temp', filename);
 
       if (!fs.existsSync(audioFilePath)) {
-        // Try alternate location
-        const alternatePath = filename === 'typing-sound.mp3' 
-          ? path.join(process.cwd(), 'temp', filename)
-          : path.join(process.cwd(), 'temp', 'static-audio', filename);
-
-        if (fs.existsSync(alternatePath)) {
-          audioFilePath = alternatePath;
-        } else {
-          console.log('Audio file not found in either location:', audioFilePath, 'or', alternatePath);
-          return res.status(404).send('Audio file not found');
-        }
+        console.log('Audio file not found:', audioFilePath);
+        return res.status(404).send('Audio file not found');
       }
 
       res.setHeader('Content-Type', 'audio/mpeg');
@@ -578,28 +562,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ ElevenLabs intro generated successfully: ${audioUrl}`);
 
         // Generate TwiML with ElevenLabs audio and background typing sounds
-        twiml = await twilioService.generateTwiML('gather', {
+        twiml = twilioService.generateTwiML('gather', {
           audioUrl: audioUrl,
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
           language: campaign.language || 'en',
-          addTypingSound: true, // Customer will hear typing sounds
+          addTypingSound: true,
           addThinkingPause: true
         });
 
       } catch (elevenlabsError) {
-        console.error('❌ ElevenLabs intro failed, using fallback:', elevenlabsError);
+        console.error('❌ ElevenLabs intro failed:', elevenlabsError);
 
-        // Quick fallback with Twilio TTS to prevent application error
-        twiml = await twilioService.generateTwiML('gather', {
-          text: introText,
-          action: `/api/calls/${callId}/process-speech`,
-          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
-          language: campaign.language || 'en',
-          voice: 'alice',
-          addTypingSound: false // Skip typing sound for fallback
-        });
-        console.log('✅ Using Twilio TTS fallback to prevent application error');
+        // Return error TwiML that will end call gracefully
+        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en">I apologize, there was a technical issue. Please try again later.</Say>
+  <Hangup/>
+</Response>`;
+        return res.type('text/xml').send(errorTwiml);
       }
 
       console.log(`🎙️ Returning TwiML for intro: "${introText}"`);
@@ -610,16 +591,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('🚨 ANSWER WEBHOOK ERROR:', error instanceof Error ? error.message : String(error));
-      console.error('🚨 Stack trace:', error instanceof Error ? error.stack : 'No stack');
-
-      // Provide a more robust fallback TwiML
-      const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" language="en">Hello, this is an AI assistant from LabsCheck. How can I help you today?</Say>
-  <Gather input="speech" language="en-US" speechTimeout="5" action="/api/calls/${callId || 'unknown'}/process-speech" method="POST">
-    <Say voice="alice">Please speak after the tone.</Say>
-  </Gather>
-</Response>`;
+      const fallbackTwiml = twilioService.generateTwiML('hangup', {
+        text: 'Sorry, there was an error. Please try again later.'
+      });
       res.type('text/xml').send(fallbackTwiml);
     }
   });
@@ -695,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ Using ElevenLabs voice: ${campaign.voiceId}, audio URL: ${audioUrl}`);
 
         // Use ElevenLabs audio in TwiML
-        twiml = await twilioService.generateTwiML('gather', {
+        twiml = twilioService.generateTwiML('gather', {
           audioUrl: audioUrl,
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
@@ -707,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('❌ ElevenLabs error details:', elevenlabsError instanceof Error ? elevenlabsError.message : String(elevenlabsError));
 
         // Fallback to fast Twilio TTS
-        twiml = await twilioService.generateTwiML('gather', {
+        twiml = twilioService.generateTwiML('gather', {
           text: introText,
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
@@ -758,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('❌ Enhanced recording processing error:', error);
-      const twiml = await twilioService.generateTwiML('hangup', {
+      const twiml = twilioService.generateTwiML('hangup', {
         text: 'Thank you for your time. Goodbye.'
       });
       res.type('text/xml').send(twiml);
@@ -807,12 +781,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dbCall = await storage.getCall(callId);
         const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
 
-        const twiml = await twilioService.generateTwiML('gather', {
+        const twiml = twilioService.generateTwiML('gather', {
           text: 'I\'m here. Please speak when you\'re ready.',
           action: `/api/calls/${callId}/process-speech`,
-          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
           language: campaign?.language || 'en',
-          addTypingSound: true, // Customer will hear typing sounds
+          addTypingSound: true,
           addThinkingPause: true
         });
         res.type('text/xml').send(twiml);
@@ -828,10 +801,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dbCall = await storage.getCall(callId);
         const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
 
-        const twiml = await twilioService.generateTwiML('hangup', {
+        const twiml = twilioService.generateTwiML('hangup', {
           text: 'I understand. Thank you for your time. Have a great day!',
           language: campaign?.language || 'en',
-          addTypingSound: true // Customer will hear typing sounds
+          addTypingSound: true
         });
         res.type('text/xml').send(twiml);
         return;
@@ -845,7 +818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.type('text/xml').send(result.twiml);
     } catch (error) {
       console.error('Enhanced speech processing error:', error);
-      const twiml = await twilioService.generateTwiML('hangup', {
+      const twiml = twilioService.generateTwiML('hangup', {
         text: 'Thank you for your time. Goodbye.'
       });
       res.type('text/xml').send(twiml);
