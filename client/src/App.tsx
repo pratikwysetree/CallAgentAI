@@ -2,7 +2,14 @@ import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall, Megaphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall, Megaphone, ChevronDown, Send, MessageCircle, Home } from "lucide-react";
 import ContactCampaigns from "@/pages/contact-campaigns";
 import CampaignDashboard from "@/pages/campaign-dashboard";
 import CampaignManager from "@/pages/campaign-manager";
@@ -20,10 +27,10 @@ function Navigation() {
 
   const navigation = [
     {
-      name: "WhatsApp Bulk",
-      href: "/whatsapp-bulk",
-      icon: MessageSquare,
-      current: location === "/whatsapp-bulk" || location === "/",
+      name: "Dashboard",
+      href: "/campaign-dashboard",
+      icon: Home,
+      current: location === "/campaign-dashboard" || location === "/",
     },
     {
       name: "Live Calls",
@@ -50,29 +57,16 @@ function Navigation() {
       current: location === "/contact-campaigns",
     },
     {
-      name: "Campaign Dashboard",
-      href: "/campaign-dashboard",
-      icon: BarChart3,
-      current: location === "/campaign-dashboard",
-    },
-    {
-      name: "WhatsApp Chats",
-      href: "/whatsapp-chats",
-      icon: MessageSquare,
-      current: location === "/whatsapp-chats",
-    },
-    {
-      name: "WhatsApp Messaging",
-      href: "/whatsapp-messaging",
-      icon: MessageSquare,
-      current: location === "/whatsapp-messaging",
-    },
-    {
       name: "Settings",
       href: "/settings",
       icon: SettingsIcon,
       current: location === "/settings",
     },
+  ];
+
+  const whatsappMenuItems = [
+    { name: "Bulk Messaging", href: "/whatsapp-bulk", icon: Send },
+    { name: "Chat Messages", href: "/whatsapp-chats", icon: MessageCircle },
   ];
 
   return (
@@ -104,6 +98,31 @@ function Navigation() {
                   </Link>
                 );
               })}
+              
+              {/* WhatsApp Navigation - Simple Links */}
+              <Link
+                href="/whatsapp-bulk"
+                className={`${
+                  location === "/whatsapp-bulk"
+                    ? "border-blue-500 text-gray-900 dark:text-white"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white hover:border-gray-300"
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                WhatsApp Bulk
+              </Link>
+              
+              <Link
+                href="/whatsapp-chats"
+                className={`${
+                  location === "/whatsapp-chats"
+                    ? "border-blue-500 text-gray-900 dark:text-white"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white hover:border-gray-300"
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                WhatsApp Chat
+              </Link>
             </div>
           </div>
         </div>
@@ -118,13 +137,13 @@ function Router() {
       <Navigation />
       <main>
         <Switch>
-          <Route path="/" component={WhatsAppBulk} />
+          <Route path="/" component={CampaignDashboard} />
+          <Route path="/campaign-dashboard" component={CampaignDashboard} />
           <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
           <Route path="/live-calls" component={LiveCallsPage} />
           <Route path="/calls-analytics" component={CallsAnalytics} />
           <Route path="/campaign-manager" component={CampaignManager} />
           <Route path="/contact-campaigns" component={ContactCampaigns} />
-          <Route path="/campaign-dashboard" component={CampaignDashboard} />
           <Route path="/whatsapp-chats" component={WhatsAppChats} />
           <Route path="/whatsapp-messaging" component={WhatsAppMessaging} />
           <Route path="/settings" component={SettingsPage} />
