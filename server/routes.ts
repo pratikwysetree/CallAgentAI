@@ -373,6 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a temporary contact for this call
       const tempContact = await storage.createContact({
         name: `Direct Call ${phoneNumber}`,
+        phone: phoneNumber,
         phoneNumber: phoneNumber,
         source: 'direct_call'
       });
