@@ -122,7 +122,10 @@ export class CallManager {
       // Add thinking pause with background typing sounds before generating response
       console.log('🎹 Adding thinking pause with background typing sounds for natural call flow');
       
-      // Generate AI response
+      // Generate AI response  
+      console.log(`🤖 Generating AI response for: "${speechText}"`);
+      console.log(`📋 Using campaign context: "${campaign.aiPrompt?.substring(0, 50)}..."`);
+      
       const aiResponse = await OpenAIService.generateResponse(
         speechText,
         campaign.script || campaign.aiPrompt,
@@ -131,6 +134,8 @@ export class CallManager {
           content: turn.content
         }))
       );
+      
+      console.log(`💬 AI response: "${aiResponse}"`);
 
       // Add AI response to conversation history
       activeCall.conversationHistory.push({
@@ -140,31 +145,52 @@ export class CallManager {
       });
 
       // Save conversation to database
-      await storage.createCallMessage({
-        callId,
-        role: 'user',
-        content: speechText
-      });
-      await storage.createCallMessage({
-        callId,
-        role: 'assistant', 
-        content: aiResponse
-      });
+      try {
+        await storage.createCallMessage({
+          callId,
+          role: 'user',
+          content: speechText
+        });
+        await storage.createCallMessage({
+          callId,
+          role: 'assistant', 
+          content: aiResponse
+        });
+        console.log('✅ Messages saved to database successfully');
+      } catch (dbError) {
+        console.error('❌ Database save error:', dbError);
+      }
 
-      // Generate TwiML to continue conversation with background typing effects
-      const twiml = twilioService.generateTwiML('gather', {
-        text: aiResponse,
-        action: `/api/calls/${callId}/process-speech`,
-        voice: campaign.voiceId, // Use campaign voice
-        addTypingSound: true // Enable background typing sounds
-      });
+      // Check if conversation should end (after collecting contact info or max turns)
+      const shouldEndCall = activeCall.conversationHistory.length >= 10 || 
+                           aiResponse.toLowerCase().includes('thank you for your time') ||
+                           aiResponse.toLowerCase().includes('goodbye');
+      
+      let twiml;
+      if (shouldEndCall) {
+        // End the call gracefully
+        twiml = twilioService.generateTwiML('hangup', {
+          text: aiResponse
+        });
+        // Mark call for completion
+        setTimeout(() => this.completeCall(callId), 1000);
+      } else {
+        // Continue conversation with background typing effects
+        twiml = twilioService.generateTwiML('gather', {
+          text: aiResponse,
+          action: `/api/calls/${callId}/process-speech`,
+          voice: campaign.voiceId, // Use campaign voice
+          addTypingSound: true // Enable background typing sounds
+        });
+      }
 
       // Broadcast real-time update
       this.broadcastCallUpdate(activeCall);
 
       return { twiml, success: true };
     } catch (error) {
-      console.error('Error processing speech input:', error);
+      console.error('❌ Error processing speech input:', error);
+      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
       return {
         twiml: twilioService.generateTwiML('hangup', { 
           text: 'I apologize, there was a technical issue. Thank you for your time.' 

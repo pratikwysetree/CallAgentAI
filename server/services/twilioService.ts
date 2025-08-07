@@ -81,13 +81,14 @@ export class TwilioService {
       case 'gather':
         const gather = twiml.gather({
           input: 'speech',
-          timeout: 10,
+          timeout: 15, // Increased timeout for better response collection
           speechTimeout: 'auto',
           speechModel: 'experimental_conversations',
           enhanced: true,
           language: 'en-IN',
           action: options.action || '/api/calls/process-speech',
-          method: 'POST'
+          method: 'POST',
+          finishOnKey: '#' // Allow user to finish input with #
         });
         
         if (options.text) {
