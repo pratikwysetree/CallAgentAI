@@ -512,80 +512,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).send('Campaign not found');
       }
 
-      // Generate immediate TwiML response to avoid delays - use Twilio TTS first, then switch to ElevenLabs
-      console.log('⚡ Generating immediate TwiML response to minimize call pickup delay');
-      
+      // Try ElevenLabs first, fallback to Twilio if fails
       const introText = campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.";
+      let twiml;
       
-      // Use fast Twilio TTS for immediate response - no API delays
-      const twilio = await import('twilio');
-      const VoiceResponse = twilio.default.twiml.VoiceResponse;
-      const response = new VoiceResponse();
-      
-      // Immediately start with Twilio voice to avoid delays
-      response.pause({ length: 0.5 }); // Very short pause
-      
-      // Use Twilio TTS for instant response (no API calls)
-      response.say({
-        voice: 'alice',
-        language: campaign.language || 'en-US'
-      }, introText);
-      
-      // Record user response for OpenAI Whisper processing
-      response.record({
-        timeout: 10,
-        transcribe: false,
-        recordingStatusCallback: `/api/calls/recording-complete?callId=${callId}`,
-        recordingStatusCallbackMethod: 'POST',
-        playBeep: false,
-        action: `/api/calls/${callId}/process-speech`,
-        method: 'POST'
-      });
-      
-      // Fallback if no speech detected
-      response.say({
-        voice: 'alice',
-        language: campaign.language || 'en-US'
-      }, "I didn't catch that. Let me continue.");
-      
-      const twiml = response.toString();
-      
-      // Asynchronously generate ElevenLabs audio for future responses
-      setImmediate(async () => {
-        try {
-          console.log('🎤 Pre-generating ElevenLabs audio for future responses');
-          const { ElevenLabsService } = await import('./services/elevenlabsService');
-          const fs = await import('fs');
-          const path = await import('path');
-          
-          const voiceConfig = campaign.voiceConfig as any;
-          const audioBuffer = await ElevenLabsService.textToSpeech(
-            introText,
-            campaign.voiceId,
-            {
-              stability: voiceConfig?.stability || 0.5,
-              similarityBoost: voiceConfig?.similarityBoost || 0.75,
-              style: voiceConfig?.style || 0.0,
-              speakerBoost: voiceConfig?.useSpeakerBoost || true,
-              model: campaign.elevenlabsModel || 'eleven_turbo_v2'
-            }
-          );
-          
-          // Pre-generate audio files for faster future responses
-          const audioFileName = `pregenerated_${callId}.mp3`;
-          const audioFilePath = path.join(process.cwd(), 'temp', audioFileName);
-          
-          const tempDir = path.join(process.cwd(), 'temp');
-          if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir, { recursive: true });
+      try {
+        console.log(`🎤 Generating ElevenLabs intro with campaign voice: ${campaign.voiceId}`);
+        const { ElevenLabsService } = await import('./services/elevenlabsService');
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        const voiceConfig = campaign.voiceConfig as any;
+        const audioBuffer = await ElevenLabsService.textToSpeech(
+          introText,
+          campaign.voiceId,
+          {
+            stability: voiceConfig?.stability || 0.5,
+            similarityBoost: voiceConfig?.similarityBoost || 0.75,
+            style: voiceConfig?.style || 0.0,
+            speakerBoost: voiceConfig?.useSpeakerBoost || true,
+            model: campaign.elevenlabsModel || 'eleven_turbo_v2'
           }
-          
-          fs.writeFileSync(audioFilePath, audioBuffer);
-          console.log('✅ Pre-generated ElevenLabs audio for future use');
-        } catch (error) {
-          console.error('❌ Background ElevenLabs pre-generation failed:', error);
+        );
+
+        // Save audio file
+        const audioFileName = `intro_${callId}.mp3`;
+        const audioFilePath = path.join(process.cwd(), 'temp', audioFileName);
+        const tempDir = path.join(process.cwd(), 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
         }
-      });
+        fs.writeFileSync(audioFilePath, audioBuffer);
+        
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
+          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+          `https://${req.get('host')}`;
+        const audioUrl = `${baseUrl}/audio/${audioFileName}`;
+
+        console.log(`✅ Using ElevenLabs voice: ${campaign.voiceId}, audio URL: ${audioUrl}`);
+
+        // Use ElevenLabs audio in TwiML
+        twiml = twilioService.generateTwiML('gather', {
+          audioUrl: audioUrl,
+          action: `/api/calls/${callId}/process-speech`,
+          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+          language: campaign.language || 'en'
+        });
+
+      } catch (elevenlabsError) {
+        console.error('❌ ElevenLabs intro failed, using Twilio TTS:', elevenlabsError);
+        
+        // Fallback to fast Twilio TTS
+        twiml = twilioService.generateTwiML('gather', {
+          text: introText,
+          action: `/api/calls/${callId}/process-speech`,
+          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+          language: campaign.language || 'en',
+          voice: 'alice'
+        });
+      }
 
       
       console.log(`🎙️ Starting call with intro: "${campaign.introLine}"`);

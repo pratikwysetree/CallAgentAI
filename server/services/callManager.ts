@@ -234,47 +234,78 @@ export class CallManager {
                            speechText.toLowerCase().includes('not interested') ||
                            speechText.toLowerCase().includes('hang up');
       
-      // Generate fast Twilio TTS response to avoid delays - ElevenLabs in background
+      // Generate ElevenLabs audio with fast fallback to Twilio if it fails
       let twiml;
       
-      if (shouldEndCall) {
-        // End the call gracefully with fast Twilio TTS
-        twiml = twilioService.generateTwiML('hangup', {
-          text: aiResponse,
-          language: campaign.language,
-          voice: 'alice'
-        });
-        setTimeout(() => this.completeCall(callId), 1000);
-      } else {
-        // Continue conversation with fast Twilio TTS to avoid delays
-        twiml = twilioService.generateTwiML('gather', {
-          text: aiResponse,
-          action: `/api/calls/${callId}/process-speech`,
-          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
-          language: campaign.language,
-          voice: 'alice'
-        });
-      }
-      
-      // Async background ElevenLabs generation for future optimization (no delay)
-      setImmediate(async () => {
-        try {
-          const voiceConfig = campaign.voiceConfig as any;
-          await ElevenLabsService.textToSpeech(
-            aiResponse,
-            campaign.voiceId,
-            {
-              stability: voiceConfig?.stability || 0.5,
-              similarityBoost: voiceConfig?.similarityBoost || 0.75,
-              style: voiceConfig?.style || 0.0,
-              speakerBoost: voiceConfig?.useSpeakerBoost || true,
-              model: campaign.elevenlabsModel || 'eleven_turbo_v2'
-            }
-          );
-        } catch (error) {
-          console.error('Background ElevenLabs processing error:', error);
+      try {
+        console.log(`🎤 Generating ElevenLabs audio with campaign voice: ${campaign.voiceId}`);
+        const voiceConfig = campaign.voiceConfig as any;
+        const audioBuffer = await ElevenLabsService.textToSpeech(
+          aiResponse,
+          campaign.voiceId,
+          {
+            stability: voiceConfig?.stability || 0.5,
+            similarityBoost: voiceConfig?.similarityBoost || 0.75,
+            style: voiceConfig?.style || 0.0,
+            speakerBoost: voiceConfig?.useSpeakerBoost || true,
+            model: campaign.elevenlabsModel || 'eleven_turbo_v2'
+          }
+        );
+
+        // Save audio file temporarily
+        const fs = await import('fs');
+        const path = await import('path');
+        const audioFileName = `response_${callId}_${Date.now()}.mp3`;
+        const tempDir = path.default.join(process.cwd(), 'temp');
+        if (!fs.default.existsSync(tempDir)) {
+          fs.default.mkdirSync(tempDir, { recursive: true });
         }
-      });
+        const audioFilePath = path.default.join(tempDir, audioFileName);
+        fs.default.writeFileSync(audioFilePath, audioBuffer);
+        
+        // Create accessible URL
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
+          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+        const audioUrl = `${baseUrl}/audio/${audioFileName}`;
+
+        console.log(`✅ Using ElevenLabs voice: ${campaign.voiceId}, audio URL: ${audioUrl}`);
+
+        if (shouldEndCall) {
+          twiml = twilioService.generateTwiML('hangup', {
+            audioUrl: audioUrl, // Use ElevenLabs audio
+            language: campaign.language
+          });
+          setTimeout(() => this.completeCall(callId), 1000);
+        } else {
+          twiml = twilioService.generateTwiML('gather', {
+            audioUrl: audioUrl, // Use ElevenLabs audio
+            action: `/api/calls/${callId}/process-speech`,
+            recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+            language: campaign.language
+          });
+        }
+
+      } catch (elevenlabsError) {
+        console.error('❌ ElevenLabs failed, using Twilio TTS fallback:', elevenlabsError);
+        
+        if (shouldEndCall) {
+          twiml = twilioService.generateTwiML('hangup', {
+            text: aiResponse,
+            language: campaign.language,
+            voice: 'alice'
+          });
+          setTimeout(() => this.completeCall(callId), 1000);
+        } else {
+          twiml = twilioService.generateTwiML('gather', {
+            text: aiResponse,
+            action: `/api/calls/${callId}/process-speech`,
+            recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+            language: campaign.language,
+            voice: 'alice'
+          });
+        }
+      }
 
       // Broadcast real-time update
       this.broadcastCallUpdate(activeCall);

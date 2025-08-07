@@ -76,20 +76,21 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
       const fs = await import('fs');
       const path = await import('path');
       
-      // Create a temporary file for the audio
+      // Create a temporary file for the audio - use .mp3 extension for Twilio recordings
       const tempDir = path.default.join(process.cwd(), 'temp');
       if (!fs.default.existsSync(tempDir)) {
         fs.default.mkdirSync(tempDir, { recursive: true });
       }
       
-      const tempFilePath = path.default.join(tempDir, `audio_${Date.now()}.wav`);
+      const tempFilePath = path.default.join(tempDir, `audio_${Date.now()}.mp3`);
       fs.default.writeFileSync(tempFilePath, audioBuffer);
       
-      // Use OpenAI Whisper for transcription
+      // Use OpenAI Whisper for transcription with correct file format
       const response = await openai.audio.transcriptions.create({
         file: fs.default.createReadStream(tempFilePath),
         model: "whisper-1",
         language: "en", // Can be made configurable based on campaign
+        response_format: "text" // Ensure we get plain text response
       });
       
       // Clean up temporary file
