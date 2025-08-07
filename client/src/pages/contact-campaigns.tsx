@@ -704,6 +704,97 @@ export default function ContactCampaigns() {
                   )}
                 </div>
               </div>
+
+              {/* Quick WhatsApp Template Selection */}
+              {(selectedContacts.length > 0 || filteredContacts.length > 0) && (
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageCircle className="h-4 w-4 text-green-600" />
+                        <Label className="text-sm font-medium text-green-800">Quick WhatsApp Template Selection</Label>
+                      </div>
+                      <p className="text-xs text-green-600 mb-3">
+                        Select a WhatsApp template to use for your filtered contacts. This will be automatically set when you start a campaign.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <Select 
+                            value={campaignConfig.whatsappTemplate} 
+                            onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, whatsappTemplate: value }))}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Select WhatsApp template..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {approvedTemplates.length === 0 ? (
+                                <SelectItem value="no-templates" disabled>
+                                  No approved templates available
+                                </SelectItem>
+                              ) : (
+                                approvedTemplates.map((template: any) => (
+                                  <SelectItem key={template.id} value={template.name}>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs">
+                                        {template.category}
+                                      </Badge>
+                                      <span>{template.name}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Select 
+                            value={campaignConfig.channel} 
+                            onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, channel: value }))}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="WHATSAPP">WhatsApp Only</SelectItem>
+                              <SelectItem value="CALL">AI Call Only</SelectItem>
+                              <SelectItem value="BOTH">Call + WhatsApp Follow-up</SelectItem>
+                              <SelectItem value="EMAIL">Email Only</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {campaignConfig.whatsappTemplate && (
+                        <div className="mt-3 p-2 bg-white rounded border">
+                          <p className="text-xs text-gray-600">
+                            <strong>Selected Template:</strong> {campaignConfig.whatsappTemplate} 
+                            <span className="ml-2 text-green-600">
+                              ({campaignConfig.channel === 'WHATSAPP' ? 'WhatsApp Only' : 
+                                campaignConfig.channel === 'BOTH' ? 'Call + WhatsApp Follow-up' : 
+                                campaignConfig.channel === 'EMAIL' ? 'Email Only' : 'AI Call Only'})
+                            </span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {selectedContacts.length > 0 && campaignConfig.whatsappTemplate && (
+                      <Button 
+                        onClick={() => {
+                          setActiveTab('campaigns');
+                          toast({
+                            title: "Ready for Campaign",
+                            description: `${selectedContacts.length} contacts selected with ${campaignConfig.whatsappTemplate} template. Switched to Campaign tab.`
+                          });
+                        }}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                        Start Campaign Now
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
