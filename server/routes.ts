@@ -180,6 +180,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===========================
+  // AUDIO SERVING ENDPOINT
+  // ===========================
+  
+  // Serve audio files for Twilio to play
+  app.get('/audio/:filename', (req, res) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const filename = req.params.filename;
+      const audioFilePath = path.join(process.cwd(), 'temp', filename);
+      
+      if (!fs.existsSync(audioFilePath)) {
+        return res.status(404).send('Audio file not found');
+      }
+      
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      
+      const audioStream = fs.createReadStream(audioFilePath);
+      audioStream.pipe(res);
+      
+      // Clean up file after 5 minutes
+      setTimeout(() => {
+        if (fs.existsSync(audioFilePath)) {
+          fs.unlinkSync(audioFilePath);
+          console.log(`🗑️ Cleaned up audio file: ${filename}`);
+        }
+      }, 5 * 60 * 1000);
+      
+    } catch (error) {
+      console.error('Error serving audio file:', error);
+      res.status(500).send('Error serving audio file');
+    }
+  });
+
   // Contact import/export
   app.post('/api/contacts/import', upload.single('file'), async (req, res) => {
     try {
@@ -481,6 +518,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log('🎤 Generating intro audio with ElevenLabs campaign voice settings');
         const { ElevenLabsService } = await import('./services/elevenlabsService');
+        const fs = await import('fs');
+        const path = await import('path');
         
         const introText = campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.";
         
@@ -500,14 +539,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`🎵 Generated intro audio with ElevenLabs voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
         
-        // For now, still use Twilio TTS but log that ElevenLabs worked
-        twiml = twilioService.generateTwiML('gather', {
-          text: introText,
+        // Save audio file temporarily for Twilio to play
+        const audioFileName = `intro_${callId}.mp3`;
+        const audioFilePath = path.join(process.cwd(), 'temp', audioFileName);
+        
+        // Ensure temp directory exists
+        const tempDir = path.join(process.cwd(), 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(audioFilePath, audioBuffer);
+        
+        // Use the audio file URL in TwiML
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
+          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+          `https://${req.get('host')}`;
+        const audioUrl = `${baseUrl}/audio/${audioFileName}`;
+        
+        console.log(`🔊 Using ElevenLabs audio file: ${audioUrl}`);
+        
+        // Generate TwiML to play ElevenLabs audio instead of using Twilio TTS
+        const VoiceResponse = twilio.twiml.VoiceResponse;
+        const response = new VoiceResponse();
+        
+        // Add typing pause
+        response.pause({ length: 1 });
+        
+        const gather = response.gather({
+          input: ['speech'],
+          timeout: 10,
+          speechTimeout: 'auto',
+          speechModel: 'phone_call',
+          enhanced: true,
+          language: campaign.language || 'en',
           action: `/api/calls/${callId}/process-speech`,
-          language: campaign.language, // Use campaign language setting
-          voice: 'alice', // Twilio voice fallback until audio streaming implemented
-          addTypingSound: true // Enable background typing simulation
+          method: 'POST'
         });
+        
+        // Play ElevenLabs generated audio instead of using Twilio TTS
+        gather.play(audioUrl);
+        
+        // Fallback text if no speech detected
+        response.say({
+          voice: 'alice',
+          language: campaign.language || 'en'
+        }, "I didn't catch that. Let me continue.");
+        
+        twiml = response.toString();
         
       } catch (error) {
         console.error('❌ ElevenLabs intro generation failed, using Twilio TTS fallback:', error);
