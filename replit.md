@@ -39,7 +39,15 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 
 ## Recent Changes (August 7, 2025)
 
-### AI Calling System Fully Operational with Contact Collection (Latest)
+### Campaign Voice Settings Fixed (Latest)
+- **CRITICAL VOICE FIX**: Removed all hardcoded agent voice, language, and speech speed selections
+- **CAMPAIGN-DRIVEN SETTINGS**: System now uses campaign-defined voiceId (Pratik Heda), elevenlabsModel (eleven_turbo_v2 fast), and language settings
+- **FLEXIBLE EMAIL EXTRACTION**: Enhanced contact extraction to capture any email domain spoken by customers (not just hardcoded Gmail/Yahoo)
+- **CONTACT REGEX IMPROVED**: Fixed spaced digits pattern for WhatsApp numbers ("9 3 2 5 0" → "9325025730")
+- **TwiML LANGUAGE SUPPORT**: Updated TwilioService to use campaign language settings throughout call flow
+- **ELEVENLABS MODEL SELECTION**: ElevenLabsService now uses campaign-specified model and voice configuration
+
+### AI Calling System Fully Operational with Contact Collection (Previous)
 - **COMPLETE SUCCESS**: AI calling system now working with natural conversation flow and contact extraction
 - **WEBHOOK ANALYSIS COMPLETE**: Examined and fixed all call disconnection issues through enhanced webhook logging
 - **FAST CALL CONNECTIONS**: Optimized Twilio settings reduced connection time to under 1 second

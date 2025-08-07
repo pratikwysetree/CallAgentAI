@@ -12,6 +12,7 @@ export class ElevenLabsService {
       style?: number;
       speakerBoost?: boolean;
       addTypingSound?: boolean;
+      model?: string;
     } = {}
   ): Promise<Buffer> {
     try {
@@ -25,7 +26,8 @@ export class ElevenLabsService {
         similarityBoost = 0.7,
         style = 0.0,
         speakerBoost = false,
-        addTypingSound = true
+        addTypingSound = true,
+        model = 'eleven_multilingual_v2'
       } = settings;
 
       const response = await fetch(`${this.API_BASE}/text-to-speech/${voiceId}`, {
@@ -37,7 +39,7 @@ export class ElevenLabsService {
         },
         body: JSON.stringify({
           text,
-          model_id: 'eleven_multilingual_v2',
+          model_id: model,
           voice_settings: {
             stability,
             similarity_boost: similarityBoost,

@@ -138,7 +138,8 @@ export class CallManager {
           console.log(`❌ Call ${callId} not found in database or not active`);
           return {
             twiml: twilioService.generateTwiML('hangup', { 
-              text: 'Thank you for your time. Goodbye.' 
+              text: 'Thank you for your time. Goodbye.',
+              language: 'en'
             }),
             success: false
           };
@@ -150,7 +151,8 @@ export class CallManager {
       if (!campaign) {
         return {
           twiml: twilioService.generateTwiML('hangup', { 
-            text: 'Thank you for your time. Goodbye.' 
+            text: 'Thank you for your time. Goodbye.',
+            language: 'en'
           }),
           success: false
         };
@@ -242,7 +244,8 @@ export class CallManager {
       if (shouldEndCall) {
         // End the call gracefully
         twiml = twilioService.generateTwiML('hangup', {
-          text: aiResponse
+          text: aiResponse,
+          language: campaign.language // Use campaign language
         });
         // Mark call for completion
         setTimeout(() => this.completeCall(callId), 1000);
@@ -251,7 +254,7 @@ export class CallManager {
         twiml = twilioService.generateTwiML('gather', {
           text: aiResponse,
           action: `/api/calls/${callId}/process-speech`,
-          voice: campaign.voiceId, // Use campaign voice
+          language: campaign.language, // Use campaign language
           addTypingSound: true // Enable background typing sounds
         });
       }
@@ -265,7 +268,8 @@ export class CallManager {
       console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
       return {
         twiml: twilioService.generateTwiML('hangup', { 
-          text: 'I apologize, there was a technical issue. Thank you for your time.' 
+          text: 'I apologize, there was a technical issue. Thank you for your time.',
+          language: 'en' // Default language for error cases
         }),
         success: false
       };
@@ -312,13 +316,13 @@ export class CallManager {
         .map(turn => `${turn.role}: ${turn.content}`)
         .join('\n');
 
-      const summary = await OpenAIService.generateResponse(
+      const summaryResponse = await OpenAIService.generateResponse(
         `Please provide a brief summary of this call conversation:\n${conversationText}`,
         "Generate a concise call summary focusing on key points discussed and outcomes.",
         []
       );
 
-      return summary;
+      return summaryResponse.response;
     } catch (error) {
       console.error('Error generating call summary:', error);
       return 'Call completed - summary generation failed';

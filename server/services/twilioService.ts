@@ -64,6 +64,9 @@ export class TwilioService {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
 
+    // Use campaign-defined language settings (default to en-IN for Indian market)
+    const language = options.language ? `${options.language}-IN` : 'en-IN';
+
     // Add thinking pause with typing sounds for natural conversation flow
     if (options.addTypingSound && action === 'gather') {
       console.log('🎹 Simulating background typing sounds in TwiML generation');
@@ -75,7 +78,7 @@ export class TwilioService {
       case 'say':
         twiml.say({
           voice: 'alice',
-          language: 'en-IN'
+          language: language
         }, options.text || 'Hello');
         break;
         
@@ -87,7 +90,7 @@ export class TwilioService {
           speechTimeout: 'auto',
           speechModel: 'phone_call', // Optimized for phone calls
           enhanced: true,
-          language: 'en-IN', // Indian English
+          language: language, // Use campaign language
           action: options.action || '/api/calls/process-speech',
           method: 'POST'
         });
@@ -100,14 +103,14 @@ export class TwilioService {
           
           gather.say({
             voice: 'alice',
-            language: 'en-IN'
+            language: language
           }, options.text);
         }
         
         // Fallback if no speech detected
         twiml.say({
           voice: 'alice',
-          language: 'en-IN'
+          language: language
         }, "I didn't catch that. Let me continue.");
         break;
         
@@ -115,7 +118,7 @@ export class TwilioService {
         if (options.text) {
           twiml.say({
             voice: 'alice',
-            language: 'en-IN'
+            language: language
           }, options.text);
         }
         twiml.hangup();

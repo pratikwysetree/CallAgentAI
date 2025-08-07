@@ -374,8 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tempContact = await storage.createContact({
         name: `Direct Call ${phoneNumber}`,
         phone: phoneNumber,
-        phoneNumber: phoneNumber,
-        source: 'direct_call'
+        phoneNumber: phoneNumber
       });
       
       const result = await callManager.startCall(tempContact.id, campaignId, phoneNumber);
@@ -477,11 +476,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).send('Campaign not found');
       }
 
-      // Generate initial TwiML with campaign script
+      // Generate initial TwiML with campaign-defined settings
       const twiml = twilioService.generateTwiML('gather', {
         text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
         action: `/api/calls/${callId}/process-speech`,
-        voice: campaign.voiceId,
+        language: campaign.language, // Use campaign language setting
         addTypingSound: true // Enable background typing simulation
       });
       
@@ -519,8 +518,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if call should end based on speech content
       if (directSpeechService.shouldEndCall(speechText)) {
         console.log('🔚 User indicated call should end');
+        // Get campaign for language settings
+        const dbCall = await storage.getCall(callId);
+        const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
+        
         const twiml = twilioService.generateTwiML('hangup', {
-          text: 'I understand. Thank you for your time. Have a great day!'
+          text: 'I understand. Thank you for your time. Have a great day!',
+          language: campaign?.language || 'en'
         });
         res.type('text/xml').send(twiml);
         return;
