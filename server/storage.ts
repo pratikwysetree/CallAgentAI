@@ -97,6 +97,10 @@ export interface IStorage {
   updateWhatsAppMessage(id: string, message: Partial<InsertWhatsAppMessage>): Promise<WhatsAppMessage | undefined>;
   deleteWhatsAppMessage(id: string): Promise<boolean>;
   getWhatsAppChatsByContact(): Promise<any[]>; // Grouped chats
+
+  // Campaign Analytics
+  getTotalCampaignAnalytics(): Promise<any>;
+  getDayWiseAnalytics(): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -572,6 +576,148 @@ export class DatabaseStorage implements IStorage {
       
     } catch (error) {
       console.error('Error fetching WhatsApp chats:', error);
+      return [];
+    }
+  }
+
+  // Campaign Analytics Implementation
+  async getTotalCampaignAnalytics(): Promise<any> {
+    try {
+      // Get all WhatsApp messages to calculate analytics
+      const allMessages = await db.select().from(whatsappMessages);
+      const allContacts = await db.select().from(contacts);
+      
+      // Calculate basic stats
+      const totalCustomersApproached = allMessages.length;
+      const positiveResponses = allMessages.filter(msg => 
+        msg.status === 'read' || (msg.message && msg.message.toLowerCase().includes('yes'))
+      ).length;
+      const negativeResponses = allMessages.filter(msg => 
+        msg.message && (msg.message.toLowerCase().includes('no') || msg.message.toLowerCase().includes('stop'))
+      ).length;
+      const pendingResponses = allMessages.filter(msg => msg.status === 'pending').length;
+      
+      // Calculate response and conversion rates
+      const totalResponses = positiveResponses + negativeResponses;
+      const responseRate = totalCustomersApproached > 0 ? (totalResponses / totalCustomersApproached) * 100 : 0;
+      const conversionRate = totalCustomersApproached > 0 ? (positiveResponses / totalCustomersApproached) * 100 : 0;
+      
+      // City-wise data
+      const cityWiseMap = new Map();
+      for (const message of allMessages) {
+        try {
+          const contact = allContacts.find(c => c.id === message.contactId);
+          if (contact && contact.city) {
+            const city = contact.city;
+            if (!cityWiseMap.has(city)) {
+              cityWiseMap.set(city, { city, count: 0, positive: 0, negative: 0 });
+            }
+            const cityData = cityWiseMap.get(city);
+            cityData.count++;
+            
+            if (message.status === 'read' || (message.message && message.message.toLowerCase().includes('yes'))) {
+              cityData.positive++;
+            } else if (message.message && (message.message.toLowerCase().includes('no') || message.message.toLowerCase().includes('stop'))) {
+              cityData.negative++;
+            }
+          }
+        } catch (err) {
+          // Skip invalid contacts
+          continue;
+        }
+      }
+      
+      const cityWiseData = Array.from(cityWiseMap.values());
+      
+      // Day-wise data for last 30 days
+      const dayWiseMap = new Map();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentMessages = allMessages.filter(msg => 
+        msg.createdAt && new Date(msg.createdAt) >= thirtyDaysAgo
+      );
+      
+      for (const message of recentMessages) {
+        if (!message.createdAt) continue;
+        const dateKey = new Date(message.createdAt).toISOString().split('T')[0];
+        
+        if (!dayWiseMap.has(dateKey)) {
+          dayWiseMap.set(dateKey, { date: dateKey, pitched: 0, positive: 0, negative: 0 });
+        }
+        
+        const dayData = dayWiseMap.get(dateKey);
+        dayData.pitched++;
+        
+        if (message.status === 'read' || (message.message && message.message.toLowerCase().includes('yes'))) {
+          dayData.positive++;
+        } else if (message.message && (message.message.toLowerCase().includes('no') || message.message.toLowerCase().includes('stop'))) {
+          dayData.negative++;
+        }
+      }
+      
+      const dayWiseData = Array.from(dayWiseMap.values())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      return {
+        totalCustomersApproached,
+        positiveResponses,
+        negativeResponses,
+        pendingResponses,
+        responseRate,
+        conversionRate,
+        cityWiseData,
+        dayWiseData
+      };
+    } catch (error) {
+      console.error('Error calculating total campaign analytics:', error);
+      return {
+        totalCustomersApproached: 0,
+        positiveResponses: 0,
+        negativeResponses: 0,
+        pendingResponses: 0,
+        responseRate: 0,
+        conversionRate: 0,
+        cityWiseData: [],
+        dayWiseData: []
+      };
+    }
+  }
+
+  async getDayWiseAnalytics(): Promise<any[]> {
+    try {
+      // Get messages from last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentMessages = await db.select()
+        .from(whatsappMessages)
+        .where(sql`${whatsappMessages.createdAt} >= ${thirtyDaysAgo}`);
+      
+      const dayWiseMap = new Map();
+      
+      for (const message of recentMessages) {
+        if (!message.createdAt) continue;
+        const dateKey = new Date(message.createdAt).toISOString().split('T')[0];
+        
+        if (!dayWiseMap.has(dateKey)) {
+          dayWiseMap.set(dateKey, { date: dateKey, pitched: 0, positive: 0, negative: 0 });
+        }
+        
+        const dayData = dayWiseMap.get(dateKey);
+        dayData.pitched++;
+        
+        if (message.status === 'read' || (message.message && message.message.toLowerCase().includes('yes'))) {
+          dayData.positive++;
+        } else if (message.message && (message.message.toLowerCase().includes('no') || message.message.toLowerCase().includes('stop'))) {
+          dayData.negative++;
+        }
+      }
+      
+      return Array.from(dayWiseMap.values())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch (error) {
+      console.error('Error calculating day-wise analytics:', error);
       return [];
     }
   }

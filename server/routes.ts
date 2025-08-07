@@ -904,6 +904,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get total campaign analytics - lifetime stats
+  app.get('/api/campaigns/total-analytics', async (req, res) => {
+    try {
+      const analytics = await storage.getTotalCampaignAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching total campaign analytics:', error);
+      res.status(500).json({ error: 'Failed to fetch analytics' });
+    }
+  });
+
+  // Get day-wise analytics for last 30 days
+  app.get('/api/campaigns/day-wise-analytics', async (req, res) => {
+    try {
+      const analytics = await storage.getDayWiseAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching day-wise analytics:', error);
+      res.status(500).json({ error: 'Failed to fetch day-wise analytics' });
+    }
+  });
+
   // ===================
   // AI CALLING ROUTES
   // ===================

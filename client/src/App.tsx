@@ -80,8 +80,8 @@ function Navigation({ children }: { children: React.ReactNode }) {
             const Icon = item.icon;
             return (
               <Link key={item.name} href={item.href}>
-                <a
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                <span
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                     item.current
                       ? "palette-primary text-white"
                       : "palette-text-secondary hover:palette-text hover:palette-surface"
@@ -89,15 +89,15 @@ function Navigation({ children }: { children: React.ReactNode }) {
                 >
                   <Icon className="mr-3 h-5 w-5" />
                   {item.name}
-                </a>
+                </span>
               </Link>
             );
           })}
           
           {/* WhatsApp Navigation */}
           <Link href="/whatsapp-bulk">
-            <a
-              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            <span
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 location === "/whatsapp-bulk"
                   ? "palette-primary text-white"
                   : "palette-text-secondary hover:palette-text hover:palette-surface"
@@ -105,12 +105,12 @@ function Navigation({ children }: { children: React.ReactNode }) {
             >
               <Send className="mr-3 h-5 w-5" />
               WhatsApp Bulk
-            </a>
+            </span>
           </Link>
           
           <Link href="/whatsapp-chats">
-            <a
-              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            <span
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 location === "/whatsapp-chats"
                   ? "palette-primary text-white"
                   : "palette-text-secondary hover:palette-text hover:palette-surface"
@@ -118,7 +118,7 @@ function Navigation({ children }: { children: React.ReactNode }) {
             >
               <MessageCircle className="mr-3 h-5 w-5" />
               WhatsApp Chat
-            </a>
+            </span>
           </Link>
         </nav>
         

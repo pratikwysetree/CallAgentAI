@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TotalCampaignAnalytics } from '@/components/TotalCampaignAnalytics';
 import { 
   Calendar, 
   Users, 
@@ -112,7 +113,7 @@ export default function CampaignDashboard() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 pt-6">
+    <div className="flex-1 space-y-6 p-4 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Campaign Dashboard</h2>
         <div className="flex items-center space-x-2">
@@ -131,9 +132,25 @@ export default function CampaignDashboard() {
         </div>
       </div>
 
-      {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      {/* Total Campaign Analytics - Lifetime Stats */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-semibold tracking-tight">Total Campaign Analytics</h3>
+          <Badge variant="outline">Lifetime Stats</Badge>
+        </div>
+        <TotalCampaignAnalytics />
+      </div>
+
+      {/* Today's Campaign Overview */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-semibold tracking-tight">Today's Activity</h3>
+          <Badge variant="secondary">{formatToDateDisplayString(selectedDate)}</Badge>
+        </div>
+        
+        {/* Today's Overview Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today's Campaigns</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -188,6 +205,7 @@ export default function CampaignDashboard() {
             </p>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
