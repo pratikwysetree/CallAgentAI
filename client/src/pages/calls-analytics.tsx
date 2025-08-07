@@ -9,12 +9,12 @@ import type { Call, CallRecording } from "@shared/schema";
 
 export default function CallsAnalyticsPage() {
   // Fetch calls data
-  const { data: calls = [], isLoading } = useQuery({
+  const { data: calls = [], isLoading } = useQuery<Call[]>({
     queryKey: ['/api/calls'],
   });
 
   // Fetch dashboard stats
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<any>({
     queryKey: ['/api/dashboard/stats'],
   });
 
@@ -39,15 +39,15 @@ export default function CallsAnalyticsPage() {
 
   const calculateSuccessRate = () => {
     if (!calls.length) return 0;
-    const completedCalls = calls.filter((call: any) => call.status === 'completed').length;
+    const completedCalls = calls.filter((call) => call.status === 'completed').length;
     return Math.round((completedCalls / calls.length) * 100);
   };
 
   const calculateAverageDuration = () => {
     if (!calls.length) return 0;
     const totalDuration = calls
-      .filter((call: any) => call.duration)
-      .reduce((sum: number, call: any) => sum + call.duration, 0);
+      .filter((call) => call.duration)
+      .reduce((sum: number, call) => sum + (call.duration || 0), 0);
     return Math.round(totalDuration / calls.length);
   };
 
@@ -128,7 +128,7 @@ export default function CallsAnalyticsPage() {
               <Phone className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalCalls || calls.length}</div>
+              <div className="text-2xl font-bold">{calls.length}</div>
               <p className="text-xs text-muted-foreground">
                 +12% from last month
               </p>
@@ -196,7 +196,7 @@ export default function CallsAnalyticsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {calls.slice(0, 10).map((call: any) => (
+                {calls.slice(0, 10).map((call) => (
                   <div
                     key={call.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -205,8 +205,8 @@ export default function CallsAnalyticsPage() {
                       <div>
                         <p className="font-medium">{call.phoneNumber}</p>
                         <p className="text-sm text-gray-500">
-                          {new Date(call.startTime || call.createdAt).toLocaleDateString()} at{' '}
-                          {new Date(call.startTime || call.createdAt).toLocaleTimeString()}
+                          {new Date(call.createdAt).toLocaleDateString()} at{' '}
+                          {new Date(call.createdAt).toLocaleTimeString()}
                         </p>
                       </div>
                       <Badge variant={getStatusColor(call.status)}>
@@ -265,8 +265,8 @@ export default function CallsAnalyticsPage() {
             <div className="space-y-4">
               {/* Group calls by campaign and show stats */}
               {Object.entries(
-                calls.reduce((acc: any, call: any) => {
-                  const campaignName = call.campaign?.name || 'Unknown Campaign';
+                calls.reduce((acc: Record<string, any>, call) => {
+                  const campaignName = call.campaignId || 'Unknown Campaign';
                   if (!acc[campaignName]) {
                     acc[campaignName] = {
                       total: 0,
@@ -282,7 +282,7 @@ export default function CallsAnalyticsPage() {
                     acc[campaignName].totalDuration += call.duration;
                   }
                   return acc;
-                }, {})
+                }, {} as Record<string, any>)
               ).map(([campaignName, stats]: [string, any]) => (
                 <div
                   key={campaignName}
