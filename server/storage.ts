@@ -417,7 +417,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateWhatsAppMessage(id: string, message: Partial<InsertWhatsAppMessage>): Promise<WhatsAppMessage | undefined> {
     const [updated] = await db.update(whatsappMessages)
-      .set({ ...message, createdAt: new Date() })
+      .set(message)
       .where(eq(whatsappMessages.id, id))
       .returning();
     return updated || undefined;

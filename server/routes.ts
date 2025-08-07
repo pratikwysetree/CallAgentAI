@@ -335,9 +335,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===================
 
   // Get all WhatsApp messages for a contact
-  app.get('/api/whatsapp/messages', async (req, res) => {
+  app.get('/api/whatsapp/messages/:contactId', async (req, res) => {
     try {
-      const contactId = req.query.contactId as string;
+      const { contactId } = req.params;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       
       const messages = await storage.getWhatsAppMessages(contactId, limit);
@@ -351,25 +351,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send a WhatsApp message
   app.post('/api/whatsapp/messages', async (req, res) => {
     try {
+      console.log('📧 Sending WhatsApp message:', req.body);
       const messageData = req.body;
+      
+      // Validate required fields
+      if (!messageData.contactId || !messageData.phone || !messageData.message) {
+        return res.status(400).json({ 
+          error: 'Missing required fields: contactId, phone, message' 
+        });
+      }
       
       // Create the message in database
       const message = await storage.createWhatsAppMessage({
         contactId: messageData.contactId,
         phone: messageData.phone,
-        message: messageData.message,
+        message: messageData.message.trim(),
         messageType: messageData.messageType || 'text',
         direction: 'outbound',
         status: 'sent', // Will be updated via webhook
-        campaignId: messageData.campaignId
+        campaignId: messageData.campaignId || null
       });
 
+      console.log('✅ Message created successfully:', message.id);
+
       // TODO: Send via WhatsApp API (Meta Business API)
-      // For now, just return the created message
+      // For now, simulate delivery with status updates
+      setTimeout(async () => {
+        try {
+          await storage.updateWhatsAppMessage(message.id, {
+            status: 'delivered',
+            deliveredAt: new Date()
+          });
+          console.log('📱 Message marked as delivered:', message.id);
+        } catch (err) {
+          console.error('Error updating message status:', err);
+        }
+      }, 2000);
+
       res.status(201).json(message);
     } catch (error) {
-      console.error('Error sending WhatsApp message:', error);
-      res.status(500).json({ error: 'Failed to send message' });
+      console.error('❌ Error sending WhatsApp message:', error);
+      res.status(500).json({ 
+        error: 'Failed to send message',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
