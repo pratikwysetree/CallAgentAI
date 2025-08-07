@@ -488,6 +488,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TWILIO WEBHOOK ROUTES
   // ===========================
 
+  // Answer webhook - when Twilio call is answered (returns TwiML with intro)  
+  // This route MUST return TwiML XML for Twilio to work properly
+  app.get("/api/calls/webhook/answer", async (req, res) => {
+    console.log('🔔 ANSWER WEBHOOK CALLED - Generating intro with ElevenLabs');
+    console.log('📞 Query params:', req.query);
+    
+    // IMMEDIATE TEST: Return simple TwiML to verify route works
+    const simpleTest = false; // Set to true for testing
+    if (simpleTest) {
+      console.log('🧪 RETURNING TEST TWIML');
+      const testTwiml = '<?xml version="1.0" encoding="UTF-8"?><Response><Say>This is a test</Say></Response>';
+      return res.type('text/xml').send(testTwiml);
+    }
+    
+    try {
+      const { callId, campaignId } = req.query;
+      
+      if (!callId || !campaignId) {
+        console.log('❌ Missing callId or campaignId in answer webhook');
+        return res.status(400).send('Missing callId or campaignId');
+      }
+
+      // Get campaign for intro generation
+      const campaign = await storage.getCampaign(campaignId as string);
+      if (!campaign) {
+        console.log('❌ Campaign not found for answer webhook');
+        return res.status(404).send('Campaign not found');
+      }
+
+      // Ensure call is tracked
+      console.log(`🔗 Answer webhook for call ${callId}, ensuring it's tracked as active`);
+      const dbCall = await storage.getCall(callId as string);
+      if (dbCall && dbCall.status === 'active') {
+        callManager.ensureCallIsTracked(callId as string, dbCall);
+      }
+
+      // Generate intro with ElevenLabs
+      const introText = campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.";
+      let twiml;
+      
+      try {
+        console.log(`🎤 Generating ElevenLabs intro with campaign voice: ${campaign.voiceId}`);
+        console.log(`📋 Campaign details - Model: ${campaign.elevenlabsModel}, Language: ${campaign.language}`);
+        console.log(`📝 Intro text: "${introText}"`);
+        
+        const { ElevenLabsService } = await import('./services/elevenlabsService');
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        const voiceConfig = campaign.voiceConfig as any;
+        const audioBuffer = await ElevenLabsService.textToSpeech(
+          introText,
+          campaign.voiceId,
+          {
+            stability: voiceConfig?.stability || 0.5,
+            similarityBoost: voiceConfig?.similarityBoost || 0.75,
+            style: voiceConfig?.style || 0.0,
+            speakerBoost: voiceConfig?.useSpeakerBoost || true,
+            model: campaign.elevenlabsModel || 'eleven_turbo_v2'
+          }
+        );
+
+        // Save audio file
+        const audioFileName = `intro_${callId}.mp3`;
+        const audioFilePath = path.default.join(process.cwd(), 'temp', audioFileName);
+        const tempDir = path.default.join(process.cwd(), 'temp');
+        if (!fs.default.existsSync(tempDir)) {
+          fs.default.mkdirSync(tempDir, { recursive: true });
+        }
+        fs.default.writeFileSync(audioFilePath, audioBuffer);
+        
+        // Create accessible URL
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
+          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+        const audioUrl = `${baseUrl}/audio/${audioFileName}`;
+        
+        console.log(`✅ ElevenLabs intro generated successfully: ${audioUrl}`);
+
+        // Generate TwiML with ElevenLabs audio
+        twiml = twilioService.generateTwiML('gather', {
+          audioUrl: audioUrl,
+          action: `/api/calls/${callId}/process-speech`,
+          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+          language: campaign.language || 'en'
+        });
+
+      } catch (elevenlabsError) {
+        console.error('❌ ElevenLabs intro failed, using Twilio TTS fallback:', elevenlabsError);
+        
+        // Fallback to Twilio TTS
+        twiml = twilioService.generateTwiML('gather', {
+          text: introText,
+          action: `/api/calls/${callId}/process-speech`,
+          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+          language: campaign.language || 'en',
+          voice: 'alice'
+        });
+      }
+
+      console.log(`🎙️ Returning TwiML for intro: "${introText}"`);
+      console.log('🎹 Background typing sounds enabled with Twilio direct speech processing');
+      
+      // CRITICAL: Return TwiML XML, not HTML
+      res.type('text/xml').send(twiml);
+      
+    } catch (error) {
+      console.error('🚨 ANSWER WEBHOOK ERROR:', error instanceof Error ? error.message : String(error));
+      const fallbackTwiml = twilioService.generateTwiML('hangup', {
+        text: 'Sorry, there was an error. Please try again later.'
+      });
+      res.type('text/xml').send(fallbackTwiml);
+    }
+  });
+
   // Main webhook for call handling
   app.post("/api/calls/webhook", async (req, res) => {
     try {
@@ -518,6 +633,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         console.log(`🎤 Generating ElevenLabs intro with campaign voice: ${campaign.voiceId}`);
+        console.log(`📋 Campaign details - Model: ${campaign.elevenlabsModel}, Language: ${campaign.language}`);
+        console.log(`📝 Intro text: "${introText}"`);
+        
         const { ElevenLabsService } = await import('./services/elevenlabsService');
         const fs = await import('fs');
         const path = await import('path');
@@ -544,10 +662,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         fs.writeFileSync(audioFilePath, audioBuffer);
         
+        // Use same URL construction pattern as conversation responses for consistency
         const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
           `https://${process.env.REPLIT_DEV_DOMAIN}` : 
-          `https://${req.get('host')}`;
+          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
         const audioUrl = `${baseUrl}/audio/${audioFileName}`;
+        
+        console.log(`🔗 Created ElevenLabs intro audio URL: ${audioUrl}`);
 
         console.log(`✅ Using ElevenLabs voice: ${campaign.voiceId}, audio URL: ${audioUrl}`);
 
@@ -560,7 +681,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       } catch (elevenlabsError) {
-        console.error('❌ ElevenLabs intro failed, using Twilio TTS:', elevenlabsError);
+        console.error('❌ ElevenLabs intro failed, using Twilio TTS fallback:', elevenlabsError);
+        console.error('❌ ElevenLabs error details:', elevenlabsError instanceof Error ? elevenlabsError.message : String(elevenlabsError));
         
         // Fallback to fast Twilio TTS
         twiml = twilioService.generateTwiML('gather', {
@@ -578,8 +700,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.type('text/xml').send(twiml);
     } catch (error) {
-      console.error('🚨 WEBHOOK ERROR - Full details:', error);
-      console.error('🚨 WEBHOOK ERROR - Stack trace:', error.stack);
+      console.error('🚨 WEBHOOK ERROR - Full details:', error instanceof Error ? error.message : String(error));
+      console.error('🚨 WEBHOOK ERROR - Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
       console.error('🚨 WEBHOOK ERROR - Query params:', req.query);
       res.status(500).send('Internal server error');
     }

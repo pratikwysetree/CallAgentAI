@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+
+// CRITICAL: Ensure webhook routes return TwiML XML, not HTML
 // Removed seedData import - calling functionality deleted
 
 const app = express();
@@ -38,6 +40,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // CRITICAL: Register webhook middleware FIRST to bypass Vite catch-all
+  app.use('/api/calls/webhook', (req, res, next) => {
+    console.log(`🎯 WEBHOOK MIDDLEWARE HIT: ${req.method} ${req.path}`);
+    console.log(`🎯 Full URL: ${req.originalUrl}`);
+    console.log(`🎯 Query: ${JSON.stringify(req.query)}`);
+    // Let the route handlers take over
+    next();
+  });
+
   const server = await registerRoutes(app);
 
   // Database seeding removed - no calling functionality needed
@@ -55,6 +66,7 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
+  // CRITICAL: Webhook routes must work before Vite catch-all
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
