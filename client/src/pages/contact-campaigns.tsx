@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -27,7 +30,12 @@ import {
   RefreshCw,
   PlayCircle,
   Plus,
-  UserPlus
+  UserPlus,
+  Filter,
+  MapPin,
+  Building,
+  ChevronDown,
+  X
 } from 'lucide-react';
 
 interface Contact {
@@ -79,10 +87,88 @@ export default function ContactCampaigns() {
     company: ''
   });
 
+  // Advanced filtering states
+  const [filters, setFilters] = useState({
+    selectedCities: [] as string[],
+    selectedStates: [] as string[],
+    selectedStatuses: [] as string[],
+    searchTerm: '',
+    engagementMin: 0
+  });
+  const [showCityFilter, setShowCityFilter] = useState(false);
+  const [showStateFilter, setShowStateFilter] = useState(false);
+  const [showStatusFilter, setShowStatusFilter] = useState(false);
+
   // Fetch contacts with engagement data
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/contacts/enhanced'],
   });
+
+  // Extract unique cities, states, and statuses for filtering
+  const { uniqueCities, uniqueStates, uniqueStatuses } = useMemo(() => {
+    const cities = new Set<string>();
+    const states = new Set<string>();
+    const statuses = new Set<string>();
+    
+    contacts.forEach((contact: Contact) => {
+      if (contact.city) cities.add(contact.city);
+      if (contact.state) states.add(contact.state);
+      if (contact.status) statuses.add(contact.status);
+    });
+    
+    return {
+      uniqueCities: Array.from(cities).sort(),
+      uniqueStates: Array.from(states).sort(),
+      uniqueStatuses: Array.from(statuses).sort()
+    };
+  }, [contacts]);
+
+  // Filter contacts based on selected criteria
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((contact: Contact) => {
+      // Search term filter
+      if (filters.searchTerm) {
+        const searchLower = filters.searchTerm.toLowerCase();
+        const matchesSearch = 
+          contact.name.toLowerCase().includes(searchLower) ||
+          contact.phone.includes(filters.searchTerm) ||
+          contact.email?.toLowerCase().includes(searchLower) ||
+          contact.city?.toLowerCase().includes(searchLower) ||
+          contact.state?.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // City filter
+      if (filters.selectedCities.length > 0) {
+        if (!contact.city || !filters.selectedCities.includes(contact.city)) {
+          return false;
+        }
+      }
+
+      // State filter
+      if (filters.selectedStates.length > 0) {
+        if (!contact.state || !filters.selectedStates.includes(contact.state)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (filters.selectedStatuses.length > 0) {
+        if (!contact.status || !filters.selectedStatuses.includes(contact.status)) {
+          return false;
+        }
+      }
+
+      // Engagement filter
+      if (filters.engagementMin > 0) {
+        if (contact.totalEngagements < filters.engagementMin) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [contacts, filters]);
 
   // Fetch approved WhatsApp templates
   const { data: templates = [] } = useQuery({
@@ -117,6 +203,49 @@ export default function ContactCampaigns() {
       });
     }
   });
+
+  // Helper functions for filter management
+  const toggleCityFilter = (city: string) => {
+    setFilters(prev => ({
+      ...prev,
+      selectedCities: prev.selectedCities.includes(city)
+        ? prev.selectedCities.filter(c => c !== city)
+        : [...prev.selectedCities, city]
+    }));
+  };
+
+  const toggleStateFilter = (state: string) => {
+    setFilters(prev => ({
+      ...prev,
+      selectedStates: prev.selectedStates.includes(state)
+        ? prev.selectedStates.filter(s => s !== state)
+        : [...prev.selectedStates, state]
+    }));
+  };
+
+  const toggleStatusFilter = (status: string) => {
+    setFilters(prev => ({
+      ...prev,
+      selectedStatuses: prev.selectedStatuses.includes(status)
+        ? prev.selectedStatuses.filter(s => s !== status)
+        : [...prev.selectedStatuses, status]
+    }));
+  };
+
+  const clearAllFilters = () => {
+    setFilters({
+      selectedCities: [],
+      selectedStates: [],
+      selectedStatuses: [],
+      searchTerm: '',
+      engagementMin: 0
+    });
+    setSelectedContacts([]);
+  };
+
+  const selectFilteredContacts = () => {
+    setSelectedContacts(filteredContacts.map((contact: Contact) => contact.id));
+  };
 
   // Start campaign mutation
   const startCampaignMutation = useMutation({
@@ -349,6 +478,230 @@ export default function ContactCampaigns() {
         </TabsList>
 
         <TabsContent value="contacts" className="space-y-6">
+          {/* Advanced Filters Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Advanced Filters & City-wise Selection
+              </CardTitle>
+              <CardDescription>
+                Filter contacts by location, status, and engagement for targeted campaigns
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Search and Basic Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="search">Search Contacts</Label>
+                  <Input
+                    id="search"
+                    placeholder="Search by name, phone, email..."
+                    value={filters.searchTerm}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="engagement">Min Engagements</Label>
+                  <Input
+                    id="engagement"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={filters.engagementMin || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, engagementMin: parseInt(e.target.value) || 0 }))}
+                  />
+                </div>
+
+                <div className="flex items-end gap-2">
+                  <Button 
+                    onClick={selectFilteredContacts}
+                    variant="outline"
+                    disabled={filteredContacts.length === 0}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Select All Filtered ({filteredContacts.length})
+                  </Button>
+                </div>
+
+                <div className="flex items-end gap-2">
+                  <Button 
+                    onClick={clearAllFilters}
+                    variant="outline"
+                    disabled={filters.selectedCities.length === 0 && filters.selectedStates.length === 0 && filters.selectedStatuses.length === 0 && !filters.searchTerm && filters.engagementMin === 0}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+
+              {/* Multi-Select Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* City Filter */}
+                <div>
+                  <Label>Cities ({filters.selectedCities.length} selected)</Label>
+                  <Popover open={showCityFilter} onOpenChange={setShowCityFilter}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        <span className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          {filters.selectedCities.length === 0 ? 'Select Cities' : `${filters.selectedCities.length} cities selected`}
+                        </span>
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0">
+                      <Command>
+                        <CommandInput placeholder="Search cities..." />
+                        <CommandList>
+                          <CommandEmpty>No cities found.</CommandEmpty>
+                          <CommandGroup>
+                            {uniqueCities.map(city => (
+                              <CommandItem key={city} onSelect={() => toggleCityFilter(city)}>
+                                <Checkbox
+                                  checked={filters.selectedCities.includes(city)}
+                                  className="mr-2"
+                                />
+                                {city}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* State Filter */}
+                <div>
+                  <Label>States ({filters.selectedStates.length} selected)</Label>
+                  <Popover open={showStateFilter} onOpenChange={setShowStateFilter}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        <span className="flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          {filters.selectedStates.length === 0 ? 'Select States' : `${filters.selectedStates.length} states selected`}
+                        </span>
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0">
+                      <Command>
+                        <CommandInput placeholder="Search states..." />
+                        <CommandList>
+                          <CommandEmpty>No states found.</CommandEmpty>
+                          <CommandGroup>
+                            {uniqueStates.map(state => (
+                              <CommandItem key={state} onSelect={() => toggleStateFilter(state)}>
+                                <Checkbox
+                                  checked={filters.selectedStates.includes(state)}
+                                  className="mr-2"
+                                />
+                                {state}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Status Filter */}
+                <div>
+                  <Label>Status ({filters.selectedStatuses.length} selected)</Label>
+                  <Popover open={showStatusFilter} onOpenChange={setShowStatusFilter}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        <span className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          {filters.selectedStatuses.length === 0 ? 'Select Status' : `${filters.selectedStatuses.length} statuses selected`}
+                        </span>
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0">
+                      <Command>
+                        <CommandInput placeholder="Search status..." />
+                        <CommandList>
+                          <CommandEmpty>No statuses found.</CommandEmpty>
+                          <CommandGroup>
+                            {uniqueStatuses.map(status => (
+                              <CommandItem key={status} onSelect={() => toggleStatusFilter(status)}>
+                                <Checkbox
+                                  checked={filters.selectedStatuses.includes(status)}
+                                  className="mr-2"
+                                />
+                                <Badge className={getStatusColor(status)}>{status}</Badge>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Filter Summary */}
+              {(filters.selectedCities.length > 0 || filters.selectedStates.length > 0 || filters.selectedStatuses.length > 0) && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                  <span className="text-sm font-medium">Active Filters:</span>
+                  {filters.selectedCities.map(city => (
+                    <Badge key={city} variant="secondary" className="cursor-pointer" onClick={() => toggleCityFilter(city)}>
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {city}
+                      <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  ))}
+                  {filters.selectedStates.map(state => (
+                    <Badge key={state} variant="secondary" className="cursor-pointer" onClick={() => toggleStateFilter(state)}>
+                      <Building className="h-3 w-3 mr-1" />
+                      {state}
+                      <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  ))}
+                  {filters.selectedStatuses.map(status => (
+                    <Badge key={status} variant="secondary" className="cursor-pointer" onClick={() => toggleStatusFilter(status)}>
+                      {status}
+                      <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Results Summary */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">
+                      Showing {filteredContacts.length} of {contacts.length} contacts
+                    </p>
+                    {selectedContacts.length > 0 && (
+                      <p className="text-sm text-blue-600">
+                        {selectedContacts.length} contacts selected for campaign
+                      </p>
+                    )}
+                  </div>
+                  {filteredContacts.length > 0 && (
+                    <Button 
+                      onClick={() => {
+                        setSelectedContacts(filteredContacts.map((contact: Contact) => contact.id));
+                        // Auto-switch to campaign tab after selection
+                        document.querySelector('[value="campaigns"]')?.click();
+                      }}
+                      size="sm"
+                    >
+                      Start Campaign with Filtered Contacts
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -502,15 +855,55 @@ export default function ContactCampaigns() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Contact Database ({(contacts as any[])?.length || 0} contacts)</CardTitle>
-              <CardDescription>
-                Select contacts for campaigns. Click checkboxes to select multiple contacts.
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Contact Database ({filteredContacts.length} of {(contacts as any[])?.length || 0} contacts)</CardTitle>
+                  <CardDescription>
+                    Select contacts for campaigns. Use filters above to target specific locations or criteria.
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedContacts([])}
+                    disabled={selectedContacts.length === 0}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Clear Selection ({selectedContacts.length})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedContacts(filteredContacts.map((contact: Contact) => contact.id))}
+                    disabled={filteredContacts.length === 0}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Select All Filtered
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {contactsLoading ? (
                 <div className="flex justify-center py-8">
                   <RefreshCw className="h-6 w-6 animate-spin" />
+                </div>
+              ) : filteredContacts.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found</h3>
+                  <p className="text-gray-500 mb-4">
+                    {(contacts as any[])?.length === 0 
+                      ? "No contacts in database. Upload a CSV file or add contacts manually."
+                      : "No contacts match your current filters. Try adjusting the filter criteria above."
+                    }
+                  </p>
+                  {(contacts as any[])?.length > 0 && (
+                    <Button onClick={clearAllFilters} variant="outline">
+                      Clear All Filters
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <Table>
@@ -522,12 +915,13 @@ export default function ContactCampaigns() {
                       <TableHead>Email</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Engagements</TableHead>
                       <TableHead>Last Contacted</TableHead>
                       <TableHead>Next Follow-up</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(contacts as any[])?.map((contact: any) => (
+                    {filteredContacts.map((contact: any) => (
                       <TableRow key={contact.id}>
                         <TableCell>
                           <input
@@ -549,6 +943,11 @@ export default function ContactCampaigns() {
                         <TableCell>
                           <Badge className={getStatusColor(contact.status || 'PENDING')}>
                             {contact.status || 'PENDING'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {contact.totalEngagements || 0}
                           </Badge>
                         </TableCell>
                         <TableCell>
