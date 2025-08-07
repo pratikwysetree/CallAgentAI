@@ -1,9 +1,9 @@
 import { OpenAIService } from './openaiService';
 import { ElevenLabsService } from './elevenlabsService';
 import { twilioService } from './twilioService';
-import { googleSpeechService } from './googleSpeechService';
+import { openaiSpeechService } from './googleSpeechService';
 import { storage } from '../storage';
-import fetch from 'node-fetch';
+// Using built-in fetch available in Node.js 18+
 
 interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -211,18 +211,9 @@ export class CallManager {
     try {
       console.log(`🎙️ Processing recording for call ${callId}: ${recordingUrl}`);
       
-      // Download the recording
-      const response = await fetch(recordingUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to download recording: ${response.statusText}`);
-      }
-      
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
-      console.log(`📁 Downloaded recording, size: ${audioBuffer.length} bytes`);
-      
-      // Transcribe using Google Speech
-      const speechText = await googleSpeechService.transcribeAudioBuffer(audioBuffer);
-      console.log(`🎤 Google Speech transcription: "${speechText}"`);
+      // Transcribe using OpenAI Whisper directly from URL
+      const speechText = await openaiSpeechService.transcribeFromUrl(recordingUrl);
+      console.log(`🎤 OpenAI Whisper transcription: "${speechText}"`);
       
       // Process the transcribed text with AI
       return await this.processSpeechInput(callId, speechText);

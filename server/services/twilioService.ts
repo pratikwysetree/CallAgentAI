@@ -83,7 +83,7 @@ export class TwilioService {
       case 'gather':
         // Use simple pause and record instead of Twilio speech recognition
         const gather = twiml.gather({
-          input: 'dtmf', // Just for key presses, not speech
+          input: ['dtmf'], // Just for key presses, not speech
           timeout: 1, // Short timeout to proceed to recording quickly
           numDigits: 1,
           action: options.action || '/api/calls/process-speech',
