@@ -669,6 +669,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📋 Template:', whatsappTemplate);
       
       const campaignId = `campaign_${Date.now()}`;
+      
+      // Create campaign record in database first
+      await storage.createCampaign({
+        id: campaignId,
+        name: `Campaign ${new Date().toISOString().split('T')[0]}`,
+        script: `Multi-channel campaign for ${contactIds.length} contacts`,
+        status: 'active',
+        targetAudience: 'pathology_labs',
+        createdAt: new Date()
+      });
+      
+      console.log(`✅ Created campaign record: ${campaignId}`);
+      
       let processedCount = 0;
       const results = [];
 

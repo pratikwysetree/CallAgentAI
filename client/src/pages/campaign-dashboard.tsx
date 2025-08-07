@@ -32,27 +32,27 @@ export default function CampaignDashboard() {
   // Get campaigns data with query - only real data
   const { data: campaigns, isLoading, error } = useQuery({
     queryKey: ['/api/campaigns/dashboard', selectedDate.toISOString()],
-    select: (data) => data || []
+    select: (data: any) => data || []
   });
 
   // Get follow-ups data
   const { data: followUps } = useQuery({
     queryKey: ['/api/campaigns/followups'],
-    select: (data) => data || []
+    select: (data: any) => data || []
   });
 
   // Filter campaigns based on actual data only
-  const todaysCampaigns = campaigns?.filter(campaign => 
-    campaign.contacts.some(contact => 
+  const todaysCampaigns = (campaigns || []).filter((campaign: any) => 
+    campaign.contacts && campaign.contacts.some((contact: any) => 
       contact.messageTime && isToday(new Date(contact.messageTime))
     )
-  ) || [];
+  );
 
-  const todaysContacts = campaigns?.flatMap(campaign => 
-    campaign.contacts.filter(contact => 
+  const todaysContacts = (campaigns || []).flatMap((campaign: any) => 
+    campaign.contacts ? campaign.contacts.filter((contact: any) => 
       contact.messageTime && isToday(new Date(contact.messageTime))
-    )
-  ) || [];
+    ) : []
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -184,7 +184,7 @@ export default function CampaignDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">
               {todaysContacts.length > 0 
-                ? Math.round((todaysContacts.filter(c => c.engagementScore > 70).length / todaysContacts.length) * 100)
+                ? Math.round((todaysContacts.filter((c: any) => c.engagementScore > 70).length / todaysContacts.length) * 100)
                 : 0}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -236,7 +236,7 @@ export default function CampaignDashboard() {
                 </TableHeader>
                 <TableBody>
                   {todaysContacts.length > 0 ? (
-                    todaysContacts.map((contact) => (
+                    todaysContacts.map((contact: any) => (
                       <TableRow key={contact.id}>
                         <TableCell>
                           <div>
@@ -321,7 +321,7 @@ export default function CampaignDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {todaysCampaigns.length > 0 ? (
-                  todaysCampaigns.map((campaign) => (
+                  todaysCampaigns.map((campaign: any) => (
                     <div key={campaign.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -367,8 +367,8 @@ export default function CampaignDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {followUps && followUps.length > 0 ? (
-                    followUps.map((contact) => (
+                  {Array.isArray(followUps) && followUps.length > 0 ? (
+                    followUps.map((contact: any) => (
                       <TableRow key={contact.id}>
                         <TableCell>
                           <div>
