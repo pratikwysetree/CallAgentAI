@@ -560,7 +560,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔊 Using ElevenLabs audio file: ${audioUrl}`);
         
         // Generate TwiML to play ElevenLabs audio instead of using Twilio TTS
-        const VoiceResponse = twilio.twiml.VoiceResponse;
+        const twilio = await import('twilio');
+        const VoiceResponse = twilio.default.twiml.VoiceResponse;
         const response = new VoiceResponse();
         
         // Add typing pause
