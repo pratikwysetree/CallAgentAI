@@ -682,7 +682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         voiceId: '21m00Tcm4TlvDq8ikWAM'
       };
 
-      if (campaignTemplateId) {
+      if (campaignTemplateId && campaignTemplateId !== 'default') {
         console.log(`📋 Using campaign template: ${campaignTemplateId}`);
         try {
           const template = await storage.getCampaign(campaignTemplateId);

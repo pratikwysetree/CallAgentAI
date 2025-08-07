@@ -1131,7 +1131,7 @@ export default function ContactCampaigns() {
                         <SelectValue placeholder="Select campaign template (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Use Default Template</SelectItem>
+                        <SelectItem value="default">Use Default Template</SelectItem>
                         {campaigns.map((campaign: any) => (
                           <SelectItem key={campaign.id} value={campaign.id}>
                             <div className="flex flex-col">
@@ -1313,8 +1313,11 @@ export default function ContactCampaigns() {
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   <li>• Selected contacts: {selectedContacts.length}</li>
                   <li>• Channel: {campaignConfig.channel}</li>
-                  {campaignConfig.campaignTemplate && (
+                  {campaignConfig.campaignTemplate && campaignConfig.campaignTemplate !== 'default' && (
                     <li>• Campaign template: {campaigns.find((c: any) => c.id === campaignConfig.campaignTemplate)?.name || 'Selected template'}</li>
+                  )}
+                  {campaignConfig.campaignTemplate === 'default' && (
+                    <li>• Campaign template: Default Template</li>
                   )}
                   {campaignConfig.whatsappTemplate && (
                     <li>• WhatsApp template: {campaignConfig.whatsappTemplate}</li>
