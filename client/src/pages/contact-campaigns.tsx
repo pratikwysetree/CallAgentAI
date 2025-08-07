@@ -712,56 +712,88 @@ export default function ContactCampaigns() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <MessageCircle className="h-4 w-4 text-green-600" />
-                        <Label className="text-sm font-medium text-green-800">Quick WhatsApp Template Selection</Label>
+                        <Label className="text-sm font-medium text-green-800">WhatsApp Campaign Setup</Label>
+                        <Badge variant="outline" className="text-xs bg-green-100 text-green-700">
+                          {approvedTemplates.length} Preapproved Templates
+                        </Badge>
                       </div>
                       <p className="text-xs text-green-600 mb-3">
-                        Select a WhatsApp template to use for your filtered contacts. This will be automatically set when you start a campaign.
+                        Select from your preapproved WhatsApp templates. These templates have been verified by Meta Business API and are ready for campaigns.
                       </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-3">
                         <div>
+                          <Label className="text-sm font-medium flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            Select Preapproved WhatsApp Template
+                          </Label>
                           <Select 
                             value={campaignConfig.whatsappTemplate} 
                             onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, whatsappTemplate: value }))}
                           >
-                            <SelectTrigger className="bg-white">
-                              <SelectValue placeholder="Select WhatsApp template..." />
+                            <SelectTrigger className="bg-white border-green-200">
+                              <SelectValue placeholder="Choose from Meta-approved templates..." />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-60">
                               {approvedTemplates.length === 0 ? (
                                 <SelectItem value="no-templates" disabled>
-                                  No approved templates available
+                                  <div className="flex items-center gap-2">
+                                    <XCircle className="h-4 w-4 text-red-500" />
+                                    No approved templates available - Click "Sync Templates" button above
+                                  </div>
                                 </SelectItem>
                               ) : (
                                 approvedTemplates.map((template: any) => (
                                   <SelectItem key={template.id} value={template.name}>
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="text-xs">
-                                        {template.category}
-                                      </Badge>
-                                      <span>{template.name}</span>
+                                    <div className="flex flex-col gap-1 py-1">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                                          {template.category}
+                                        </Badge>
+                                        <span className="font-medium">{template.name}</span>
+                                        <Badge className="text-xs bg-green-100 text-green-700">
+                                          APPROVED
+                                        </Badge>
+                                      </div>
+                                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                                        {template.language && (
+                                          <span>🌐 {template.language}</span>
+                                        )}
+                                        {template.status && (
+                                          <span>📝 Status: {template.status}</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </SelectItem>
                                 ))
                               )}
                             </SelectContent>
                           </Select>
+                          {approvedTemplates.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Showing {approvedTemplates.length} preapproved template(s) ready for immediate use
+                            </p>
+                          )}
                         </div>
-                        <div>
-                          <Select 
-                            value={campaignConfig.channel} 
-                            onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, channel: value }))}
-                          >
-                            <SelectTrigger className="bg-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="WHATSAPP">WhatsApp Only</SelectItem>
-                              <SelectItem value="CALL">AI Call Only</SelectItem>
-                              <SelectItem value="BOTH">Call + WhatsApp Follow-up</SelectItem>
-                              <SelectItem value="EMAIL">Email Only</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        
+                        {campaignConfig.whatsappTemplate && (
+                          <div>
+                            <Label className="text-sm font-medium">Campaign Channel</Label>
+                            <Select 
+                              value={campaignConfig.channel} 
+                              onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, channel: value }))}
+                            >
+                              <SelectTrigger className="bg-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="WHATSAPP">WhatsApp Only</SelectItem>
+                                <SelectItem value="CALL">AI Call Only</SelectItem>
+                                <SelectItem value="BOTH">Call + WhatsApp Follow-up</SelectItem>
+                                <SelectItem value="EMAIL">Email Only</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
                       {campaignConfig.whatsappTemplate && (
                         <div className="mt-3 p-2 bg-white rounded border">
