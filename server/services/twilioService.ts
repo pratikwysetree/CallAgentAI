@@ -41,8 +41,10 @@ export class TwilioService {
         statusCallback: `${webhookUrl}/status?callId=${callId}`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
         statusCallbackMethod: 'POST',
-        record: true, // Record the call
+        record: true, // Record for Google Speech processing
         recordingStatusCallback: `${webhookUrl}/recording?callId=${callId}`,
+        recordingChannels: 'dual', // Separate channels for better processing
+        recordingStatusCallbackEvent: ['completed']
       });
 
       return {
@@ -79,16 +81,13 @@ export class TwilioService {
         break;
         
       case 'gather':
+        // Use simple pause and record instead of Twilio speech recognition
         const gather = twiml.gather({
-          input: 'speech',
-          timeout: 15, // Increased timeout for better response collection
-          speechTimeout: 'auto',
-          speechModel: 'experimental_conversations',
-          enhanced: true,
-          language: 'en-IN',
+          input: 'dtmf', // Just for key presses, not speech
+          timeout: 1, // Short timeout to proceed to recording quickly
+          numDigits: 1,
           action: options.action || '/api/calls/process-speech',
-          method: 'POST',
-          finishOnKey: '#' // Allow user to finish input with #
+          method: 'POST'
         });
         
         if (options.text) {
@@ -102,6 +101,17 @@ export class TwilioService {
             language: 'en-IN'
           }, options.text);
         }
+        
+        // After speaking, record user response for Google Speech processing
+        twiml.record({
+          maxLength: 30, // Max 30 seconds per response
+          timeout: 3, // Stop recording after 3 seconds of silence
+          transcribe: false, // We'll use Google Speech instead
+          action: options.recordAction || '/api/calls/process-recording',
+          method: 'POST',
+          recordingStatusCallback: options.recordingCallback || '/api/calls/recording-complete',
+          recordingStatusCallbackMethod: 'POST'
+        });
         break;
         
       case 'hangup':

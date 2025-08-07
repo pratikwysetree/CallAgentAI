@@ -1,7 +1,9 @@
 import { OpenAIService } from './openaiService';
 import { ElevenLabsService } from './elevenlabsService';
 import { twilioService } from './twilioService';
+import { googleSpeechService } from './googleSpeechService';
 import { storage } from '../storage';
+import fetch from 'node-fetch';
 
 interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -179,6 +181,7 @@ export class CallManager {
         twiml = twilioService.generateTwiML('gather', {
           text: aiResponse,
           action: `/api/calls/${callId}/process-speech`,
+          recordAction: `/api/calls/${callId}/process-recording`,
           voice: campaign.voiceId, // Use campaign voice
           addTypingSound: true // Enable background typing sounds
         });
@@ -197,6 +200,35 @@ export class CallManager {
         }),
         success: false
       };
+    }
+  }
+
+  // Process recording using Google Speech-to-Text
+  async processRecording(
+    callId: string,
+    recordingUrl: string
+  ): Promise<{ twiml: string; success: boolean }> {
+    try {
+      console.log(`🎙️ Processing recording for call ${callId}: ${recordingUrl}`);
+      
+      // Download the recording
+      const response = await fetch(recordingUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download recording: ${response.statusText}`);
+      }
+      
+      const audioBuffer = Buffer.from(await response.arrayBuffer());
+      console.log(`📁 Downloaded recording, size: ${audioBuffer.length} bytes`);
+      
+      // Transcribe using Google Speech
+      const speechText = await googleSpeechService.transcribeAudioBuffer(audioBuffer);
+      console.log(`🎤 Google Speech transcription: "${speechText}"`);
+      
+      // Process the transcribed text with AI
+      return await this.processSpeechInput(callId, speechText);
+    } catch (error) {
+      console.error('❌ Error processing recording:', error);
+      return await this.processSpeechInput(callId, "I didn't catch that, could you repeat?");
     }
   }
 
