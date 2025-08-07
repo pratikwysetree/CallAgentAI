@@ -140,17 +140,28 @@ export class WhatsAppService {
     return await response.json();
   }
 
+  // Clean phone number for WhatsApp (remove + and any non-digits)
+  private cleanPhoneNumber(phone: string): string {
+    // Remove + sign and any non-digit characters
+    const cleaned = phone.replace(/\+/g, '').replace(/\D/g, '');
+    console.log(`📱 Phone number cleaned: ${phone} → ${cleaned}`);
+    return cleaned;
+  }
+
   // Send a text message
   async sendTextMessage(to: string, message: string): Promise<any> {
+    const cleanedPhoneNumber = this.cleanPhoneNumber(to);
+    
     const whatsappMessage: WhatsAppMessage = {
       messaging_product: 'whatsapp',
-      to: to.replace(/\D/g, ''), // Remove non-digits
+      to: cleanedPhoneNumber,
       type: 'text',
       text: {
         body: message
       }
     };
 
+    console.log(`📱 Sending WhatsApp message to ${cleanedPhoneNumber}: ${message.substring(0, 50)}...`);
     return await this.sendMessage(whatsappMessage);
   }
 

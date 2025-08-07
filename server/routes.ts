@@ -798,8 +798,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Try to send via WhatsApp API
               try {
                 const { whatsappService } = await import('./services/whatsappService');
+                
+                // Clean phone number before sending (remove + sign and non-digits)
+                const cleanedPhoneNumber = contact.phone.replace(/\+/g, '').replace(/\D/g, '');
+                console.log(`📱 Sending WhatsApp to ${contact.phone} (cleaned: ${cleanedPhoneNumber})`);
+                
                 const whatsappResponse = await whatsappService.sendTextMessage(
-                  contact.phone,
+                  contact.phone, // Let the service handle cleaning
                   messageContent.trim()
                 );
 
@@ -808,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   status: 'sent'
                 });
 
-                console.log(`✅ WhatsApp sent to ${contact.phone}: ${whatsappResponse.messages?.[0]?.id}`);
+                console.log(`✅ WhatsApp sent to ${contact.phone} (${cleanedPhoneNumber}): ${whatsappResponse.messages?.[0]?.id}`);
                 results.push({ contactId, status: 'whatsapp_sent', messageId: message.id });
 
               } catch (whatsappError) {
