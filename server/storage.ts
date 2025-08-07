@@ -12,7 +12,7 @@ import {
   type DashboardStats, type CallWithDetails
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, avg, sum } from "drizzle-orm";
+import { eq, desc, and, count, avg, sum, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -127,7 +127,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContacts(limit = 10000): Promise<Contact[]> {
-    return await db.select().from(contacts).orderBy(desc(contacts.createdAt)).limit(limit);
+    // Get unique contacts by phone number, keeping the most recent entry
+    const uniqueContacts = await db.execute(sql`
+      SELECT DISTINCT ON (phone) 
+        id, name, phone, phone_number, email, city, state, whatsapp_number, 
+        company, notes, imported_from, created_at, updated_at
+      FROM contacts 
+      WHERE phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'
+      ORDER BY phone, created_at DESC
+      LIMIT ${limit}
+    `);
+    
+    return uniqueContacts.rows.map(row => ({
+      id: row.id as string,
+      name: row.name as string,
+      phone: row.phone as string,
+      phoneNumber: row.phone_number as string | null,
+      email: row.email as string | null,
+      city: row.city as string | null,
+      state: row.state as string | null,
+      whatsappNumber: row.whatsapp_number as string | null,
+      company: row.company as string | null,
+      notes: row.notes as string | null,
+      importedFrom: row.imported_from as string | null,
+      createdAt: row.created_at as Date,
+      updatedAt: row.updated_at as Date,
+      status: 'PENDING',
+      lastContactedAt: null,
+      nextFollowUpAt: null,
+      engagementScore: 0,
+      whatsappOptOut: false
+    }));
   }
 
   // Campaigns
