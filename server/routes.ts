@@ -371,9 +371,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create a temporary contact for this call
-      const contactId = `temp_${Date.now()}`;
+      const tempContact = await storage.createContact({
+        name: `Direct Call ${phoneNumber}`,
+        phoneNumber: phoneNumber,
+        source: 'direct_call'
+      });
       
-      const result = await callManager.startCall(contactId, campaignId, phoneNumber);
+      const result = await callManager.startCall(tempContact.id, campaignId, phoneNumber);
       
       if (result.success) {
         console.log(`🎹 AI call initiated with background typing sounds to ${phoneNumber}`);
