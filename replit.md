@@ -21,7 +21,7 @@ PostgreSQL, hosted on Neon for serverless capabilities, is the chosen database. 
 The platform integrates Twilio for call management, OpenAI GPT models for conversational AI, and ElevenLabs for high-quality text-to-speech. It orchestrates the complete call flow, from initiation to completion, with conversation tracking, real-time monitoring, and authenticated recording downloads. The system only supports actual Twilio recordings with proper API authentication - no demo or sample recordings are generated.
 
 ### WhatsApp Integration
-Meta Business API is integrated for WhatsApp messaging, managing bulk campaigns, template-based messaging with dynamic variables, and contact engagement tracking. The system supports sending messages and tracking delivery and read statuses.
+Meta Business API is integrated for WhatsApp messaging, managing bulk campaigns, template-based messaging with dynamic variables, and contact engagement tracking. The system supports sending messages and tracking delivery and read statuses. Phone number cleaning automatically removes "+" signs and non-digit characters to ensure API compatibility.
 
 ### Authentication & Security
 Session management is handled by Express sessions with PostgreSQL storage. Environment variables manage credentials, Zod schemas enforce input validation, and comprehensive error handling and logging are in place.
