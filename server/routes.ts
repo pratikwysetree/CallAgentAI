@@ -393,7 +393,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Update existing template with real content
             await storage.updateWhatsAppTemplate(existing.id, {
               content: metaTemplate.content,
-              status: metaTemplate.status,
               components: metaTemplate.components,
               variables: metaTemplate.variables
             });
@@ -403,9 +402,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.createWhatsAppTemplate({
               name: metaTemplate.name,
               content: metaTemplate.content,
-              status: metaTemplate.status,
-              category: metaTemplate.category,
-              language: metaTemplate.language,
               components: metaTemplate.components,
               variables: metaTemplate.variables
             });
@@ -826,8 +822,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       endOfDay.setHours(23, 59, 59, 999);
 
       // Get WhatsApp messages from the selected date using storage method
-      const messages = await storage.getRecentWhatsAppMessages(100);
-      const todaysMessages = messages.filter(msg => {
+      const messages = await storage.getWhatsAppMessages(undefined, 100);
+      const todaysMessages = messages.filter((msg: any) => {
         if (!msg.createdAt) return false;
         const msgDate = new Date(msg.createdAt);
         return msgDate >= startOfDay && msgDate <= endOfDay;
@@ -888,8 +884,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Real data only - Follow-ups API
   app.get("/api/campaigns/followups", async (req, res) => {
     try {
-      const recentMessages = await storage.getRecentWhatsAppMessages(20);
-      const followUps = recentMessages.map(message => ({
+      const recentMessages = await storage.getWhatsAppMessages(undefined, 20);
+      const followUps = recentMessages.map((message: any) => ({
         id: `followup_${message.id}`,
         contactId: message.contactId,
         contactName: message.contactId.split("-")[0] || "Unknown",
@@ -1028,6 +1024,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching call messages:', error);
       res.status(500).json({ error: "Failed to fetch call messages" });
+    }
+  });
+
+  // Get live call transcriptions
+  app.get("/api/calls/:id/transcriptions", async (req, res) => {
+    try {
+      const transcriptions = await storage.getCallTranscriptions(req.params.id);
+      res.json(transcriptions);
+    } catch (error) {
+      console.error('Error fetching call transcriptions:', error);
+      res.status(500).json({ error: "Failed to fetch transcriptions" });
+    }
+  });
+
+  // Create call transcription
+  app.post("/api/calls/:id/transcriptions", async (req, res) => {
+    try {
+      const { speaker, transcript, confidence, duration, audioSegmentUrl } = req.body;
+      
+      const transcription = await storage.createCallTranscription({
+        callId: req.params.id,
+        speaker,
+        transcript,
+        confidence,
+        duration,
+        audioSegmentUrl
+      });
+      
+      res.json(transcription);
+    } catch (error) {
+      console.error('Error creating call transcription:', error);
+      res.status(500).json({ error: "Failed to create transcription" });
+    }
+  });
+
+  // Get call recording download URL
+  app.get("/api/calls/:id/recording", async (req, res) => {
+    try {
+      const recording = await storage.getCallRecording(req.params.id);
+      if (!recording) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+      res.json(recording);
+    } catch (error) {
+      console.error('Error fetching call recording:', error);
+      res.status(500).json({ error: "Failed to fetch recording" });
+    }
+  });
+
+  // Create call recording entry
+  app.post("/api/calls/:id/recording", async (req, res) => {
+    try {
+      const { recordingUrl, duration, fileSize } = req.body;
+      
+      const recording = await storage.createCallRecording({
+        callId: req.params.id,
+        recordingUrl,
+        duration,
+        fileSize,
+        conversionStatus: 'pending'
+      });
+      
+      res.json(recording);
+    } catch (error) {
+      console.error('Error creating call recording:', error);
+      res.status(500).json({ error: "Failed to create recording" });
     }
   });
 

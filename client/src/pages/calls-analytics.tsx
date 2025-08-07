@@ -1,8 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, TrendingUp, Clock, Target, Download, Filter } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Phone, TrendingUp, Clock, Target, Download, Filter, MessageSquare, Play } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { CallTranscription } from "@/components/CallTranscription";
+import type { Call, CallRecording } from "@shared/schema";
 
 export default function CallsAnalyticsPage() {
   // Fetch calls data
@@ -46,6 +49,34 @@ export default function CallsAnalyticsPage() {
       .filter((call: any) => call.duration)
       .reduce((sum: number, call: any) => sum + call.duration, 0);
     return Math.round(totalDuration / calls.length);
+  };
+
+  const handleDownloadRecording = async (callId: string) => {
+    try {
+      const response = await fetch(`/api/calls/${callId}/recording`);
+      if (!response.ok) {
+        alert('Recording not available for this call');
+        return;
+      }
+      
+      const recording: CallRecording = await response.json();
+      const url = recording.mp4Url || recording.recordingUrl;
+      
+      if (!url) {
+        alert('Recording file not found');
+        return;
+      }
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `call-recording-${callId}.${recording.mp4Url ? 'mp4' : 'wav'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading recording:', error);
+      alert('Failed to download recording');
+    }
   };
 
   if (isLoading) {
@@ -174,31 +205,46 @@ export default function CallsAnalyticsPage() {
                       <div>
                         <p className="font-medium">{call.phoneNumber}</p>
                         <p className="text-sm text-gray-500">
-                          {call.contact?.name || 'Unknown Contact'}
+                          {new Date(call.startTime || call.createdAt).toLocaleDateString()} at{' '}
+                          {new Date(call.startTime || call.createdAt).toLocaleTimeString()}
                         </p>
                       </div>
-                    </div>
-
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {call.campaign?.name || 'Unknown Campaign'}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(call.startTime).toLocaleDateString()}
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {call.duration ? formatDuration(call.duration) : 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-500">Duration</p>
-                      </div>
-
                       <Badge variant={getStatusColor(call.status)}>
                         {call.status}
                       </Badge>
+                      {call.duration && (
+                        <span className="text-sm text-gray-500">
+                          {formatDuration(call.duration)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {/* View Transcription Button */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Transcript
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh]">
+                          <DialogHeader>
+                            <DialogTitle>Call Transcription - {call.phoneNumber}</DialogTitle>
+                          </DialogHeader>
+                          <CallTranscription callId={call.id} isActive={false} />
+                        </DialogContent>
+                      </Dialog>
+                      
+                      {/* Download Recording Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadRecording(call.id)}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Recording
+                      </Button>
                     </div>
                   </div>
                 ))}

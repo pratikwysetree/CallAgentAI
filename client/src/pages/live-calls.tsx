@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, PhoneCall, Clock, User, MessageSquare } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Phone, PhoneCall, Clock, User, MessageSquare, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { CallTranscription } from "@/components/CallTranscription";
 import type { Call, Contact, Campaign, CallMessage } from "@shared/schema";
 
 interface ConversationTurn {
@@ -173,16 +175,22 @@ export default function LiveCallsPage() {
                         <User className="h-4 w-4" />
                         <span>Contact: {call.contactId}</span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // View call details - could navigate to detailed view
-                          console.log('View call details:', call.id);
-                        }}
-                      >
-                        View Details
-                      </Button>
+                      
+                      {/* Live Transcription Button */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            View Transcription
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh]">
+                          <DialogHeader>
+                            <DialogTitle>Live Call Transcription - {call.phoneNumber}</DialogTitle>
+                          </DialogHeader>
+                          <CallTranscription callId={call.id} isActive={call.status === 'active'} />
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
                 ))}

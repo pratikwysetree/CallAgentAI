@@ -1,11 +1,13 @@
 import { 
-  users, contacts, campaigns, calls, callMessages, whatsappTemplates, bulkMessageJobs,
+  users, contacts, campaigns, calls, callMessages, callTranscriptions, callRecordings, whatsappTemplates, bulkMessageJobs,
   contactEngagement, campaignMetrics, whatsappMessages,
   type User, type InsertUser, 
   type Contact, type InsertContact,
   type Campaign, type InsertCampaign,
   type Call, type InsertCall,
   type CallMessage, type InsertCallMessage,
+  type CallTranscription, type InsertCallTranscription,
+  type CallRecording, type InsertCallRecording,
   type WhatsAppTemplate, type InsertWhatsAppTemplate,
   type BulkMessageJob, type InsertBulkMessageJob,
   type ContactEngagement, type CampaignMetrics,
@@ -50,6 +52,15 @@ export interface IStorage {
   createCallMessage(message: InsertCallMessage): Promise<CallMessage>;
   getCallMessages(callId: string): Promise<CallMessage[]>;
   deleteCallMessage(id: string): Promise<boolean>;
+
+  // Call Transcriptions
+  createCallTranscription(transcription: InsertCallTranscription): Promise<CallTranscription>;
+  getCallTranscriptions(callId: string): Promise<CallTranscription[]>;
+
+  // Call Recordings
+  createCallRecording(recording: InsertCallRecording): Promise<CallRecording>;
+  getCallRecording(callId: string): Promise<CallRecording | null>;
+  updateCallRecording(recordingId: string, updates: Partial<InsertCallRecording>): Promise<CallRecording>;
 
   // Dashboard Stats
   getDashboardStats(): Promise<DashboardStats>;
@@ -390,6 +401,41 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
+  // Call Transcriptions for real-time live transcription display
+  async createCallTranscription(transcription: InsertCallTranscription): Promise<CallTranscription> {
+    const [result] = await db.insert(callTranscriptions).values(transcription).returning();
+    return result;
+  }
+
+  async getCallTranscriptions(callId: string): Promise<CallTranscription[]> {
+    return await db.select()
+      .from(callTranscriptions)
+      .where(eq(callTranscriptions.callId, callId))
+      .orderBy(callTranscriptions.timestamp);
+  }
+
+  // Call Recordings for MP4 download functionality
+  async createCallRecording(recording: InsertCallRecording): Promise<CallRecording> {
+    const [result] = await db.insert(callRecordings).values(recording).returning();
+    return result;
+  }
+
+  async getCallRecording(callId: string): Promise<CallRecording | null> {
+    const [result] = await db.select()
+      .from(callRecordings)
+      .where(eq(callRecordings.callId, callId))
+      .limit(1);
+    return result || null;
+  }
+
+  async updateCallRecording(recordingId: string, updates: Partial<InsertCallRecording>): Promise<CallRecording> {
+    const [result] = await db.update(callRecordings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(callRecordings.id, recordingId))
+      .returning();
+    return result;
+  }
+
   // Dashboard Stats
   async getDashboardStats(): Promise<DashboardStats> {
     const [contactCount] = await db.select({ count: count() }).from(contacts);
@@ -452,10 +498,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(whatsappMessages).where(eq(whatsappMessages.whatsappMessageId, whatsappMessageId));
   }
 
-  async getContactByPhone(phone: string): Promise<Contact | undefined> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.phone, phone));
-    return contact || undefined;
-  }
+
 
 
 

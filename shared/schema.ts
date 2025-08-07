@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, jsonb, serial, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, jsonb, serial, date, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -73,7 +73,30 @@ export const callMessages = pgTable("call_messages", {
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
-// Removed audio recordings table - using direct speech processing only
+// Call transcriptions for real-time live transcription display
+export const callTranscriptions = pgTable("call_transcriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callId: varchar("call_id").references(() => calls.id).notNull(),
+  speaker: text("speaker").notNull(), // 'customer', 'ai_agent'
+  transcript: text("transcript").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  confidence: real("confidence"), // Speech recognition confidence score
+  duration: integer("duration"), // Duration of this speech segment in seconds
+  audioSegmentUrl: text("audio_segment_url"), // URL to audio segment
+});
+
+// Call recordings for MP4 download functionality
+export const callRecordings = pgTable("call_recordings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callId: varchar("call_id").references(() => calls.id).notNull(),
+  recordingUrl: text("recording_url").notNull(), // Original Twilio recording URL
+  mp4Url: text("mp4_url"), // Converted MP4 download URL
+  duration: integer("duration"), // Total recording duration in seconds
+  fileSize: integer("file_size"), // File size in bytes
+  conversionStatus: text("conversion_status").default("pending").notNull(), // 'pending', 'processing', 'completed', 'failed'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const whatsappTemplates = pgTable("whatsapp_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -196,12 +219,27 @@ export const callsRelations = relations(calls, ({ one, many }) => ({
     references: [campaigns.id],
   }),
   messages: many(callMessages),
-  // audioRecordings removed - using direct speech processing only
+  transcriptions: many(callTranscriptions),
+  recordings: many(callRecordings),
 }));
 
 export const callMessagesRelations = relations(callMessages, ({ one }) => ({
   call: one(calls, {
     fields: [callMessages.callId],
+    references: [calls.id],
+  }),
+}));
+
+export const callTranscriptionsRelations = relations(callTranscriptions, ({ one }) => ({
+  call: one(calls, {
+    fields: [callTranscriptions.callId],
+    references: [calls.id],
+  }),
+}));
+
+export const callRecordingsRelations = relations(callRecordings, ({ one }) => ({
+  call: one(calls, {
+    fields: [callRecordings.callId],
     references: [calls.id],
   }),
 }));
@@ -242,7 +280,11 @@ export type InsertCall = typeof calls.$inferInsert;
 export type CallMessage = typeof callMessages.$inferSelect;
 export type InsertCallMessage = typeof callMessages.$inferInsert;
 
-// Removed audio recording types - using direct speech processing only
+export type CallTranscription = typeof callTranscriptions.$inferSelect;
+export type InsertCallTranscription = typeof callTranscriptions.$inferInsert;
+
+export type CallRecording = typeof callRecordings.$inferSelect;
+export type InsertCallRecording = typeof callRecordings.$inferInsert;
 
 export type WhatsAppTemplate = typeof whatsappTemplates.$inferSelect;
 export type InsertWhatsAppTemplate = typeof whatsappTemplates.$inferInsert;
