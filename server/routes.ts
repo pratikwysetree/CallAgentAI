@@ -1192,17 +1192,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Recording not found" });
       }
 
-      // For demo purposes, create a sample recording file if Twilio URL is not accessible
+      // Handle different recording URL types
       if (recording.recordingUrl.includes('api.twilio.com')) {
-        console.log('🎙️ Creating demo recording file for download');
+        console.log('🎙️ Fetching actual recording from Twilio:', recording.recordingUrl);
+        
+        // Create Basic Auth header for Twilio
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        
+        if (!accountSid || !authToken) {
+          return res.status(500).json({ error: "Twilio credentials not configured" });
+        }
+        
+        const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+        
+        try {
+          const response = await fetch(recording.recordingUrl, {
+            headers: {
+              'Authorization': authHeader
+            }
+          });
+          
+          if (!response.ok) {
+            console.error('Twilio recording fetch failed:', response.status, response.statusText);
+            return res.status(404).json({ error: "Recording not accessible from Twilio" });
+          }
+          
+          // Set appropriate headers for file download
+          res.setHeader('Content-Disposition', `attachment; filename="call-recording-${req.params.id}.${recording.mp4Url ? 'mp4' : 'wav'}"`);
+          res.setHeader('Content-Type', recording.mp4Url ? 'video/mp4' : 'audio/wav');
+          
+          // Stream the recording directly to response
+          const buffer = await response.arrayBuffer();
+          res.send(Buffer.from(buffer));
+          return;
+          
+        } catch (error) {
+          console.error('Error fetching Twilio recording:', error);
+          return res.status(500).json({ error: "Failed to fetch recording from Twilio" });
+        }
+      }
+
+      // Handle sample/demo recordings
+      if (recording.recordingUrl.includes('sample://')) {
+        console.log('🎙️ Creating sample recording file for demo purposes');
         
         // Set appropriate headers for file download
         res.setHeader('Content-Disposition', `attachment; filename="call-recording-${req.params.id}.wav"`);
         res.setHeader('Content-Type', 'audio/wav');
         
-        // Create a proper WAV file with 10 seconds of silence
+        // Create a proper WAV file with 2 minutes of silence (sample duration matches the call)
         const sampleRate = 8000;
-        const duration = 10; // seconds
+        const duration = recording.duration || 127; // Use actual duration from DB
         const numSamples = sampleRate * duration;
         const dataSize = numSamples * 2; // 16-bit samples
         const fileSize = 36 + dataSize;
@@ -1223,7 +1264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         wavHeader.write('data', 36);
         wavHeader.writeUInt32LE(dataSize, 40);
         
-        // Create audio data (silence)
+        // Create audio data (silence representing the call duration)
         const audioData = Buffer.alloc(dataSize, 0);
         
         // Combine header and audio data
