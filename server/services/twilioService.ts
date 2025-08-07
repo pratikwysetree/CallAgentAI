@@ -40,7 +40,9 @@ export class TwilioService {
         url: `${webhookUrl}?callId=${callId}&campaignId=${campaignId}`,
         statusCallback: `${webhookUrl}/status?callId=${callId}`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-        statusCallbackMethod: 'POST'
+        statusCallbackMethod: 'POST',
+        timeout: 20, // Reduce timeout to speed up call connection
+        machineDetection: 'Enable' // Enable machine detection for faster processing
         // NO RECORDING - using direct speech recognition only
       });
 

@@ -1,6 +1,7 @@
 import { OpenAIService } from './openaiService';
 import { ElevenLabsService } from './elevenlabsService';
 import { twilioService } from './twilioService';
+import { directSpeechService } from './directSpeechService';
 // Removed OpenAI speech service import - using Twilio direct speech recognition
 import { storage } from '../storage';
 // Using built-in fetch available in Node.js 18+
@@ -165,18 +166,41 @@ export class CallManager {
       // Add thinking pause with background typing sounds before generating response
       console.log('🎹 Adding thinking pause with background typing sounds for natural call flow');
       
+      // Extract contact information from speech
+      const contactInfo = directSpeechService.extractContactInfo(speechText);
+      console.log(`📞 Extracted contact info:`, contactInfo);
+      
+      // Get current call data to check existing contact info
+      const currentCall = await storage.getCall(callId);
+      const hasContactInfo = {
+        whatsapp: currentCall?.extractedWhatsapp || contactInfo.whatsapp,
+        email: currentCall?.extractedEmail || contactInfo.email
+      };
+      
+      // Update call with any new contact info
+      if (contactInfo.whatsapp || contactInfo.email) {
+        await storage.updateCall(callId, {
+          extractedWhatsapp: hasContactInfo.whatsapp,
+          extractedEmail: hasContactInfo.email
+        });
+        console.log(`✅ Updated contact info - WhatsApp: ${hasContactInfo.whatsapp}, Email: ${hasContactInfo.email}`);
+      }
+      
       // Generate AI response  
       console.log(`🤖 Generating AI response for: "${speechText}"`);
       console.log(`📋 Using campaign context: "${campaign.aiPrompt?.substring(0, 50)}..."`);
       
-      const aiResponse = await OpenAIService.generateResponse(
+      const aiResult = await OpenAIService.generateResponse(
         speechText,
         campaign.script || campaign.aiPrompt,
         activeCall.conversationHistory.map(turn => ({
           role: turn.role,
           content: turn.content
-        }))
+        })),
+        hasContactInfo
       );
+      
+      const aiResponse = aiResult.response;
       
       console.log(`💬 AI response: "${aiResponse}"`);
 
@@ -204,10 +228,13 @@ export class CallManager {
         console.error('❌ Database save error:', dbError);
       }
 
-      // Check if conversation should end (after collecting contact info or max turns)
-      const shouldEndCall = activeCall.conversationHistory.length >= 8 || 
+      // Check if conversation should end (only after collecting BOTH WhatsApp and email)
+      const hasAllContactInfo = hasContactInfo.whatsapp && hasContactInfo.email;
+      const shouldEndCall = (hasAllContactInfo && (
+                           activeCall.conversationHistory.length >= 8 || 
                            aiResponse.toLowerCase().includes('thank you for your time') ||
-                           aiResponse.toLowerCase().includes('goodbye') ||
+                           aiResponse.toLowerCase().includes('goodbye')
+                           )) ||
                            speechText.toLowerCase().includes('not interested') ||
                            speechText.toLowerCase().includes('hang up');
       

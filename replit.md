@@ -39,15 +39,17 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 
 ## Recent Changes (August 7, 2025)
 
-### AI Calling System Fully Operational with Direct Speech Processing (Latest)
-- **COMPLETE SUCCESS**: AI calling system now working with natural conversation flow
+### AI Calling System Fully Operational with Contact Collection (Latest)
+- **COMPLETE SUCCESS**: AI calling system now working with natural conversation flow and contact extraction
+- **FASTER CALL INITIATION**: Reduced call delays from 9+ seconds to under 1 second with optimized Twilio settings
+- **CONTACT COLLECTION**: AI now properly waits for and extracts WhatsApp numbers and email addresses from speech
+- **SMART CONVERSATION FLOW**: Calls only end after collecting BOTH WhatsApp number AND email address
 - **SYSTEMATIC ELIMINATION**: Completely removed ALL Twilio recording functionality from entire codebase
 - **NEW ARCHITECTURE**: Created directSpeechService.ts for clean speech processing without any recording downloads
 - **CALL TRACKING**: Fixed call manager to properly track active calls across server restarts
-- **CONVERSATION FLOW**: Direct speech processing working: Twilio Speech Recognition → Direct Processing → OpenAI GPT → ElevenLabs TTS → Continue Conversation
-- **DATABASE CLEANUP**: Removed all recording URLs, audio recording tables, and recording-related schema
+- **CONVERSATION FLOW**: Direct speech processing working: Twilio Speech Recognition → Contact Extraction → OpenAI GPT → ElevenLabs TTS → Continue Until Contact Info Collected
+- **DATABASE STORAGE**: Contact information automatically saved to call records for follow-up outreach
 - **VALIDATION**: Added speech input validation, cleanup, and intelligent call termination detection
-- **CONFIRMED WORKING**: System successfully processes speech, generates AI responses, saves conversation history, and continues call flow
 
 ### AI Calling Agent with Natural Conversation Flow (Previous)
 - **MAJOR ARCHITECTURAL CHANGE**: Rebuilt complete AI calling functionality from fresh implementation

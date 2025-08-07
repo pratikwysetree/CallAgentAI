@@ -9,8 +9,9 @@ export class OpenAIService {
   static async generateResponse(
     userMessage: string,
     campaignScript: string,
-    conversationHistory: Array<{ role: 'user' | 'assistant', content: string }> = []
-  ): Promise<string> {
+    conversationHistory: Array<{ role: 'user' | 'assistant', content: string }> = [],
+    hasContactInfo: { whatsapp?: string; email?: string } = {}
+  ): Promise<{ response: string; requestingContactInfo: boolean }> {
     try {
       const systemPrompt = `You are Priya, an AI calling agent for LabsCheck, India's diagnostic aggregator platform.
 
@@ -20,8 +21,12 @@ CONVERSATION OBJECTIVES:
 1. Verify you're speaking with lab owner/manager 
 2. If not owner, politely collect their contact details for follow-up
 3. Explain LabsCheck's value proposition: help labs get more business through our platform
-4. Collect WhatsApp number and email ID for further communication
+4. CRITICAL: Collect WhatsApp number and email ID for further communication
 5. Position LabsCheck as a healthcare navigator that connects labs with customers
+
+CONTACT INFO STATUS:
+- WhatsApp Number: ${hasContactInfo.whatsapp ? 'COLLECTED ✓' : 'NEEDED'}
+- Email Address: ${hasContactInfo.email ? 'COLLECTED ✓' : 'NEEDED'}
 
 RESPONSE GUIDELINES:
 - Keep responses natural and conversational (1-2 sentences max)
@@ -30,8 +35,10 @@ RESPONSE GUIDELINES:
 - If customer asks questions, answer briefly and redirect to main objective
 - Be polite and professional but friendly
 - Focus on business benefits for the lab partner
+- WAIT for customer to provide both WhatsApp number AND email before ending call
+- If they agree to share info but don't provide it immediately, ASK AGAIN specifically
 
-Remember: You need their WhatsApp number and email ID to proceed with partnership details.`;
+CRITICAL: You MUST collect both WhatsApp number and email ID before ending the call. Don't end until both are provided.`;
 
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
@@ -49,10 +56,15 @@ Remember: You need their WhatsApp number and email ID to proceed with partnershi
         presence_penalty: 0.1   // Encourage topic variation
       });
 
-      return completion.choices[0]?.message?.content || "I understand. Let me continue with our conversation.";
+      const response = completion.choices[0]?.message?.content || "I understand. Let me continue with our conversation.";
+      
+      // Check if we're requesting contact information
+      const requestingContactInfo = !hasContactInfo.whatsapp || !hasContactInfo.email;
+      
+      return { response, requestingContactInfo };
     } catch (error) {
       console.error('OpenAI API error:', error);
-      return "I apologize, there seems to be a technical issue. Could you please repeat that?";
+      return { response: "I apologize, there seems to be a technical issue. Could you please repeat that?", requestingContactInfo: true };
     }
   }
 
