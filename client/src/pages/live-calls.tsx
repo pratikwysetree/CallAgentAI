@@ -21,20 +21,11 @@ interface ActiveCall {
 }
 
 export default function LiveCallsPage() {
-  const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
-
-  // Fetch active calls
-  const { data: calls = [] } = useQuery({
+  // Fetch active calls - no need for separate state since React Query handles caching
+  const { data: activeCalls = [], isLoading } = useQuery({
     queryKey: ['/api/calls/active'],
     refetchInterval: 3000, // Refresh every 3 seconds
   });
-
-  // Update state when calls data changes
-  useEffect(() => {
-    if (calls && Array.isArray(calls)) {
-      setActiveCalls(calls);
-    }
-  }, [calls]);
 
   const formatDuration = (startTime: Date) => {
     const duration = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000);

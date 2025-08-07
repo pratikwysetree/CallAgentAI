@@ -472,8 +472,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate initial TwiML with campaign script
       const twiml = twilioService.generateTwiML('gather', {
         text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
-        action: `/api/calls/${callId}/process-speech`
+        action: `/api/calls/${callId}/process-speech`,
+        voice: campaign.voiceId,
+        addTypingSound: true // Enable background typing simulation
       });
+      
+      console.log(`🎙️ Starting call with intro: "${campaign.introLine}"`);
+      console.log('🎹 Background typing sounds enabled for natural conversation flow');
 
       res.type('text/xml').send(twiml);
     } catch (error) {
@@ -486,9 +491,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calls/:callId/process-speech", async (req, res) => {
     try {
       const { callId } = req.params;
-      const speechText = req.body.SpeechResult || "I didn't catch that";
+      const speechText = req.body.SpeechResult || req.body.UnstableSpeechResult || "I didn't catch that";
+      
+      console.log(`🎤 Speech received for call ${callId}: "${speechText}"`);
+      console.log('🎹 Processing with background typing simulation enabled');
 
       const result = await callManager.processSpeechInput(callId, speechText);
+      
+      console.log(`🤖 AI response generated: "${result.twiml.includes('Say') ? 'Response ready' : 'No response'}"`);
       
       res.type('text/xml').send(result.twiml);
     } catch (error) {
