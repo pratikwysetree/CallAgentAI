@@ -414,7 +414,10 @@ export default function ContactCampaigns() {
     }
   };
 
-  const approvedTemplates = (templates as any[])?.filter((t: any) => t.status === 'APPROVED') || [];
+  // Debug templates and show all available for now
+  const approvedTemplates = (templates as any[]) || [];
+  console.log('📋 Available templates:', templates);
+  console.log('📋 Filtered templates:', approvedTemplates);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -709,7 +712,7 @@ export default function ContactCampaigns() {
                       </p>
                     )}
                   </div>
-                  {filteredContacts.length > 0 && (
+                  {filteredContacts.length > 0 && selectedContacts.length === 0 && (
                     <Button 
                       onClick={() => {
                         const contactIds = filteredContacts.map((contact: any) => contact.id);
@@ -726,6 +729,11 @@ export default function ContactCampaigns() {
                     >
                       Start Campaign with All Filtered Contacts ({filteredContacts.length})
                     </Button>
+                  )}
+                  {selectedContacts.length > 0 && (
+                    <div className="text-sm text-blue-600 font-medium">
+                      ✅ {selectedContacts.length} contacts manually selected
+                    </div>
                   )}
                 </div>
               </div>
