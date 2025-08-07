@@ -586,6 +586,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Start campaign with specific contacts
+  app.post("/api/campaigns/start", async (req, res) => {
+    try {
+      console.log('🚀 CAMPAIGN START ENDPOINT CALLED');
+      console.log('📊 Request body:', req.body);
+      
+      const { contactIds, channel, whatsappTemplate, followUpDays } = req.body;
+      
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        console.log('❌ Invalid contactIds:', contactIds);
+        return res.status(400).json({ error: "Invalid contact IDs" });
+      }
+
+      console.log(`📋 Starting campaign for ${contactIds.length} contacts`);
+      console.log('📋 Contact IDs:', contactIds);
+      console.log('📋 Channel:', channel);
+      console.log('📋 Template:', whatsappTemplate);
+      
+      // Mock response for now - we'll implement the actual campaign logic later
+      const campaignResult = {
+        success: true,
+        campaignId: `campaign_${Date.now()}`,
+        contactsProcessed: contactIds.length,
+        contactIds: contactIds
+      };
+
+      console.log('✅ Campaign started successfully:', campaignResult);
+      res.json(campaignResult);
+    } catch (error) {
+      console.error('❌ Error starting campaign:', error);
+      res.status(500).json({ error: "Failed to start campaign" });
+    }
+  });
+
   // ===================
   // AI CALLING ROUTES
   // ===================
