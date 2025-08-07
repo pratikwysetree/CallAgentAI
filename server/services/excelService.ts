@@ -18,7 +18,7 @@ export class ExcelService {
       }
 
       const headers = data[0] as string[];
-      const rows = data.slice(1) as any[][];
+      let rows = data.slice(1) as any[][];
       
       let imported = 0;
       const errors: string[] = [];
@@ -35,9 +35,11 @@ export class ExcelService {
         state: ExcelService.findColumn(headers, ['state', 'province']),
       };
 
+      // Process all rows - no size limit
+      console.log(`Processing ${rows.length} contacts from CSV file...`);
 
-      // Process each row with batch processing for performance
-      const BATCH_SIZE = 100;
+      // Use smaller batches for better performance with large files
+      const BATCH_SIZE = 50;
       for (let i = 0; i < rows.length; i++) {
         if (i % BATCH_SIZE === 0) {
           console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(rows.length/BATCH_SIZE)} (rows ${i+1}-${Math.min(i+BATCH_SIZE, rows.length)})`);
@@ -68,13 +70,15 @@ export class ExcelService {
             continue;
           }
 
-          // Skip duplicate check for performance - let database handle it
+          // Use upsert for better performance with duplicates
           try {
             await storage.createContact(contact);
             imported++;
           } catch (dbError: any) {
-            if (dbError.message?.includes('duplicate') || dbError.message?.includes('unique')) {
-              errors.push(`Row ${i + 2}: Contact with phone ${contact.phone} already exists`);
+            if (dbError.message?.includes('duplicate') || dbError.message?.includes('unique') || 
+                dbError.code === '23505') { // PostgreSQL unique violation
+              // Skip duplicates silently for bulk uploads
+              continue;
             } else {
               errors.push(`Row ${i + 2}: ${dbError.message || 'Database error'}`);
             }

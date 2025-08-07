@@ -226,23 +226,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Contact import/export
+  // Contact import/export with timeout protection
   app.post('/api/contacts/upload', upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
-      // Import contacts from CSV/Excel with progress tracking
-      console.log(`Starting CSV import of ${req.file.originalname} (${req.file.size} bytes)`);
-      const { ExcelService } = await import('./services/excelService');
-      const result = await ExcelService.importContactsFromExcel(req.file.buffer);
-      console.log(`CSV import completed: ${result.imported} imported, ${result.errors.length} errors`);
+      // Set extended timeout for bulk uploads
+      req.setTimeout(15 * 60 * 1000); // 15 minutes for large files
+      res.setTimeout(15 * 60 * 1000);
 
+      console.log(`Starting bulk CSV import of ${req.file.originalname} (${req.file.size} bytes)`);
+      const { ExcelService } = await import('./services/excelService');
+      
+      // Process without timeout restriction for bulk uploads
+      const result = await ExcelService.importContactsFromExcel(req.file.buffer);
+      
+      console.log(`CSV import completed: ${result.imported} imported, ${result.errors.length} errors`);
       res.json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error importing contacts:', error);
-      res.status(500).json({ error: 'Failed to import contacts' });
+      res.status(500).json({ 
+        error: error.message?.includes('timeout') ? 
+          'File too large - try splitting into smaller files' : 
+          'Failed to import contacts' 
+      });
     }
   });
 
