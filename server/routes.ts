@@ -66,6 +66,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get ElevenLabs voices - ALL available voices including custom
+  app.get('/api/elevenlabs/voices', async (req, res) => {
+    try {
+      const { ElevenLabsService } = await import('./services/elevenlabsService');
+      const voices = await ElevenLabsService.getVoices();
+      res.json(voices);
+    } catch (error) {
+      console.error('Error fetching ElevenLabs voices:', error);
+      res.status(500).json({ error: 'Failed to fetch voices' });
+    }
+  });
+
   // Campaigns API routes
   app.get('/api/campaigns', async (req, res) => {
     try {

@@ -34,17 +34,7 @@ const ELEVENLABS_MODELS = [
   { value: "eleven_monolingual_v1", label: "Monolingual V1" },
 ];
 
-const VOICE_OPTIONS = [
-  { value: "21m00Tcm4TlvDq8ikWAM", label: "Rachel (Female)" },
-  { value: "AZnzlk1XvdvUeBnXmlld", label: "Domi (Female)" },
-  { value: "EXAVITQu4vr4xnSDxMaL", label: "Bella (Female)" },
-  { value: "ErXwobaYiN019PkySvjV", label: "Antoni (Male)" },
-  { value: "MF3mGyEYCl7XYWbV9V6O", label: "Elli (Female)" },
-  { value: "TxGEqnHWrfWFTfGW9XjX", label: "Josh (Male)" },
-  { value: "VR6AewLTigWG4xSOukaG", label: "Arnold (Male)" },
-  { value: "pNInz6obpgDQGcFmaJgB", label: "Adam (Male)" },
-  { value: "yoZ06aMxZJJ28mfd3POQ", label: "Sam (Male)" },
-];
+// Voice options will be fetched from ElevenLabs API
 
 const LANGUAGES = [
   { value: "en", label: "English" },
@@ -70,6 +60,11 @@ export default function CampaignManagerPage() {
     queryKey: ['/api/campaigns'],
   });
 
+  // Fetch ElevenLabs voices
+  const { data: voices = [], isLoading: isLoadingVoices } = useQuery({
+    queryKey: ['/api/elevenlabs/voices'],
+  });
+
   // Form setup
   const form = useForm<CampaignFormData>({
     resolver: zodResolver(campaignSchema),
@@ -79,7 +74,7 @@ export default function CampaignManagerPage() {
       aiPrompt: "",
       language: "en",
       elevenlabsModel: "eleven_multilingual_v2",
-      voiceId: "21m00Tcm4TlvDq8ikWAM",
+      voiceId: voices[0]?.voice_id || "21m00Tcm4TlvDq8ikWAM",
     },
   });
 
@@ -305,17 +300,22 @@ export default function CampaignManagerPage() {
                   <Label>Voice Agent</Label>
                   <Select value={form.watch("voiceId")} onValueChange={(value) => form.setValue("voiceId", value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select voice agent" />
+                      <SelectValue placeholder={isLoadingVoices ? "Loading voices..." : "Select voice agent"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {VOICE_OPTIONS.map((voice) => (
-                        <SelectItem key={voice.value} value={voice.value}>
+                      {voices.map((voice: any) => (
+                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
                           <div className="flex items-center">
                             <Mic className="h-4 w-4 mr-2" />
-                            {voice.label}
+                            {voice.name} ({voice.category || 'Custom'})
                           </div>
                         </SelectItem>
                       ))}
+                      {voices.length === 0 && !isLoadingVoices && (
+                        <SelectItem value="" disabled>
+                          No voices available - Check ElevenLabs API key
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   {form.formState.errors.voiceId && (
@@ -415,7 +415,7 @@ export default function CampaignManagerPage() {
                       </Badge>
                       <Badge variant="outline">
                         <Volume2 className="h-3 w-3 mr-1" />
-                        {VOICE_OPTIONS.find(v => v.value === campaign.voiceId)?.label || "Custom Voice"}
+                        {voices.find((v: any) => v.voice_id === campaign.voiceId)?.name || "Custom Voice"}
                       </Badge>
                     </div>
 

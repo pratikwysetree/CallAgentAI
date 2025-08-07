@@ -29,9 +29,11 @@ export default function LiveCallsPage() {
     refetchInterval: 3000, // Refresh every 3 seconds
   });
 
-  // TODO: Add WebSocket for real-time updates
+  // Update state when calls data changes
   useEffect(() => {
-    setActiveCalls(calls);
+    if (calls && Array.isArray(calls)) {
+      setActiveCalls(calls);
+    }
   }, [calls]);
 
   const formatDuration = (startTime: Date) => {
