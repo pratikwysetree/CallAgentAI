@@ -87,20 +87,61 @@ export class CallManager {
     }
   }
 
+  // Ensure a call is tracked in active calls (used after server restarts)
+  ensureCallIsTracked(callId: string, dbCall: any): void {
+    if (!this.activeCalls.has(callId)) {
+      console.log(`🔄 Adding call ${callId} to active calls tracking`);
+      this.activeCalls.set(callId, {
+        id: dbCall.id,
+        contactId: dbCall.contactId,
+        campaignId: dbCall.campaignId,
+        phoneNumber: dbCall.phoneNumber,
+        twilioCallSid: dbCall.twilioCallSid,
+        conversationHistory: [],
+        status: 'active',
+        startTime: dbCall.startTime
+      });
+    }
+  }
+
   // Process speech input during call
   async processSpeechInput(
     callId: string,
     speechText: string
   ): Promise<{ twiml: string; success: boolean }> {
     try {
-      const activeCall = this.activeCalls.get(callId);
+      console.log(`🔍 Looking for active call: ${callId}`);
+      console.log(`📊 Active calls count: ${this.activeCalls.size}`);
+      console.log(`📋 Active call IDs: ${Array.from(this.activeCalls.keys()).join(', ')}`);
+      
+      let activeCall = this.activeCalls.get(callId);
+      
+      // If call not in memory, try to reconstruct from database
       if (!activeCall) {
-        return {
-          twiml: twilioService.generateTwiML('hangup', { 
-            text: 'Thank you for your time. Goodbye.' 
-          }),
-          success: false
-        };
+        console.log(`⚠️ Call ${callId} not found in active calls, reconstructing from database`);
+        const dbCall = await storage.getCall(callId);
+        if (dbCall && dbCall.status === 'active') {
+          activeCall = {
+            id: dbCall.id,
+            contactId: dbCall.contactId!,
+            campaignId: dbCall.campaignId!,
+            phoneNumber: dbCall.phoneNumber,
+            twilioCallSid: dbCall.twilioCallSid!,
+            conversationHistory: [],
+            status: 'active',
+            startTime: dbCall.startTime
+          };
+          this.activeCalls.set(callId, activeCall);
+          console.log(`✅ Reconstructed active call from database`);
+        } else {
+          console.log(`❌ Call ${callId} not found in database or not active`);
+          return {
+            twiml: twilioService.generateTwiML('hangup', { 
+              text: 'Thank you for your time. Goodbye.' 
+            }),
+            success: false
+          };
+        }
       }
 
       // Get campaign for script context

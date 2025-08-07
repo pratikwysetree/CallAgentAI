@@ -463,6 +463,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send('Missing callId or campaignId');
       }
 
+      // Ensure call is tracked in active calls
+      console.log(`🔗 Webhook triggered for call ${callId}, ensuring it's tracked as active`);
+      const dbCall = await storage.getCall(callId as string);
+      if (dbCall && dbCall.status === 'active') {
+        // Make sure call manager is tracking this call
+        callManager.ensureCallIsTracked(callId as string, dbCall);
+      }
+
       // Get campaign for initial script
       const campaign = await storage.getCampaign(campaignId as string);
       if (!campaign) {
