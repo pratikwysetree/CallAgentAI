@@ -1312,7 +1312,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Global reference for broadcasting
   (global as any).broadcastToClients = broadcast;
 
-
-
   return httpServer;
 }
+

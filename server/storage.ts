@@ -457,6 +457,8 @@ export class DatabaseStorage implements IStorage {
     return contact || undefined;
   }
 
+
+
   async getWhatsAppChatsByContact(): Promise<any[]> {
     try {
       // Get all messages with contact info, then organize by contact

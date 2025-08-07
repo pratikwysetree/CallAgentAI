@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall, Megaphone } from "lucide-react";
 import ContactCampaigns from "@/pages/contact-campaigns";
+import CampaignDashboard from "@/pages/campaign-dashboard";
 import CampaignManager from "@/pages/campaign-manager";
 import SettingsPage from "@/pages/settings";
 import EnhancedSettings from "@/pages/enhanced-settings";
@@ -47,6 +48,12 @@ function Navigation() {
       href: "/contact-campaigns",
       icon: Users,
       current: location === "/contact-campaigns",
+    },
+    {
+      name: "Campaign Dashboard",
+      href: "/campaign-dashboard",
+      icon: BarChart3,
+      current: location === "/campaign-dashboard",
     },
     {
       name: "WhatsApp Chats",
@@ -117,6 +124,7 @@ function Router() {
           <Route path="/calls-analytics" component={CallsAnalytics} />
           <Route path="/campaign-manager" component={CampaignManager} />
           <Route path="/contact-campaigns" component={ContactCampaigns} />
+          <Route path="/campaign-dashboard" component={CampaignDashboard} />
           <Route path="/whatsapp-chats" component={WhatsAppChats} />
           <Route path="/whatsapp-messaging" component={WhatsAppMessaging} />
           <Route path="/settings" component={SettingsPage} />
