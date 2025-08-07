@@ -6,11 +6,11 @@ export class TwilioService {
   constructor() {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    
+
     if (!accountSid || !authToken) {
       throw new Error('Twilio credentials not configured');
     }
-    
+
     this.client = twilio(accountSid, authToken);
   }
 
@@ -27,17 +27,17 @@ export class TwilioService {
       }
 
       // Create webhook URLs for handling call events - use Replit domain
-      const replitDomain = process.env.REPLIT_DOMAINS ? 
-        `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 
+      const replitDomain = process.env.REPLIT_DOMAINS ?
+        `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` :
         `https://${process.env.REPL_SLUG || 'app'}.${process.env.REPL_OWNER || 'user'}.repl.co`;
-      
+
       // CRITICAL FIX: Use answer webhook to play ElevenLabs intro first
       const answerWebhookUrl = `${replitDomain}/api/calls/webhook/answer`;
       const statusWebhookUrl = `${replitDomain}/api/calls/webhook/status`;
-      
+
       console.log(`🔗 Using answer webhook URL: ${answerWebhookUrl}`); // Debug log
       console.log(`📊 Using status webhook URL: ${statusWebhookUrl}`); // Debug log
-      
+
       const call = await this.client.calls.create({
         to: phoneNumber,
         from: fromNumber,
@@ -71,10 +71,10 @@ export class TwilioService {
     // Add natural typing sounds throughout entire conversation for human-like experience
     if (options.addTypingSound) {
       console.log('🎹 Adding continuous background typing effects throughout conversation');
-      
+
       // Add initial thinking pause with typing sounds
       twiml.pause({ length: 1 });
-      
+
       // Add additional natural pauses for extended typing effect
       if (options.addThinkingPause && action === 'gather') {
         twiml.pause({ length: 1.5 }); // Extended thinking with typing
@@ -94,7 +94,7 @@ export class TwilioService {
           twiml.pause({ length: 2 });
         }
         break;
-        
+
       case 'gather':
         // Play ElevenLabs audio if provided
         if (options.audioUrl) {
@@ -107,19 +107,26 @@ export class TwilioService {
             language: options.language || 'en'
           }, options.text);
         }
-        
-        // Record user response for OpenAI Whisper processing
-        twiml.record({
-          timeout: 10,
-          transcribe: false,
-          recordingStatusCallback: options.recordingCallback || '/api/calls/recording-complete',
-          recordingStatusCallbackMethod: 'POST',
-          playBeep: false,
+
+        // Use Twilio Gather with speech recognition for direct OpenAI Whisper processing
+        const gather = twiml.gather({
+          input: 'speech',
+          speechTimeout: 5,
+          speechModel: 'experimental_conversations',
+          enhanced: true,
+          language: options.language || 'en-US',
           action: options.action || '/api/calls/process-speech',
-          method: 'POST'
+          method: 'POST',
+          timeout: 10
         });
+
+        // Add a pause to let user speak
+        gather.pause({ length: 1 });
+
+        // If no speech detected, redirect to continue listening
+        twiml.redirect(options.action || '/api/calls/process-speech');
         break;
-        
+
       case 'hangup':
         if (options.text) {
           // ONLY use ElevenLabs audio - no Twilio TTS fallback
@@ -146,8 +153,8 @@ export class TwilioService {
   ): Promise<{ success: boolean; messageSid?: string; error?: string }> {
     try {
       const fromNumber = `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`;
-      const toNumber = whatsappNumber.startsWith('whatsapp:') 
-        ? whatsappNumber 
+      const toNumber = whatsappNumber.startsWith('whatsapp:')
+        ? whatsappNumber
         : `whatsapp:${whatsappNumber}`;
 
       const messageResponse = await this.client.messages.create({

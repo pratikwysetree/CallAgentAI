@@ -59,10 +59,10 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
       });
 
       const response = completion.choices[0]?.message?.content || "I understand. Let me continue with our conversation.";
-      
+
       // Check if we're requesting contact information
       const requestingContactInfo = !hasContactInfo.whatsapp || !hasContactInfo.email;
-      
+
       return { response, requestingContactInfo };
     } catch (error) {
       console.error('OpenAI API error:', error);
@@ -70,48 +70,56 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
     }
   }
 
-  // Transcribe audio using Whisper - optimized for speed
+  // Enhanced Whisper transcription bypassing Twilio recording issues
   static async transcribeAudio(audioBuffer: Buffer): Promise<string> {
     try {
       const fs = await import('fs');
       const path = await import('path');
-      
-      // Create a temporary file for the audio - use .mp3 extension for Twilio recordings
+
+      // Create temp directory if not exists
       const tempDir = path.default.join(process.cwd(), 'temp');
       if (!fs.default.existsSync(tempDir)) {
         fs.default.mkdirSync(tempDir, { recursive: true });
       }
-      
-      // Twilio recordings are in .wav format, so use .wav extension for Whisper
-      const tempFilePath = path.default.join(tempDir, `audio_${Date.now()}.wav`);
+
+      // Use timestamp for unique filename with appropriate extension
+      const tempFilePath = path.default.join(tempDir, `whisper_${Date.now()}.wav`);
       fs.default.writeFileSync(tempFilePath, audioBuffer);
-      
-      console.log(`🎤 Created temp audio file for Whisper: ${tempFilePath} (${audioBuffer.length} bytes)`);
-      
-      // Check if audio file is too small (likely corrupted)
-      if (audioBuffer.length < 1000) {
-        console.warn(`⚠️ Audio file too small (${audioBuffer.length} bytes), likely corrupted recording`);
-        fs.default.unlinkSync(tempFilePath); // Clean up
-        return "Sorry, the audio wasn't clear. Could you please speak a bit louder?";
+
+      console.log(`🎤 Enhanced Whisper processing: ${tempFilePath} (${audioBuffer.length} bytes)`);
+
+      // Minimum viable audio check - very small threshold for real speech
+      if (audioBuffer.length < 100) {
+        console.warn(`⚠️ Audio buffer too small (${audioBuffer.length} bytes) - no speech detected`);
+        fs.default.unlinkSync(tempFilePath);
+        return ""; // Empty string triggers re-listening
       }
-      
-      // Use OpenAI Whisper for transcription - .wav format should work
+
+      // Enhanced OpenAI Whisper configuration for better accuracy
       const response = await openai.audio.transcriptions.create({
         file: fs.default.createReadStream(tempFilePath),
         model: "whisper-1",
-        language: "en", // Can be made configurable based on campaign
-        response_format: "text" // Ensure we get plain text response
+        language: "en",
+        response_format: "text",
+        temperature: 0.0, // More deterministic results
+        prompt: "This is a business conversation between an AI agent and a lab owner or manager about diagnostic services." // Context prompt for better accuracy
       });
-      
-      console.log(`✅ Whisper transcription successful: "${response}"`);
-      
-      // Clean up temporary file
-      fs.default.unlinkSync(tempFilePath);
-      
-      return response || "";
+
+      console.log(`✅ Enhanced Whisper transcription: "${response}"`);
+
+      // Clean up temp file
+      if (fs.default.existsSync(tempFilePath)) {
+        fs.default.unlinkSync(tempFilePath);
+      }
+
+      // Return cleaned transcription
+      const cleanedResponse = response?.toString().trim() || "";
+      return cleanedResponse;
+
     } catch (error) {
-      console.error('OpenAI Whisper transcription error:', error);
-      return "Sorry, I couldn't understand that. Could you please repeat?";
+      console.error('❌ Enhanced Whisper transcription failed:', error);
+      // Return empty string to trigger re-listening instead of error message
+      return "";
     }
   }
 }

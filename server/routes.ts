@@ -571,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (elevenlabsError) {
         console.error('❌ ElevenLabs intro failed:', elevenlabsError);
-        
+
         // Return error TwiML that will end call gracefully
         const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -701,54 +701,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process recording using OpenAI Whisper for speech recognition
+  // Enhanced speech processing to use OpenAI Whisper for transcription
   app.post("/api/calls/recording-complete", async (req, res) => {
     try {
       const { callId } = req.query;
       const recordingUrl = req.body.RecordingUrl;
 
       if (!callId || !recordingUrl) {
+        console.log('❌ Missing callId or recording URL in recording-complete');
         return res.status(400).json({ error: 'Missing callId or recording URL' });
       }
 
-      console.log(`🎙️ Processing recording for call ${callId}: ${recordingUrl}`);
+      console.log(`🎙️ Processing recording for enhanced OpenAI Whisper: ${recordingUrl}`);
 
-      // Download and transcribe audio using OpenAI Whisper
+      // Download and transcribe audio using OpenAI Whisper directly
       const audioResponse = await fetch(recordingUrl);
       const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
 
-      // Import OpenAI service for transcription
+      // Import OpenAI service for enhanced transcription
       const { OpenAIService } = await import('./services/openaiService');
       const speechText = await OpenAIService.transcribeAudio(audioBuffer);
 
-      console.log(`🎤 OpenAI Whisper transcription for call ${callId}: "${speechText}"`);
+      console.log(`🎤 Enhanced OpenAI Whisper transcription: "${speechText}"`);
 
-      // Import direct speech service for validation
-      const { directSpeechService } = await import('./services/directSpeechService');
-
-      // Check if call should end based on speech content
-      if (directSpeechService.shouldEndCall(speechText)) {
-        console.log('🔚 User indicated call should end');
-        // Get campaign for language settings
-        const dbCall = await storage.getCall(callId as string);
-        const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
-
-        const twiml = twilioService.generateTwiML('hangup', {
-          text: 'I understand. Thank you for your time. Have a great day!',
-          language: campaign?.language || 'en'
-        });
-        res.type('text/xml').send(twiml);
-        return;
-      }
-
-      // Process with AI using campaign settings
+      // Process the transcribed speech
       const result = await callManager.processSpeechInput(callId as string, speechText);
-
-      console.log(`🤖 AI response generated successfully using campaign settings`);
-
       res.type('text/xml').send(result.twiml);
+
     } catch (error) {
-      console.error('Recording processing error:', error);
+      console.error('❌ Enhanced recording processing error:', error);
       const twiml = twilioService.generateTwiML('hangup', {
         text: 'Thank you for your time. Goodbye.'
       });
@@ -756,12 +737,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fallback: Process speech input during call (for backward compatibility) 
+  // Enhanced speech processing with OpenAI Whisper fallback
   app.post("/api/calls/:callId/process-speech", async (req, res) => {
     try {
       const { callId } = req.params;
 
-      // Try to get speech result from Twilio first (if available)
+      // First try to get speech result from Twilio's direct speech recognition
       let speechText = "";
       if (req.body.SpeechResult) {
         const { directSpeechService } = await import('./services/directSpeechService');
@@ -771,15 +752,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.body.Digits
         );
         speechText = directSpeechService.validateSpeechInput(rawSpeechText);
+        console.log(`🎤 Twilio speech recognition result: "${speechText}"`);
       }
 
-      console.log(`🎤 Processing speech for call ${callId}: "${speechText}"`);
+      // If no speech from Twilio, check if there's a recording URL for OpenAI Whisper processing
+      if ((!speechText || speechText.trim() === "") && req.body.RecordingUrl) {
+        console.log(`🎧 No Twilio speech result, using OpenAI Whisper for: ${req.body.RecordingUrl}`);
 
-      if (!speechText) {
-        // Continue listening
+        try {
+          const audioResponse = await fetch(req.body.RecordingUrl);
+          const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+
+          const { OpenAIService } = await import('./services/openaiService');
+          speechText = await OpenAIService.transcribeAudio(audioBuffer);
+          console.log(`🎤 OpenAI Whisper backup transcription: "${speechText}"`);
+        } catch (whisperError) {
+          console.error('❌ OpenAI Whisper fallback failed:', whisperError);
+        }
+      }
+
+      console.log(`🎤 Final processed speech for call ${callId}: "${speechText}"`);
+
+      if (!speechText || speechText.trim() === "") {
+        // Continue listening with better prompt
+        console.log('🔄 No speech detected, continuing to listen...');
+        const dbCall = await storage.getCall(callId);
+        const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
+
         const twiml = twilioService.generateTwiML('gather', {
-          text: 'I didn\'t catch that. Please continue.',
-          action: `/api/calls/${callId}/process-speech`
+          text: 'I\'m here. Please speak when you\'re ready.',
+          action: `/api/calls/${callId}/process-speech`,
+          language: campaign?.language || 'en'
         });
         res.type('text/xml').send(twiml);
         return;
@@ -805,11 +808,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process with AI using campaign settings
       const result = await callManager.processSpeechInput(callId, speechText);
 
-      console.log(`🤖 AI response generated successfully`);
+      console.log(`🤖 AI response generated successfully with OpenAI integration`);
 
       res.type('text/xml').send(result.twiml);
     } catch (error) {
-      console.error('Speech processing error:', error);
+      console.error('Enhanced speech processing error:', error);
       const twiml = twilioService.generateTwiML('hangup', {
         text: 'Thank you for your time. Goodbye.'
       });
