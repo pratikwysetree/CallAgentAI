@@ -226,7 +226,10 @@ export default function ContactCampaigns() {
 
   // Handle adding single contact
   const handleAddContact = () => {
+    console.log('handleAddContact called with:', newContact);
+    
     if (!newContact.name || !newContact.phone) {
+      console.log('Missing required fields:', { name: newContact.name, phone: newContact.phone });
       toast({ 
         title: 'Missing required fields',
         description: 'Please provide at least name and phone number',
@@ -234,6 +237,8 @@ export default function ContactCampaigns() {
       });
       return;
     }
+    
+    console.log('Creating contact with mutation...');
     createContactMutation.mutate(newContact);
   };
 
@@ -388,7 +393,10 @@ export default function ContactCampaigns() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowAddContact(!showAddContact)}
+                    onClick={() => {
+                      console.log('Add Contact button clicked, current state:', showAddContact);
+                      setShowAddContact(!showAddContact);
+                    }}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
                     {showAddContact ? 'Cancel' : 'Add Contact'}
