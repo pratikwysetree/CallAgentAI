@@ -1,6 +1,7 @@
 import { storage } from "../storage";
 
 export interface WhatsAppMessage {
+  messaging_product: string;
   to: string;
   type: string;
   text?: {
@@ -53,6 +54,7 @@ export class WhatsAppService {
   // Send a text message
   async sendTextMessage(to: string, message: string): Promise<any> {
     const whatsappMessage: WhatsAppMessage = {
+      messaging_product: 'whatsapp',
       to: to.replace(/\D/g, ''), // Remove non-digits
       type: 'text',
       text: {
