@@ -227,16 +227,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contact import/export
-  app.post('/api/contacts/import', upload.single('file'), async (req, res) => {
+  app.post('/api/contacts/upload', upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
-      // Import contacts from CSV
+      // Import contacts from CSV/Excel
       const { ExcelService } = await import('./services/excelService');
-      const excelService = new ExcelService();
-      const result = await excelService.importContactsFromCsv(req.file.buffer);
+      const result = await ExcelService.importContactsFromExcel(req.file.buffer);
 
       res.json(result);
     } catch (error) {
@@ -248,11 +247,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/contacts/export', async (req, res) => {
     try {
       const { ExcelService } = await import('./services/excelService');
-      const excelService = new ExcelService();
-      const buffer = await excelService.exportContactsToCsv();
+      const buffer = await ExcelService.exportContactsToExcel();
 
-      res.setHeader('Content-Disposition', 'attachment; filename=contacts.csv');
-      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=contacts.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.send(buffer);
     } catch (error) {
       console.error('Error exporting contacts:', error);

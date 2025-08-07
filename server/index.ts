@@ -40,11 +40,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // CRITICAL: Register webhook middleware FIRST to bypass Vite catch-all
-  app.use('/api/calls/webhook', (req, res, next) => {
-    console.log(`🎯 WEBHOOK MIDDLEWARE HIT: ${req.method} ${req.path}`);
+  // CRITICAL: Register ALL API middleware FIRST to bypass Vite catch-all
+  app.use('/api', (req, res, next) => {
+    console.log(`🎯 API MIDDLEWARE HIT: ${req.method} ${req.path}`);
     console.log(`🎯 Full URL: ${req.originalUrl}`);
-    console.log(`🎯 Query: ${JSON.stringify(req.query)}`);
     // Let the route handlers take over
     next();
   });

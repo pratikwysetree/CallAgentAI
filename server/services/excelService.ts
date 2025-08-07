@@ -25,13 +25,16 @@ export class ExcelService {
 
       // Map column names (case insensitive)
       const columnMap = {
-        name: this.findColumn(headers, ['name', 'full name', 'contact name']),
-        phone: this.findColumn(headers, ['phone', 'phone number', 'mobile', 'number']),
-        email: this.findColumn(headers, ['email', 'email address', 'mail']),
-        whatsapp: this.findColumn(headers, ['whatsapp', 'whatsapp number', 'wa number']),
-        company: this.findColumn(headers, ['company', 'organization', 'org']),
-        notes: this.findColumn(headers, ['notes', 'comments', 'remarks']),
+        name: ExcelService.findColumn(headers, ['name', 'full name', 'contact name']),
+        phone: ExcelService.findColumn(headers, ['phone', 'phone number', 'phone_number', 'mobile', 'number']),
+        email: ExcelService.findColumn(headers, ['email', 'email address', 'mail']),
+        whatsapp: ExcelService.findColumn(headers, ['whatsapp', 'whatsapp number', 'wa number']),
+        company: ExcelService.findColumn(headers, ['company', 'organization', 'org']),
+        notes: ExcelService.findColumn(headers, ['notes', 'comments', 'remarks']),
+        city: ExcelService.findColumn(headers, ['city', 'location']),
+        state: ExcelService.findColumn(headers, ['state', 'province']),
       };
+
 
       // Process each row
       for (let i = 0; i < rows.length; i++) {
@@ -39,26 +42,32 @@ export class ExcelService {
         if (!row || row.length === 0) continue;
 
         try {
+          const phoneValue = ExcelService.getCellValue(row, columnMap.phone);
+          const nameValue = ExcelService.getCellValue(row, columnMap.name);
+          
           const contact: InsertContact = {
-            name: this.getCellValue(row, columnMap.name),
-            phoneNumber: this.getCellValue(row, columnMap.phone),
-            email: this.getCellValue(row, columnMap.email) || undefined,
-            whatsappNumber: this.getCellValue(row, columnMap.whatsapp) || undefined,
-            company: this.getCellValue(row, columnMap.company) || undefined,
-            notes: this.getCellValue(row, columnMap.notes) || undefined,
+            name: nameValue,
+            phone: phoneValue, // Using 'phone' field from schema
+            phoneNumber: phoneValue, // Also set phoneNumber if it exists
+            email: ExcelService.getCellValue(row, columnMap.email) || undefined,
+            whatsappNumber: ExcelService.getCellValue(row, columnMap.whatsapp) || undefined,
+            company: ExcelService.getCellValue(row, columnMap.company) || undefined,
+            notes: ExcelService.getCellValue(row, columnMap.notes) || undefined,
+            city: ExcelService.getCellValue(row, columnMap.city) || undefined,
+            state: ExcelService.getCellValue(row, columnMap.state) || undefined,
             importedFrom: 'excel',
           };
 
           // Validate required fields
-          if (!contact.name || !contact.phoneNumber) {
-            errors.push(`Row ${i + 2}: Missing required fields (name or phone)`);
+          if (!contact.name || !contact.phone) {
+            errors.push(`Row ${i + 2}: Missing required fields (name: "${contact.name}", phone: "${contact.phone}")`);
             continue;
           }
 
           // Check if contact already exists
-          const existing = await storage.getContactByPhone(contact.phoneNumber);
+          const existing = await storage.getContactByPhone(contact.phone);
           if (existing) {
-            errors.push(`Row ${i + 2}: Contact with phone ${contact.phoneNumber} already exists`);
+            errors.push(`Row ${i + 2}: Contact with phone ${contact.phone} already exists`);
             continue;
           }
 
