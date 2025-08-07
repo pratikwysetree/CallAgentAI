@@ -1,5 +1,6 @@
 import { OpenAIService } from './openaiService';
 import { ElevenLabsService } from './elevenlabsService';
+import { ElevenLabsService } from './elevenlabsService';
 import { twilioService } from './twilioService';
 import { directSpeechService } from './directSpeechService';
 // Removed OpenAI speech service import - using Twilio direct speech recognition
@@ -242,25 +243,67 @@ export class CallManager {
                            speechText.toLowerCase().includes('not interested') ||
                            speechText.toLowerCase().includes('hang up');
       
+      // Generate TTS audio using ElevenLabs with campaign voice settings
+      console.log('🎤 Generating AI response audio with campaign voice settings');
+      
       let twiml;
-      if (shouldEndCall) {
-        // End the call gracefully
-        twiml = twilioService.generateTwiML('hangup', {
-          text: aiResponse,
-          language: campaign.language, // Use campaign language
-          voice: 'alice' // Twilio voice
-        });
-        // Mark call for completion
-        setTimeout(() => this.completeCall(callId), 1000);
-      } else {
-        // Continue conversation with background typing effects
-        twiml = twilioService.generateTwiML('gather', {
-          text: aiResponse,
-          action: `/api/calls/${callId}/process-speech`,
-          language: campaign.language, // Use campaign language
-          voice: 'alice', // Twilio voice (separate from ElevenLabs)
-          addTypingSound: true // Enable background typing sounds
-        });
+      try {
+        // Use campaign-defined voice settings for ElevenLabs TTS
+        const voiceConfig = campaign.voiceConfig as any;
+        const audioBuffer = await ElevenLabsService.textToSpeech(
+          aiResponse,
+          campaign.voiceId, // Use campaign voice (e.g., Pratik Heda)
+          {
+            stability: voiceConfig?.stability || 0.5,
+            similarityBoost: voiceConfig?.similarityBoost || 0.75,
+            style: voiceConfig?.style || 0.0,
+            speakerBoost: voiceConfig?.useSpeakerBoost || true,
+            addTypingSound: true, // Enable background typing sounds
+            model: campaign.elevenlabsModel || 'eleven_turbo_v2' // Use campaign model (fast)
+          }
+        );
+
+        console.log(`🎵 Generated ElevenLabs audio with voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
+
+        if (shouldEndCall) {
+          // End the call gracefully - use TTS fallback for final message
+          twiml = twilioService.generateTwiML('hangup', {
+            text: aiResponse,
+            language: campaign.language, // Use campaign language
+            voice: 'alice' // Twilio voice for final message
+          });
+          // Mark call for completion
+          setTimeout(() => this.completeCall(callId), 1000);
+        } else {
+          // Continue conversation - ideally we'd use the ElevenLabs audio
+          // For now using TTS fallback until audio streaming is implemented
+          twiml = twilioService.generateTwiML('gather', {
+            text: aiResponse,
+            action: `/api/calls/${callId}/process-speech`,
+            language: campaign.language, // Use campaign language
+            voice: 'alice', // Twilio voice fallback
+            addTypingSound: true // Enable background typing sounds
+          });
+        }
+      } catch (audioError) {
+        console.error('❌ ElevenLabs audio generation failed, using Twilio TTS fallback:', audioError);
+        
+        if (shouldEndCall) {
+          twiml = twilioService.generateTwiML('hangup', {
+            text: aiResponse,
+            language: campaign.language,
+            voice: 'alice'
+          });
+          setTimeout(() => this.completeCall(callId), 1000);
+        } else {
+          twiml = twilioService.generateTwiML('gather', {
+            text: aiResponse,
+            action: `/api/calls/${callId}/process-speech`,
+            language: campaign.language,
+            voice: 'alice',
+            addTypingSound: true
+          });
+        }
       }
 
       // Broadcast real-time update
