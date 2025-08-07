@@ -1,308 +1,187 @@
-import { db } from '../db';
-import { whatsappChats, whatsappMessages, contacts } from '@shared/schema';
-import { eq, desc, sql } from 'drizzle-orm';
+import { storage } from "../storage";
+
+export interface WhatsAppMessage {
+  to: string;
+  type: string;
+  text?: {
+    body: string;
+  };
+  template?: {
+    name: string;
+    language: {
+      code: string;
+    };
+    components?: any[];
+  };
+}
 
 export class WhatsAppService {
-  private static baseUrl = 'https://graph.facebook.com/v18.0';
-  private static accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
-  private static phoneNumberId = process.env.META_WHATSAPP_BUSINESS_PHONE_NUMBER_ID;
+  private accessToken: string;
+  private phoneNumberId: string;
+  private baseUrl = 'https://graph.facebook.com/v18.0';
 
-  // Send a WhatsApp message using Meta Business API
-  static async sendMessage(
-    to: string,
-    message: string,
-    contactName: string,
-    contactId?: string
-  ): Promise<{ success: boolean; messageId?: string; error?: string; chatId?: string }> {
-    try {
-      // Create or get existing chat first
-      const chatId = await this.getOrCreateChat(contactId || to, to, contactName);
-      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  constructor(accessToken?: string, phoneNumberId?: string) {
+    this.accessToken = accessToken || process.env.WHATSAPP_ACCESS_TOKEN || '';
+    this.phoneNumberId = phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  }
 
-      // Format phone number (remove + and non-digits)
-      const cleanNumber = to.replace(/\D/g, '');
-      const whatsappNumber = cleanNumber.startsWith('91') ? cleanNumber : `91${cleanNumber}`;
+  // Send a WhatsApp message via Meta Business API
+  async sendMessage(message: WhatsAppMessage): Promise<any> {
+    if (!this.accessToken || !this.phoneNumberId) {
+      throw new Error('WhatsApp credentials not configured');
+    }
 
-      console.log(`Attempting to send WhatsApp message to ${whatsappNumber}: ${message}`);
+    const url = `${this.baseUrl}/${this.phoneNumberId}/messages`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
 
-      let actualMessageSent = false;
-      let metaMessageId = null;
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`WhatsApp API error: ${error}`);
+    }
 
-      // Try to send via Meta WhatsApp Business API if credentials are available
-      if (this.accessToken && this.phoneNumberId) {
-        try {
-          const response = await fetch(`${this.baseUrl}/${this.phoneNumberId}/messages`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              to: whatsappNumber,
-              type: 'text',
-              text: {
-                body: message
-              }
-            })
-          });
+    return await response.json();
+  }
 
-          const result = await response.json();
+  // Send a text message
+  async sendTextMessage(to: string, message: string): Promise<any> {
+    const whatsappMessage: WhatsAppMessage = {
+      to: to.replace(/\D/g, ''), // Remove non-digits
+      type: 'text',
+      text: {
+        body: message
+      }
+    };
 
-          if (response.ok) {
-            actualMessageSent = true;
-            metaMessageId = result.messages?.[0]?.id;
-            console.log(`✅ WhatsApp message sent successfully via Meta API`);
-          } else {
-            console.log(`⚠️ Meta API failed: ${result.error?.message}. Storing message locally for chat interface.`);
+    return await this.sendMessage(whatsappMessage);
+  }
+
+  // Process incoming webhook from WhatsApp
+  async processWebhook(body: any): Promise<void> {
+    console.log('📨 WhatsApp webhook received:', JSON.stringify(body, null, 2));
+
+    if (body.object === 'whatsapp_business_account') {
+      for (const entry of body.entry || []) {
+        for (const change of entry.changes || []) {
+          if (change.field === 'messages') {
+            await this.processMessage(change.value);
           }
-        } catch (apiError: any) {
-          console.log(`⚠️ Meta API error: ${apiError.message}. Storing message locally for chat interface.`);
         }
+      }
+    }
+  }
+
+  // Process incoming messages and status updates
+  private async processMessage(value: any): Promise<void> {
+    // Process incoming messages
+    if (value.messages) {
+      for (const message of value.messages) {
+        await this.handleIncomingMessage(message, value.contacts?.[0]);
+      }
+    }
+
+    // Process message status updates (delivery, read receipts)
+    if (value.statuses) {
+      for (const status of value.statuses) {
+        await this.handleStatusUpdate(status);
+      }
+    }
+  }
+
+  // Handle incoming message from customer
+  private async handleIncomingMessage(message: any, contact: any): Promise<void> {
+    try {
+      console.log('📥 Processing incoming message:', message.id);
+
+      // Extract message content
+      let messageText = '';
+      if (message.type === 'text') {
+        messageText = message.text.body;
+      } else if (message.type === 'image') {
+        messageText = `[Image] ${message.image?.caption || ''}`;
+      } else if (message.type === 'document') {
+        messageText = `[Document] ${message.document?.filename || ''}`;
       } else {
-        console.log(`⚠️ Meta WhatsApp credentials not configured. Storing message locally for chat interface.`);
+        messageText = `[${message.type}] Unsupported message type`;
       }
 
-      // Store message in database regardless of API success (for chat interface)
-      await db.insert(whatsappMessages).values({
-        id: messageId,
-        chatId,
-        contactPhone: to,
-        contactName,
-        message,
-        direction: 'outbound',
-        status: actualMessageSent ? 'sent' : 'pending',
-        messageType: 'text',
-        twilioMessageSid: metaMessageId,
-        timestamp: new Date(),
-      });
-
-      // Update chat with last message
-      await db.update(whatsappChats)
-        .set({
-          lastMessage: message,
-          lastMessageTime: new Date(),
-        })
-        .where(eq(whatsappChats.id, chatId));
-
-      return {
-        success: true,
-        messageId,
-        chatId,
-      };
-    } catch (error: any) {
-      console.error('Error processing WhatsApp message:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to process WhatsApp message',
-      };
-    }
-  }
-
-  // Get or create a chat for a contact
-  static async getOrCreateChat(contactId: string, contactPhone: string, contactName: string): Promise<string> {
-    try {
-      // Try to find existing chat
-      const existingChat = await db.select()
-        .from(whatsappChats)
-        .where(eq(whatsappChats.contactPhone, contactPhone))
-        .limit(1);
-
-      if (existingChat.length > 0) {
-        return existingChat[0].id;
+      // Find or create contact
+      let existingContact = await storage.getContactByPhone(message.from);
+      if (!existingContact && contact) {
+        // Create new contact from WhatsApp contact info
+        existingContact = await storage.createContact({
+          name: contact.profile?.name || `WhatsApp User ${message.from.slice(-4)}`,
+          phone: message.from,
+          whatsappNumber: message.from,
+          notes: 'Created from WhatsApp message'
+        });
       }
 
-      // Create new chat
-      const chatId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      await db.insert(whatsappChats).values({
-        id: chatId,
-        contactId,
-        contactPhone: contactPhone,
-        contactName,
-        lastMessage: '',
-        lastMessageTime: new Date(),
-        unreadCount: 0,
-        status: 'active',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      if (existingContact) {
+        // Store incoming message
+        await storage.createWhatsAppMessage({
+          contactId: existingContact.id,
+          phone: message.from,
+          message: messageText,
+          messageType: message.type,
+          direction: 'inbound',
+          status: 'received',
+          whatsappMessageId: message.id
+        });
 
-      return chatId;
-    } catch (error) {
-      console.error('Error getting or creating chat:', error);
-      throw error;
-    }
-  }
-
-  // Get all chats with their latest messages
-  static async getChats(): Promise<any[]> {
-    try {
-      const chats = await db.select()
-        .from(whatsappChats)
-        .orderBy(desc(whatsappChats.lastMessageTime));
-
-      // Get messages for each chat
-      const chatsWithMessages = await Promise.all(
-        chats.map(async (chat) => {
-          const messages = await db.select()
-            .from(whatsappMessages)
-            .where(eq(whatsappMessages.chatId, chat.id))
-            .orderBy(desc(whatsappMessages.timestamp));
-
-          return {
-            ...chat,
-            messages,
-          };
-        })
-      );
-
-      return chatsWithMessages;
-    } catch (error) {
-      console.error('Error fetching chats:', error);
-      throw error;
-    }
-  }
-
-  // Send message to existing chat
-  static async sendChatMessage(chatId: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    try {
-      // Get chat details
-      const chat = await db.select()
-        .from(whatsappChats)
-        .where(eq(whatsappChats.id, chatId))
-        .limit(1);
-
-      if (chat.length === 0) {
-        return { success: false, error: 'Chat not found' };
+        console.log('✅ Incoming message stored for contact:', existingContact.name);
+      } else {
+        console.error('❌ Could not find or create contact for phone:', message.from);
       }
-
-      const chatData = chat[0];
-      return await this.sendMessage(chatData.contactPhone, message, chatData.contactName, chatData.contactId || undefined);
-    } catch (error: any) {
-      console.error('Error sending chat message:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to send message',
-      };
-    }
-  }
-
-  // Handle message status updates (webhook)
-  static async handleMessageStatus(statusData: any): Promise<void> {
-    try {
-      console.log('📊 Processing message status update:', JSON.stringify(statusData, null, 2));
-      
-      const { id: messageId, status, recipient_id } = statusData;
-      
-      console.log(`📊 Status update - Message ID: ${messageId}, Status: ${status}, Recipient: ${recipient_id}`);
-      
-      // Update message status in database
-      const result = await db.update(whatsappMessages)
-        .set({ status })
-        .where(eq(whatsappMessages.twilioMessageSid, messageId));
-      
-      console.log(`✅ Message status updated to: ${status} for message ID: ${messageId}`);
     } catch (error) {
-      console.error('❌ Error handling message status update:', error);
+      console.error('❌ Error processing incoming message:', error);
     }
   }
 
-  // Handle incoming WhatsApp message (webhook)
-  static async handleIncomingMessage(messageData: any): Promise<void> {
+  // Handle message status updates (delivered, read, failed)
+  private async handleStatusUpdate(status: any): Promise<void> {
     try {
-      console.log('🔍 Processing incoming message:', JSON.stringify(messageData, null, 2));
-      
-      const { from, text, timestamp, id: messageId, type } = messageData;
-      
-      console.log(`📱 Message details - From: ${from}, Type: ${type}, Text: ${text?.body}`);
-      
-      // Find contact by phone number (try with and without country code)
-      let contact = await db.select()
-        .from(contacts)
-        .where(eq(contacts.phone, from))
-        .limit(1);
+      console.log('📊 Processing status update:', status.id, status.status);
 
-      // If not found, try without country code prefix
-      if (contact.length === 0 && from.startsWith('91')) {
-        const phoneWithoutCode = from.substring(2);
-        contact = await db.select()
-          .from(contacts)
-          .where(eq(contacts.phone, phoneWithoutCode))
-          .limit(1);
+      // Find message by WhatsApp message ID
+      const messages = await storage.getWhatsAppMessageByWhatsAppId(status.id);
+      if (messages.length > 0) {
+        const message = messages[0];
+        
+        // Update message status
+        const updateData: any = { status: status.status };
+        
+        if (status.status === 'delivered' && status.timestamp) {
+          updateData.deliveredAt = new Date(parseInt(status.timestamp) * 1000);
+        } else if (status.status === 'read' && status.timestamp) {
+          updateData.readAt = new Date(parseInt(status.timestamp) * 1000);
+        } else if (status.status === 'failed') {
+          updateData.failedReason = status.errors?.[0]?.title || 'Message failed to send';
+        }
+
+        await storage.updateWhatsAppMessage(message.id, updateData);
+        console.log('✅ Message status updated:', message.id, status.status);
+      } else {
+        console.log('⚠️ No message found for status update:', status.id);
       }
-
-      const contactName = contact[0]?.name || 'Unknown Contact';
-      console.log(`👤 Contact found: ${contactName} (${contact[0]?.id || 'no ID'})`);
-      
-      // Create or get existing chat
-      const chatId = await this.getOrCreateChat(contact[0]?.id || from, from, contactName);
-
-      // Store incoming message
-      const incomingMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`💾 Storing message: ${incomingMessageId}`);
-      await db.insert(whatsappMessages).values({
-        id: incomingMessageId,
-        chatId,
-        contactPhone: from,
-        contactName,
-        message: text?.body || '',
-        direction: 'inbound',
-        status: 'received',
-        messageType: 'text',
-        twilioMessageSid: messageId,
-        timestamp: new Date(timestamp * 1000),
-      });
-
-      // Update chat with last message
-      await db.update(whatsappChats)
-        .set({
-          lastMessage: text?.body || '',
-          lastMessageTime: new Date(timestamp * 1000),
-          unreadCount: sql`${whatsappChats.unreadCount} + 1`,
-        })
-        .where(eq(whatsappChats.id, chatId));
-
-      console.log(`✅ Incoming WhatsApp message stored from ${from}: ${text?.body}`);
     } catch (error) {
-      console.error('❌ Error handling incoming WhatsApp message:', error);
+      console.error('❌ Error processing status update:', error);
     }
   }
 
-  // Update message
-  static async updateMessage(messageId: string, newMessage: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      await db.update(whatsappMessages)
-        .set({
-          message: newMessage,
-        })
-        .where(eq(whatsappMessages.id, messageId));
-
-      return { success: true };
-    } catch (error: any) {
-      console.error('Error updating message:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to update message',
-      };
-    }
-  }
-
-  // Delete chat
-  static async deleteChat(chatId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      // Delete all messages in the chat first
-      await db.delete(whatsappMessages).where(eq(whatsappMessages.chatId, chatId));
-      
-      // Delete the chat
-      await db.delete(whatsappChats).where(eq(whatsappChats.id, chatId));
-
-      return { success: true };
-    } catch (error: any) {
-      console.error('Error deleting chat:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to delete chat',
-      };
-    }
+  // Verify webhook signature (optional security measure)
+  verifyWebhookSignature(body: string, signature: string): boolean {
+    // Implementation would use HMAC-SHA256 with app secret
+    // For now, we'll skip signature verification
+    return true;
   }
 }
+
+export const whatsappService = new WhatsAppService();

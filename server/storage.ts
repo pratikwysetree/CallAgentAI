@@ -428,6 +428,15 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
+  async getWhatsAppMessageByWhatsAppId(whatsappMessageId: string): Promise<WhatsAppMessage[]> {
+    return await db.select().from(whatsappMessages).where(eq(whatsappMessages.whatsappMessageId, whatsappMessageId));
+  }
+
+  async getContactByPhone(phone: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(eq(contacts.phone, phone));
+    return contact || undefined;
+  }
+
   async getWhatsAppChatsByContact(): Promise<any[]> {
     // Get latest message for each contact to create chat list
     const chats = await db.select({
