@@ -101,12 +101,19 @@ export default function ContactCampaigns() {
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
   // Fetch contacts with engagement data (optimized with longer cache)
-  const { data: contacts = [], isLoading: contactsLoading } = useQuery({
+  const { data: contactsData, isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/contacts/enhanced'],
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
   });
+
+  // Ensure contacts is always an array
+  const contacts = useMemo(() => {
+    if (Array.isArray(contactsData)) return contactsData;
+    if (contactsData?.rows && Array.isArray(contactsData.rows)) return contactsData.rows;
+    return [];
+  }, [contactsData]);
 
   // Extract unique cities, states, and statuses for filtering
   const { uniqueCities, uniqueStates, uniqueStatuses } = useMemo(() => {
@@ -114,7 +121,7 @@ export default function ContactCampaigns() {
     const states = new Set<string>();
     const statuses = new Set<string>();
     
-    (contacts as any[])?.forEach((contact: any) => {
+    contacts?.forEach((contact: any) => {
       if (contact.city) cities.add(contact.city);
       if (contact.state) states.add(contact.state);
       if (contact.status) statuses.add(contact.status);
@@ -129,7 +136,7 @@ export default function ContactCampaigns() {
 
   // Filter contacts based on selected criteria
   const filteredContacts = useMemo(() => {
-    return (contacts as any[])?.filter((contact: any) => {
+    return contacts?.filter((contact: any) => {
       // Search term filter
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();

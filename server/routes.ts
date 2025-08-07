@@ -205,7 +205,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Fetching enhanced contacts...`);
       const startTime = Date.now();
       
-      const contacts = await storage.getContacts(3000); // Reduced limit for better performance
+      const contactsResult = await storage.getContacts(3000);
+      
+      // Extract contacts array from the result
+      const contacts = Array.isArray(contactsResult) ? contactsResult : 
+                      (contactsResult as any)?.rows || [];
       
       // Add aggressive caching headers
       res.set({
