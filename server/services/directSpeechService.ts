@@ -85,15 +85,40 @@ export class DirectSpeechService {
   } {
     const info: any = {};
     
-    // Extract WhatsApp number (Indian format)
-    const whatsappMatch = speechText.match(/(?:\+91|91)?\s*[6-9]\d{9}/);
-    if (whatsappMatch) {
+    // Extract WhatsApp number (Indian format) - handle both continuous and spaced digits
+    let whatsappMatch = speechText.match(/(?:\+91|91)?\s*[6-9]\d{9}/);
+    
+    // If no match, try to extract spaced digits (like "9 3 2 5 0 2 5 7 3 0")
+    if (!whatsappMatch) {
+      // Look for sequences of 10 digits with spaces between them
+      const spacedDigitsPattern = /\b[6-9](?:\s+\d){9}\b/;
+      const spacedDigits = speechText.match(spacedDigitsPattern);
+      if (spacedDigits) {
+        const cleanNumber = spacedDigits[0].replace(/\s+/g, '');
+        // Validate it's a 10-digit Indian mobile number
+        if (cleanNumber.length === 10 && /^[6-9]\d{9}$/.test(cleanNumber)) {
+          info.whatsapp = cleanNumber;
+        }
+      }
+    } else {
       info.whatsapp = whatsappMatch[0].replace(/\s+/g, '');
     }
     
-    // Extract email
-    const emailMatch = speechText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
-    if (emailMatch) {
+    // Extract email - handle both standard format and spoken format (like "dot com")
+    let emailMatch = speechText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+    
+    // If no standard email match, try to parse spoken email format
+    if (!emailMatch) {
+      const spokenEmailPattern = /\b[\w\d]+\s*(?:at|@)\s*[\w\d]+\s*(?:dot|\.)\s*(?:com|org|net|edu|in|co|gmail|yahoo|hotmail)\b/i;
+      const spokenEmail = speechText.match(spokenEmailPattern);
+      if (spokenEmail) {
+        const cleanEmail = spokenEmail[0]
+          .replace(/\s*at\s*/gi, '@')
+          .replace(/\s*dot\s*/gi, '.')
+          .replace(/\s+/g, '');
+        info.email = cleanEmail;
+      }
+    } else {
       info.email = emailMatch[0];
     }
     
