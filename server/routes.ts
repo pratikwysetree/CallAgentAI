@@ -188,11 +188,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/audio/:filename', (req, res) => {
     try {
       const filename = req.params.filename;
-      const audioFilePath = path.join(process.cwd(), 'temp', filename);
+      let audioFilePath;
+      
+      // Check both temp/ and temp/static-audio/ directories
+      if (filename === 'typing-sound.mp3') {
+        audioFilePath = path.join(process.cwd(), 'temp', 'static-audio', filename);
+      } else {
+        audioFilePath = path.join(process.cwd(), 'temp', filename);
+      }
 
       if (!fs.existsSync(audioFilePath)) {
-        console.log('Audio file not found:', audioFilePath);
-        return res.status(404).send('Audio file not found');
+        // Try alternate location
+        const alternatePath = filename === 'typing-sound.mp3' 
+          ? path.join(process.cwd(), 'temp', filename)
+          : path.join(process.cwd(), 'temp', 'static-audio', filename);
+        
+        if (fs.existsSync(alternatePath)) {
+          audioFilePath = alternatePath;
+        } else {
+          console.log('Audio file not found in either location:', audioFilePath, 'or', alternatePath);
+          return res.status(404).send('Audio file not found');
+        }
       }
 
       res.setHeader('Content-Type', 'audio/mpeg');
