@@ -345,6 +345,9 @@ export default function ContactCampaigns() {
 
   // Handle campaign start
   const handleStartCampaign = () => {
+    console.log('🚀 handleStartCampaign called - selectedContacts:', selectedContacts);
+    console.log('📊 selectedContacts.length:', selectedContacts.length);
+    
     if (selectedContacts.length === 0) {
       toast({ title: 'Please select contacts', variant: 'destructive' });
       return;
@@ -355,6 +358,7 @@ export default function ContactCampaigns() {
       return;
     }
 
+    console.log('📤 Sending campaign data with contactIds:', selectedContacts);
     startCampaignMutation.mutate({
       contactIds: selectedContacts,
       channel: campaignConfig.channel,
@@ -709,6 +713,7 @@ export default function ContactCampaigns() {
                     <Button 
                       onClick={() => {
                         const contactIds = filteredContacts.map((contact: any) => contact.id);
+                        console.log('🔄 "Start Campaign with Filtered Contacts" clicked - selecting', contactIds.length, 'contacts');
                         setSelectedContacts(contactIds);
                         setActiveTab('campaigns');
                         toast({
@@ -717,8 +722,9 @@ export default function ContactCampaigns() {
                         });
                       }}
                       size="sm"
+                      variant="secondary"
                     >
-                      Start Campaign with Filtered Contacts
+                      Start Campaign with All Filtered Contacts ({filteredContacts.length})
                     </Button>
                   )}
                 </div>
