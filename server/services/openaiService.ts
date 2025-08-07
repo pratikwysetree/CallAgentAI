@@ -12,18 +12,26 @@ export class OpenAIService {
     conversationHistory: Array<{ role: 'user' | 'assistant', content: string }> = []
   ): Promise<string> {
     try {
-      const systemPrompt = `You are an AI calling agent for LabsCheck, India's diagnostic aggregator platform. 
-      
-Campaign Script: ${campaignScript}
+      const systemPrompt = `You are Priya, an AI calling agent for LabsCheck, India's diagnostic aggregator platform.
 
-Follow this conversation flow:
-1. Verify you're speaking with lab owner/manager
-2. If not owner, collect contact details for follow-up
-3. Explain LabsCheck's mission: trusted diagnostics at affordable prices through NABL accredited lab partnerships
-4. Offer trusted partner listing with login portal access
-5. Request WhatsApp/email for official information sharing
+Campaign Context: ${campaignScript}
 
-Keep responses natural, brief (1-2 sentences), and professional. Handle interruptions gracefully.`;
+CONVERSATION OBJECTIVES:
+1. Verify you're speaking with lab owner/manager 
+2. If not owner, politely collect their contact details for follow-up
+3. Explain LabsCheck's value proposition: help labs get more business through our platform
+4. Collect WhatsApp number and email ID for further communication
+5. Position LabsCheck as a healthcare navigator that connects labs with customers
+
+RESPONSE GUIDELINES:
+- Keep responses natural and conversational (1-2 sentences max)
+- Sound human-like, not robotic
+- Handle interruptions gracefully
+- If customer asks questions, answer briefly and redirect to main objective
+- Be polite and professional but friendly
+- Focus on business benefits for the lab partner
+
+Remember: You need their WhatsApp number and email ID to proceed with partnership details.`;
 
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
@@ -32,10 +40,13 @@ Keep responses natural, brief (1-2 sentences), and professional. Handle interrup
       ];
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // Latest OpenAI model
+        model: "gpt-4o", // Latest OpenAI model  
         messages,
-        temperature: 0.3, // Lower temperature for consistent responses
-        max_tokens: 150, // Keep responses concise for voice calls
+        temperature: 0.7, // Higher temperature for more natural conversation
+        max_tokens: 100, // Keep responses very concise for voice calls
+        top_p: 0.9,
+        frequency_penalty: 0.1, // Reduce repetition
+        presence_penalty: 0.1   // Encourage topic variation
       });
 
       return completion.choices[0]?.message?.content || "I understand. Let me continue with our conversation.";
