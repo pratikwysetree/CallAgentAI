@@ -2,14 +2,7 @@ import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall, Megaphone, ChevronDown, Send, MessageCircle, Home } from "lucide-react";
+import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall, Megaphone, Send, MessageCircle, Home } from "lucide-react";
 import ContactCampaigns from "@/pages/contact-campaigns";
 import CampaignDashboard from "@/pages/campaign-dashboard";
 import CampaignManager from "@/pages/campaign-manager";
@@ -64,10 +57,7 @@ function Navigation() {
     },
   ];
 
-  const whatsappMenuItems = [
-    { name: "Bulk Messaging", href: "/whatsapp-bulk", icon: Send },
-    { name: "Chat Messages", href: "/whatsapp-chats", icon: MessageCircle },
-  ];
+
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-b">
