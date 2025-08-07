@@ -9,7 +9,7 @@ import SettingsPage from "@/pages/settings";
 import EnhancedSettings from "@/pages/enhanced-settings";
 import WhatsAppBulk from "@/pages/whatsapp-bulk";
 import WhatsAppChats from "@/pages/whatsapp-chats";
-import LiveCalls from "@/pages/live-calls";
+import LiveCallsPage from "@/pages/live-calls";
 import CallsAnalytics from "@/pages/calls-analytics";
 import NotFound from "@/pages/not-found";
 
@@ -106,7 +106,7 @@ function Router() {
         <Switch>
           <Route path="/" component={WhatsAppBulk} />
           <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
-          <Route path="/live-calls" component={LiveCalls} />
+          <Route path="/live-calls" component={LiveCallsPage} />
           <Route path="/calls-analytics" component={CallsAnalytics} />
           <Route path="/campaign-manager" component={CampaignManager} />
           <Route path="/contact-campaigns" component={ContactCampaigns} />
