@@ -1,7 +1,7 @@
 # WhatsApp Messaging Platform
 
 ## Overview
-This project is an AI-powered communication platform designed for pathology lab partnerships, integrating AI calling capabilities with WhatsApp bulk messaging. The system serves as a dual-channel outreach solution to foster transparency and connect people seeking tests with laboratories, operating on a zero-commission model. Key capabilities include an AI calling agent with a defined conversational flow and robust WhatsApp messaging for campaign management.
+This project is an AI-powered communication platform designed for pathology lab partnerships, integrating AI calling capabilities with WhatsApp bulk messaging. The system serves as a dual-channel outreach solution to foster transparency and connect people seeking tests with laboratories, operating on a zero-commission model. Key capabilities include an AI calling agent with a defined conversational flow, robust WhatsApp messaging for campaign management, and authenticated call recording downloads from Twilio.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -18,7 +18,7 @@ The backend is powered by Node.js with Express.js, written in TypeScript. It fea
 PostgreSQL, hosted on Neon for serverless capabilities, is the chosen database. Drizzle ORM provides type-safe schema definitions and is used with Drizzle Kit for migrations. The schema includes tables for users, contacts, campaigns, WhatsApp templates, bulk message jobs, contact engagement, and campaign metrics.
 
 ### AI Calling Integration
-The platform integrates Twilio for call management, OpenAI GPT models for conversational AI, and ElevenLabs for high-quality text-to-speech. It orchestrates the complete call flow, from initiation to completion, with conversation tracking and real-time monitoring.
+The platform integrates Twilio for call management, OpenAI GPT models for conversational AI, and ElevenLabs for high-quality text-to-speech. It orchestrates the complete call flow, from initiation to completion, with conversation tracking, real-time monitoring, and authenticated recording downloads. The system only supports actual Twilio recordings with proper API authentication - no demo or sample recordings are generated.
 
 ### WhatsApp Integration
 Meta Business API is integrated for WhatsApp messaging, managing bulk campaigns, template-based messaging with dynamic variables, and contact engagement tracking. The system supports sending messages and tracking delivery and read statuses.

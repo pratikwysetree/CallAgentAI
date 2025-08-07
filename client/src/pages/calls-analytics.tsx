@@ -53,17 +53,36 @@ export default function CallsAnalyticsPage() {
 
   const handleDownloadRecording = async (callId: string) => {
     try {
+      // First check if recording exists
+      const checkResponse = await fetch(`/api/calls/${callId}/recording`);
+      if (!checkResponse.ok) {
+        alert('No actual recording available for this call. Recordings are only available for real Twilio calls.');
+        return;
+      }
+
       // Use the server proxy endpoint for downloading
       const downloadUrl = `/api/calls/${callId}/recording/download`;
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.error || 'Recording not available');
+        return;
+      }
+
+      // Create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = url;
       link.download = `call-recording-${callId}.wav`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading recording:', error);
-      alert('Failed to download recording');
+      alert('Failed to download recording - please try again');
     }
   };
 
@@ -224,15 +243,28 @@ export default function CallsAnalyticsPage() {
                         </DialogContent>
                       </Dialog>
                       
-                      {/* Download Recording Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadRecording(call.id)}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Recording
-                      </Button>
+                      {/* Download Recording Button - Only show if recording might exist */}
+                      {call.twilioCallSid && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadRecording(call.id)}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Recording
+                        </Button>
+                      )}
+                      {!call.twilioCallSid && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled
+                          title="No Twilio recording available"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          No Recording
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

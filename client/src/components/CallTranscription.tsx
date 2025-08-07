@@ -51,15 +51,27 @@ export function CallTranscription({ callId, isActive = false }: CallTranscriptio
     
     try {
       // Use the server proxy endpoint for downloading
-      const downloadUrl = `/api/calls/${callId}/recording/download`;
+      const response = await fetch(`/api/calls/${callId}/recording/download`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.error || 'Recording not available');
+        return;
+      }
+
+      // Create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = url;
       link.download = `call-recording-${callId}.${recording.mp4Url ? 'mp4' : 'wav'}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading recording:', error);
+      alert('Failed to download recording - please try again');
     }
   };
 
