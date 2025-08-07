@@ -72,27 +72,27 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
   // Transcribe audio using Whisper
   static async transcribeAudio(audioBuffer: Buffer): Promise<string> {
     try {
-      const fs = require('fs');
-      const path = require('path');
+      const fs = await import('fs');
+      const path = await import('path');
       
       // Create a temporary file for the audio
-      const tempDir = path.join(process.cwd(), 'temp');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
+      const tempDir = path.default.join(process.cwd(), 'temp');
+      if (!fs.default.existsSync(tempDir)) {
+        fs.default.mkdirSync(tempDir, { recursive: true });
       }
       
-      const tempFilePath = path.join(tempDir, `audio_${Date.now()}.wav`);
-      fs.writeFileSync(tempFilePath, audioBuffer);
+      const tempFilePath = path.default.join(tempDir, `audio_${Date.now()}.wav`);
+      fs.default.writeFileSync(tempFilePath, audioBuffer);
       
       // Use OpenAI Whisper for transcription
       const response = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tempFilePath),
+        file: fs.default.createReadStream(tempFilePath),
         model: "whisper-1",
         language: "en", // Can be made configurable based on campaign
       });
       
       // Clean up temporary file
-      fs.unlinkSync(tempFilePath);
+      fs.default.unlinkSync(tempFilePath);
       
       return response.text || "";
     } catch (error) {

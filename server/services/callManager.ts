@@ -276,17 +276,17 @@ export class CallManager {
         console.log(`✅ Generated ElevenLabs audio (${audioBuffer.length} bytes) with voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
 
         // Store audio temporarily and create accessible URL
-        const fs = require('fs');
-        const path = require('path');
+        const fs = await import('fs');
+        const path = await import('path');
         
         // Save audio file temporarily for Twilio to play
         const audioFileName = `response_${callId}_${Date.now()}.mp3`;
-        const tempDir = path.join(process.cwd(), 'temp');
-        if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
+        const tempDir = path.default.join(process.cwd(), 'temp');
+        if (!fs.default.existsSync(tempDir)) {
+          fs.default.mkdirSync(tempDir, { recursive: true });
         }
-        const audioFilePath = path.join(tempDir, audioFileName);
-        fs.writeFileSync(audioFilePath, audioBuffer);
+        const audioFilePath = path.default.join(tempDir, audioFileName);
+        fs.default.writeFileSync(audioFilePath, audioBuffer);
         
         // Create accessible URL
         const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 

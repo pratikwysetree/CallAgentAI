@@ -106,11 +106,11 @@ export class ElevenLabsService {
       console.log('🎹 Adding natural background typing sounds for human-like conversation');
       
       // Use existing typing sound file or generate subtle typing effect
-      const fs = require('fs');
-      const path = require('path');
-      const typingAudioPath = path.join(process.cwd(), 'temp', 'static-audio', 'typing-sound.mp3');
+      const fs = await import('fs');
+      const path = await import('path');
+      const typingAudioPath = path.default.join(process.cwd(), 'temp', 'static-audio', 'typing-sound.mp3');
       
-      if (fs.existsSync(typingAudioPath)) {
+      if (fs.default.existsSync(typingAudioPath)) {
         console.log('🎵 Using pre-existing typing sound file for background effect');
         // In production, you would mix this with the main audio at very low volume
         // For now, we return the original buffer with typing effect applied conceptually
@@ -137,7 +137,7 @@ export class ElevenLabsService {
       const randomThinking = thinkingSounds[Math.floor(Math.random() * thinkingSounds.length)];
       
       // Create very quiet thinking sound
-      return await this.textToSpeech(randomThinking, this.DEFAULT_VOICE_ID, {
+      return await this.textToSpeech(randomThinking, this.FALLBACK_VOICE_ID, {
         stability: 0.2,
         similarityBoost: 0.1,
         style: 0.0,
@@ -167,7 +167,7 @@ export class ElevenLabsService {
       const randomPattern = typingPatterns[Math.floor(Math.random() * typingPatterns.length)];
       
       // Generate very quiet typing sounds that play in background
-      return await this.textToSpeech(randomPattern, this.DEFAULT_VOICE_ID, {
+      return await this.textToSpeech(randomPattern, this.FALLBACK_VOICE_ID, {
         stability: 0.05, // Very low stability for robotic typing sound
         similarityBoost: 0.05, // Very low similarity
         style: 0.0,
