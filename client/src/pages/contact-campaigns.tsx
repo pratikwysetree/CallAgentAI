@@ -72,6 +72,7 @@ export default function ContactCampaigns() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState('contacts');
   const [campaignConfig, setCampaignConfig] = useState({
     channel: 'BOTH',
     whatsappTemplate: '',
@@ -110,7 +111,7 @@ export default function ContactCampaigns() {
     const states = new Set<string>();
     const statuses = new Set<string>();
     
-    contacts.forEach((contact: Contact) => {
+    (contacts as any[])?.forEach((contact: any) => {
       if (contact.city) cities.add(contact.city);
       if (contact.state) states.add(contact.state);
       if (contact.status) statuses.add(contact.status);
@@ -125,7 +126,7 @@ export default function ContactCampaigns() {
 
   // Filter contacts based on selected criteria
   const filteredContacts = useMemo(() => {
-    return contacts.filter((contact: Contact) => {
+    return (contacts as any[])?.filter((contact: any) => {
       // Search term filter
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();
@@ -167,7 +168,7 @@ export default function ContactCampaigns() {
       }
 
       return true;
-    });
+    }) || [];
   }, [contacts, filters]);
 
   // Fetch approved WhatsApp templates
@@ -244,7 +245,7 @@ export default function ContactCampaigns() {
   };
 
   const selectFilteredContacts = () => {
-    setSelectedContacts(filteredContacts.map((contact: Contact) => contact.id));
+    setSelectedContacts(filteredContacts.map((contact: any) => contact.id));
   };
 
   // Start campaign mutation
@@ -470,7 +471,7 @@ export default function ContactCampaigns() {
         </div>
       )}
 
-      <Tabs defaultValue="contacts" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="contacts">Contact Management</TabsTrigger>
           <TabsTrigger value="campaigns">Start Campaign</TabsTrigger>
@@ -677,7 +678,7 @@ export default function ContactCampaigns() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-800">
-                      Showing {filteredContacts.length} of {contacts.length} contacts
+                      Showing {filteredContacts.length} of {(contacts as any[])?.length || 0} contacts
                     </p>
                     {selectedContacts.length > 0 && (
                       <p className="text-sm text-blue-600">
@@ -688,9 +689,13 @@ export default function ContactCampaigns() {
                   {filteredContacts.length > 0 && (
                     <Button 
                       onClick={() => {
-                        setSelectedContacts(filteredContacts.map((contact: Contact) => contact.id));
-                        // Auto-switch to campaign tab after selection
-                        document.querySelector('[value="campaigns"]')?.click();
+                        const contactIds = filteredContacts.map((contact: any) => contact.id);
+                        setSelectedContacts(contactIds);
+                        setActiveTab('campaigns');
+                        toast({
+                          title: "Contacts Selected",
+                          description: `${contactIds.length} contacts selected for campaign. Switched to Campaign tab.`
+                        });
                       }}
                       size="sm"
                     >
@@ -875,7 +880,7 @@ export default function ContactCampaigns() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedContacts(filteredContacts.map((contact: Contact) => contact.id))}
+                    onClick={() => setSelectedContacts(filteredContacts.map((contact: any) => contact.id))}
                     disabled={filteredContacts.length === 0}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
