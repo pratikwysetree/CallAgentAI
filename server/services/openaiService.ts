@@ -50,11 +50,12 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
       const completion = await openai.chat.completions.create({
         model: model, // Use campaign's OpenAI model
         messages,
-        temperature: 0.7, // Higher temperature for more natural conversation
-        max_tokens: 100, // Keep responses very concise for voice calls
+        temperature: 0.7,
+        max_tokens: 50, // Reduced for faster response and shorter replies
         top_p: 0.9,
-        frequency_penalty: 0.1, // Reduce repetition
-        presence_penalty: 0.1   // Encourage topic variation
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1,
+        stream: false // Ensure no streaming for fastest response
       });
 
       const response = completion.choices[0]?.message?.content || "I understand. Let me continue with our conversation.";
@@ -69,7 +70,7 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
     }
   }
 
-  // Transcribe audio using Whisper
+  // Transcribe audio using Whisper - optimized for speed
   static async transcribeAudio(audioBuffer: Buffer): Promise<string> {
     try {
       const fs = await import('fs');

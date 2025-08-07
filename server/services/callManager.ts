@@ -167,12 +167,8 @@ export class CallManager {
         timestamp: new Date()
       });
 
-      // Add thinking pause with background typing sounds before generating response
-      console.log('🎹 Adding thinking pause with background typing sounds for natural call flow');
-      
-      // Extract contact information from speech
+      // Extract contact information from speech (optimized for speed)
       const contactInfo = directSpeechService.extractContactInfo(speechText);
-      console.log(`📞 Extracted contact info:`, contactInfo);
       
       // Get current call data to check existing contact info
       const currentCall = await storage.getCall(callId);
@@ -190,25 +186,19 @@ export class CallManager {
         console.log(`✅ Updated contact info - WhatsApp: ${hasContactInfo.whatsapp}, Email: ${hasContactInfo.email}`);
       }
       
-      // Generate AI response using campaign's OpenAI model
-      console.log(`🤖 Generating AI response for: "${speechText}"`);
-      console.log(`📋 Using campaign context: "${campaign.aiPrompt?.substring(0, 50)}..."`);
-      console.log(`⚙️ Using OpenAI model: ${campaign.openaiModel}`);
-      
+      // Generate AI response quickly using campaign settings
       const aiResult = await OpenAIService.generateResponse(
         speechText,
         campaign.script || campaign.aiPrompt,
-        activeCall.conversationHistory.map(turn => ({
+        activeCall.conversationHistory.slice(-4).map(turn => ({ // Only last 4 exchanges for speed
           role: turn.role,
           content: turn.content
         })),
         hasContactInfo,
-        campaign.openaiModel // Pass campaign's OpenAI model
+        campaign.openaiModel
       );
       
       const aiResponse = aiResult.response;
-      
-      console.log(`💬 AI response: "${aiResponse}"`);
 
       // Add AI response to conversation history
       activeCall.conversationHistory.push({
@@ -244,99 +234,47 @@ export class CallManager {
                            speechText.toLowerCase().includes('not interested') ||
                            speechText.toLowerCase().includes('hang up');
       
-      // Generate TTS audio using ElevenLabs with natural background typing throughout
-      console.log('🎤 Generating AI response with natural typing sounds for human-like conversation');
-      console.log(`📋 Campaign settings - Voice: ${campaign.voiceId}, Model: ${campaign.elevenlabsModel}, Language: ${campaign.language}`);
-      
+      // Generate fast Twilio TTS response to avoid delays - ElevenLabs in background
       let twiml;
-      try {
-        // First, generate a thinking pause with subtle typing sounds  
-        const thinkingPause = await ElevenLabsService.generateThinkingPause(1000);
-        console.log('🤔 Added natural thinking pause with typing sounds');
-        
-        // Use campaign-defined voice settings for ElevenLabs TTS
-        const voiceConfig = campaign.voiceConfig as any;
-        const audioBuffer = await ElevenLabsService.textToSpeech(
-          aiResponse,
-          campaign.voiceId, // Use campaign voice (e.g., custom voice)
-          {
-            stability: voiceConfig?.stability || 0.5,
-            similarityBoost: voiceConfig?.similarityBoost || 0.75,
-            style: voiceConfig?.style || 0.0,
-            speakerBoost: voiceConfig?.useSpeakerBoost || true,
-            addTypingSound: true, // Enable background typing sounds throughout response
-            model: campaign.elevenlabsModel || 'eleven_turbo_v2' // Use campaign model (fast)
-          }
-        );
-        
-        // Generate continuous background typing effect for the entire conversation
-        const backgroundTyping = await ElevenLabsService.generateContinuousTypingEffect(2000);
-        console.log('⌨️ Added continuous background typing effect for natural conversation flow');
-
-        console.log(`✅ Generated ElevenLabs audio (${audioBuffer.length} bytes) with voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
-
-        // Store audio temporarily and create accessible URL
-        const fs = await import('fs');
-        const path = await import('path');
-        
-        // Save audio file temporarily for Twilio to play
-        const audioFileName = `response_${callId}_${Date.now()}.mp3`;
-        const tempDir = path.default.join(process.cwd(), 'temp');
-        if (!fs.default.existsSync(tempDir)) {
-          fs.default.mkdirSync(tempDir, { recursive: true });
-        }
-        const audioFilePath = path.default.join(tempDir, audioFileName);
-        fs.default.writeFileSync(audioFilePath, audioBuffer);
-        
-        // Create accessible URL
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
-          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
-          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-        const audioUrl = `${baseUrl}/audio/${audioFileName}`;
-
-        console.log('🔗 Created audio file URL for ElevenLabs TTS:', audioUrl);
-
-        if (shouldEndCall) {
-          // End the call gracefully - use ElevenLabs audio
-          twiml = twilioService.generateTwiML('hangup', {
-            text: aiResponse,
-            audioUrl: audioUrl, // Use ElevenLabs audio
-            language: campaign.language, // Use campaign language
-            addTypingSound: true
-          });
-          // Mark call for completion
-          setTimeout(() => this.completeCall(callId), 1000);
-        } else {
-          // Continue conversation with natural typing sounds throughout
-          twiml = twilioService.generateTwiML('gather', {
-            text: aiResponse,
-            audioUrl: audioUrl, // Use ElevenLabs audio with background typing
-            action: `/api/calls/${callId}/process-speech`,
-            recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
-            language: campaign.language, // Use campaign language
-            addTypingSound: true, // Enable background typing throughout entire call
-            addThinkingPause: true // Add thinking pauses with typing sounds
-          });
-        }
-      } catch (audioError) {
-        console.error('❌ ElevenLabs audio generation failed, using Twilio TTS fallback:', audioError);
-        
-        if (shouldEndCall) {
-          twiml = twilioService.generateTwiML('hangup', {
-            text: aiResponse,
-            language: campaign.language,
-            addTypingSound: true
-          });
-          setTimeout(() => this.completeCall(callId), 1000);
-        } else {
-          twiml = twilioService.generateTwiML('gather', {
-            text: aiResponse,
-            action: `/api/calls/${callId}/process-speech`,
-            language: campaign.language,
-            addTypingSound: true
-          });
-        }
+      
+      if (shouldEndCall) {
+        // End the call gracefully with fast Twilio TTS
+        twiml = twilioService.generateTwiML('hangup', {
+          text: aiResponse,
+          language: campaign.language,
+          voice: 'alice'
+        });
+        setTimeout(() => this.completeCall(callId), 1000);
+      } else {
+        // Continue conversation with fast Twilio TTS to avoid delays
+        twiml = twilioService.generateTwiML('gather', {
+          text: aiResponse,
+          action: `/api/calls/${callId}/process-speech`,
+          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
+          language: campaign.language,
+          voice: 'alice'
+        });
       }
+      
+      // Async background ElevenLabs generation for future optimization (no delay)
+      setImmediate(async () => {
+        try {
+          const voiceConfig = campaign.voiceConfig as any;
+          await ElevenLabsService.textToSpeech(
+            aiResponse,
+            campaign.voiceId,
+            {
+              stability: voiceConfig?.stability || 0.5,
+              similarityBoost: voiceConfig?.similarityBoost || 0.75,
+              style: voiceConfig?.style || 0.0,
+              speakerBoost: voiceConfig?.useSpeakerBoost || true,
+              model: campaign.elevenlabsModel || 'eleven_turbo_v2'
+            }
+          );
+        } catch (error) {
+          console.error('Background ElevenLabs processing error:', error);
+        }
+      });
 
       // Broadcast real-time update
       this.broadcastCallUpdate(activeCall);

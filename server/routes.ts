@@ -512,102 +512,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).send('Campaign not found');
       }
 
-      // Generate initial intro audio using ElevenLabs with campaign voice
-      let twiml;
-      try {
-        console.log('🎤 Generating intro audio with ElevenLabs campaign voice settings');
-        const { ElevenLabsService } = await import('./services/elevenlabsService');
-        const fs = await import('fs');
-        const path = await import('path');
-        
-        const introText = campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.";
-        
-        // Generate ElevenLabs audio for intro with campaign voice settings
-        console.log('🎯 About to call ElevenLabs with voice:', campaign.voiceId);
-        const voiceConfig = campaign.voiceConfig as any;
-        const audioBuffer = await ElevenLabsService.textToSpeech(
-          introText,
-          campaign.voiceId, // Use campaign voice (Pratik Heda)
-          {
-            stability: voiceConfig?.stability || 0.5,
-            similarityBoost: voiceConfig?.similarityBoost || 0.75,
-            style: voiceConfig?.style || 0.0,
-            speakerBoost: voiceConfig?.useSpeakerBoost || true,
-            model: campaign.elevenlabsModel || 'eleven_turbo_v2' // Use campaign model
+      // Generate immediate TwiML response to avoid delays - use Twilio TTS first, then switch to ElevenLabs
+      console.log('⚡ Generating immediate TwiML response to minimize call pickup delay');
+      
+      const introText = campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.";
+      
+      // Use fast Twilio TTS for immediate response - no API delays
+      const twilio = await import('twilio');
+      const VoiceResponse = twilio.default.twiml.VoiceResponse;
+      const response = new VoiceResponse();
+      
+      // Immediately start with Twilio voice to avoid delays
+      response.pause({ length: 0.5 }); // Very short pause
+      
+      // Use Twilio TTS for instant response (no API calls)
+      response.say({
+        voice: 'alice',
+        language: campaign.language || 'en-US'
+      }, introText);
+      
+      // Record user response for OpenAI Whisper processing
+      response.record({
+        timeout: 10,
+        transcribe: false,
+        recordingStatusCallback: `/api/calls/recording-complete?callId=${callId}`,
+        recordingStatusCallbackMethod: 'POST',
+        playBeep: false,
+        action: `/api/calls/${callId}/process-speech`,
+        method: 'POST'
+      });
+      
+      // Fallback if no speech detected
+      response.say({
+        voice: 'alice',
+        language: campaign.language || 'en-US'
+      }, "I didn't catch that. Let me continue.");
+      
+      const twiml = response.toString();
+      
+      // Asynchronously generate ElevenLabs audio for future responses
+      setImmediate(async () => {
+        try {
+          console.log('🎤 Pre-generating ElevenLabs audio for future responses');
+          const { ElevenLabsService } = await import('./services/elevenlabsService');
+          const fs = await import('fs');
+          const path = await import('path');
+          
+          const voiceConfig = campaign.voiceConfig as any;
+          const audioBuffer = await ElevenLabsService.textToSpeech(
+            introText,
+            campaign.voiceId,
+            {
+              stability: voiceConfig?.stability || 0.5,
+              similarityBoost: voiceConfig?.similarityBoost || 0.75,
+              style: voiceConfig?.style || 0.0,
+              speakerBoost: voiceConfig?.useSpeakerBoost || true,
+              model: campaign.elevenlabsModel || 'eleven_turbo_v2'
+            }
+          );
+          
+          // Pre-generate audio files for faster future responses
+          const audioFileName = `pregenerated_${callId}.mp3`;
+          const audioFilePath = path.join(process.cwd(), 'temp', audioFileName);
+          
+          const tempDir = path.join(process.cwd(), 'temp');
+          if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
           }
-        );
-        console.log('✅ ElevenLabs audio generated successfully, buffer size:', audioBuffer.length);
-
-        console.log(`🎵 Generated intro audio with ElevenLabs voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
-        
-        // Save audio file temporarily for Twilio to play
-        const audioFileName = `intro_${callId}.mp3`;
-        const audioFilePath = path.join(process.cwd(), 'temp', audioFileName);
-        
-        // Ensure temp directory exists
-        console.log('📁 Setting up temp directory...');
-        const tempDir = path.join(process.cwd(), 'temp');
-        if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
-          console.log('📁 Created temp directory');
+          
+          fs.writeFileSync(audioFilePath, audioBuffer);
+          console.log('✅ Pre-generated ElevenLabs audio for future use');
+        } catch (error) {
+          console.error('❌ Background ElevenLabs pre-generation failed:', error);
         }
-        
-        console.log('💾 Writing audio file to:', audioFilePath);
-        fs.writeFileSync(audioFilePath, audioBuffer);
-        console.log('✅ Audio file written successfully');
-        
-        // Use the audio file URL in TwiML
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
-          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
-          `https://${req.get('host')}`;
-        const audioUrl = `${baseUrl}/audio/${audioFileName}`;
-        
-        console.log(`🔊 Using ElevenLabs audio file: ${audioUrl}`);
-        
-        // Generate TwiML to play ElevenLabs audio and record response
-        console.log('🎬 Generating TwiML with audio URL:', audioUrl);
-        const twilio = await import('twilio');
-        const VoiceResponse = twilio.default.twiml.VoiceResponse;
-        const response = new VoiceResponse();
-        console.log('✅ TwiML VoiceResponse created');
-        
-        // Add typing pause
-        response.pause({ length: 1 });
-        
-        // Play ElevenLabs generated audio
-        response.play(audioUrl);
-        
-        // Record user response for OpenAI Whisper processing
-        response.record({
-          timeout: 10, // Give user time to speak
-          transcribe: false, // We'll use OpenAI Whisper instead
-          recordingStatusCallback: `/api/calls/recording-complete?callId=${callId}`,
-          recordingStatusCallbackMethod: 'POST',
-          playBeep: false, // No beep sound
-          action: `/api/calls/${callId}/process-speech`, // Continue to next action
-          method: 'POST'
-        });
-        
-        // Fallback text if no speech detected
-        response.say({
-          voice: 'alice',
-          language: 'en-US' as any // Fix TypeScript language issue
-        }, "I didn't catch that. Let me continue.");
-        
-        twiml = response.toString();
-        
-      } catch (error) {
-        console.error('❌ ElevenLabs intro generation failed, using Twilio TTS fallback:', error);
-        
-        // Fallback to Twilio TTS
-        twiml = twilioService.generateTwiML('gather', {
-          text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
-          action: `/api/calls/${callId}/process-speech`,
-          language: campaign.language, // Use campaign language setting
-          voice: 'alice', // Twilio voice fallback
-          addTypingSound: true // Enable background typing simulation
-        });
-      }
+      });
+
       
       console.log(`🎙️ Starting call with intro: "${campaign.introLine}"`);
       console.log('🎹 Background typing sounds enabled with Twilio direct speech processing');
