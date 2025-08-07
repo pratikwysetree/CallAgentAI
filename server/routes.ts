@@ -493,6 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Main webhook for call handling
   app.post("/api/calls/webhook", async (req, res) => {
     try {
+      console.log('🔥 Webhook starting with query params:', req.query);
       const { callId, campaignId } = req.query;
       
       if (!callId || !campaignId) {
@@ -524,6 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const introText = campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.";
         
         // Generate ElevenLabs audio for intro with campaign voice settings
+        console.log('🎯 About to call ElevenLabs with voice:', campaign.voiceId);
         const voiceConfig = campaign.voiceConfig as any;
         const audioBuffer = await ElevenLabsService.textToSpeech(
           introText,
@@ -536,6 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             model: campaign.elevenlabsModel || 'eleven_turbo_v2' // Use campaign model
           }
         );
+        console.log('✅ ElevenLabs audio generated successfully, buffer size:', audioBuffer.length);
 
         console.log(`🎵 Generated intro audio with ElevenLabs voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
         
@@ -544,12 +547,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const audioFilePath = path.join(process.cwd(), 'temp', audioFileName);
         
         // Ensure temp directory exists
+        console.log('📁 Setting up temp directory...');
         const tempDir = path.join(process.cwd(), 'temp');
         if (!fs.existsSync(tempDir)) {
           fs.mkdirSync(tempDir, { recursive: true });
+          console.log('📁 Created temp directory');
         }
         
+        console.log('💾 Writing audio file to:', audioFilePath);
         fs.writeFileSync(audioFilePath, audioBuffer);
+        console.log('✅ Audio file written successfully');
         
         // Use the audio file URL in TwiML
         const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
@@ -560,9 +567,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔊 Using ElevenLabs audio file: ${audioUrl}`);
         
         // Generate TwiML to play ElevenLabs audio instead of using Twilio TTS
+        console.log('🎬 Generating TwiML with audio URL:', audioUrl);
         const twilio = await import('twilio');
         const VoiceResponse = twilio.default.twiml.VoiceResponse;
         const response = new VoiceResponse();
+        console.log('✅ TwiML VoiceResponse created');
         
         // Add typing pause
         response.pause({ length: 1 });
@@ -607,7 +616,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.type('text/xml').send(twiml);
     } catch (error) {
-      console.error('Webhook error:', error);
+      console.error('🚨 WEBHOOK ERROR - Full details:', error);
+      console.error('🚨 WEBHOOK ERROR - Stack trace:', error.stack);
+      console.error('🚨 WEBHOOK ERROR - Query params:', req.query);
       res.status(500).send('Internal server error');
     }
   });
