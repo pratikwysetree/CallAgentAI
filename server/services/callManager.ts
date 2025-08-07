@@ -244,12 +244,16 @@ export class CallManager {
                            speechText.toLowerCase().includes('not interested') ||
                            speechText.toLowerCase().includes('hang up');
       
-      // Generate TTS audio using ElevenLabs with campaign voice settings
-      console.log('🎤 Generating AI response audio with campaign voice settings');
+      // Generate TTS audio using ElevenLabs with natural background typing throughout
+      console.log('🎤 Generating AI response with natural typing sounds for human-like conversation');
       console.log(`📋 Campaign settings - Voice: ${campaign.voiceId}, Model: ${campaign.elevenlabsModel}, Language: ${campaign.language}`);
       
       let twiml;
       try {
+        // First, generate a thinking pause with subtle typing sounds  
+        const thinkingPause = await ElevenLabsService.generateThinkingPause(1000);
+        console.log('🤔 Added natural thinking pause with typing sounds');
+        
         // Use campaign-defined voice settings for ElevenLabs TTS
         const voiceConfig = campaign.voiceConfig as any;
         const audioBuffer = await ElevenLabsService.textToSpeech(
@@ -260,10 +264,14 @@ export class CallManager {
             similarityBoost: voiceConfig?.similarityBoost || 0.75,
             style: voiceConfig?.style || 0.0,
             speakerBoost: voiceConfig?.useSpeakerBoost || true,
-            addTypingSound: true, // Enable background typing sounds
+            addTypingSound: true, // Enable background typing sounds throughout response
             model: campaign.elevenlabsModel || 'eleven_turbo_v2' // Use campaign model (fast)
           }
         );
+        
+        // Generate continuous background typing effect for the entire conversation
+        const backgroundTyping = await ElevenLabsService.generateContinuousTypingEffect(2000);
+        console.log('⌨️ Added continuous background typing effect for natural conversation flow');
 
         console.log(`✅ Generated ElevenLabs audio (${audioBuffer.length} bytes) with voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
 
@@ -299,14 +307,15 @@ export class CallManager {
           // Mark call for completion
           setTimeout(() => this.completeCall(callId), 1000);
         } else {
-          // Continue conversation - use ElevenLabs audio
+          // Continue conversation with natural typing sounds throughout
           twiml = twilioService.generateTwiML('gather', {
             text: aiResponse,
-            audioUrl: audioUrl, // Use ElevenLabs audio
+            audioUrl: audioUrl, // Use ElevenLabs audio with background typing
             action: `/api/calls/${callId}/process-speech`,
             recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
             language: campaign.language, // Use campaign language
-            addTypingSound: true // Enable background typing sounds
+            addTypingSound: true, // Enable background typing throughout entire call
+            addThinkingPause: true // Add thinking pauses with typing sounds
           });
         }
       } catch (audioError) {

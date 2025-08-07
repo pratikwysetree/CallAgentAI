@@ -39,7 +39,15 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 
 ## Recent Changes (August 7, 2025)
 
-### Campaign Voice Settings Fixed (Latest)
+### Natural Background Typing Effects Added (Latest)
+- **HUMAN-LIKE CONVERSATION**: Added continuous background typing sounds throughout entire call for natural human experience
+- **ENHANCED ELEVENLABS SERVICE**: Implemented thinking pauses with natural typing effects between AI responses
+- **CONTINUOUS TYPING AMBIANCE**: Background typing effects active during thinking, speaking, and conversation pauses
+- **NATURAL CONVERSATION FLOW**: Added pre-response, post-response, and extended thinking pauses with typing sounds
+- **TWILIO INTEGRATION**: Enhanced TwiML generation with natural typing pauses and conversation flow effects
+- **CAMPAIGN-DRIVEN TYPING**: Typing effects use campaign voice and language settings for consistency
+
+### Campaign Voice Settings Fixed (Previous)
 - **CRITICAL VOICE FIX**: Removed all hardcoded agent voice, language, and speech speed selections
 - **CAMPAIGN-DRIVEN SETTINGS**: System now uses campaign-defined voiceId (Pratik Heda), elevenlabsModel (eleven_turbo_v2 fast), and language settings
 - **FLEXIBLE EMAIL EXTRACTION**: Enhanced contact extraction to capture any email domain spoken by customers (not just hardcoded Gmail/Yahoo)

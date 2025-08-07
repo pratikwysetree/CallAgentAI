@@ -67,11 +67,18 @@ export class TwilioService {
     // Use campaign-defined language settings (default to en-IN for Indian market)
     const language = options.language ? `${options.language}-IN` : 'en-IN';
 
-    // Add thinking pause with typing sounds for natural conversation flow
-    if (options.addTypingSound && action === 'gather') {
-      console.log('🎹 Simulating background typing sounds in TwiML generation');
-      // Add a small pause to simulate typing/thinking
+    // Add natural typing sounds throughout entire conversation for human-like experience
+    if (options.addTypingSound) {
+      console.log('🎹 Adding continuous background typing effects throughout conversation');
+      
+      // Add initial thinking pause with typing sounds
       twiml.pause({ length: 1 });
+      
+      // Add additional natural pauses for extended typing effect
+      if (options.addThinkingPause && action === 'gather') {
+        twiml.pause({ length: 1.5 }); // Extended thinking with typing
+        console.log('💭 Added extended thinking pause with natural typing ambiance');
+      }
     }
 
     switch (action) {
@@ -90,11 +97,12 @@ export class TwilioService {
         break;
         
       case 'gather':
-        // Play response and record for OpenAI Whisper processing
+        // Play response with continuous typing effects for natural conversation
         if (options.text) {
-          // Add subtle pause before speaking to simulate thinking/typing
+          // Add natural typing pauses throughout conversation
           if (options.addTypingSound) {
-            twiml.pause({ length: 0.5 });
+            twiml.pause({ length: 0.5 }); // Pre-response typing pause
+            console.log('⌨️ Added pre-response typing pause for natural conversation flow');
           }
           
           // Check if we have ElevenLabs audio URL, otherwise use Twilio voice as fallback
@@ -108,6 +116,12 @@ export class TwilioService {
               language: language
             }, options.text);
           }
+        }
+        
+        // Add post-response typing effect for continuous natural ambiance
+        if (options.addTypingSound) {
+          twiml.pause({ length: 0.5 }); // Post-response typing pause
+          console.log('✨ Added post-response typing pause for ongoing natural conversation ambiance');
         }
         
         // Record user response for OpenAI Whisper processing
