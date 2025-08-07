@@ -562,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ ElevenLabs intro generated successfully: ${audioUrl}`);
 
         // Generate TwiML with ElevenLabs audio and background typing sounds
-        twiml = twilioService.generateTwiML('gather', {
+        twiml = await twilioService.generateTwiML('gather', {
           audioUrl: audioUrl,
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
@@ -591,7 +591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('🚨 ANSWER WEBHOOK ERROR:', error instanceof Error ? error.message : String(error));
-      const fallbackTwiml = twilioService.generateTwiML('hangup', {
+      const fallbackTwiml = await twilioService.generateTwiML('hangup', {
         text: 'Sorry, there was an error. Please try again later.'
       });
       res.type('text/xml').send(fallbackTwiml);
@@ -669,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ Using ElevenLabs voice: ${campaign.voiceId}, audio URL: ${audioUrl}`);
 
         // Use ElevenLabs audio in TwiML
-        twiml = twilioService.generateTwiML('gather', {
+        twiml = await twilioService.generateTwiML('gather', {
           audioUrl: audioUrl,
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
@@ -681,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('❌ ElevenLabs error details:', elevenlabsError instanceof Error ? elevenlabsError.message : String(elevenlabsError));
 
         // Fallback to fast Twilio TTS
-        twiml = twilioService.generateTwiML('gather', {
+        twiml = await twilioService.generateTwiML('gather', {
           text: introText,
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
@@ -732,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('❌ Enhanced recording processing error:', error);
-      const twiml = twilioService.generateTwiML('hangup', {
+      const twiml = await twilioService.generateTwiML('hangup', {
         text: 'Thank you for your time. Goodbye.'
       });
       res.type('text/xml').send(twiml);
@@ -781,9 +781,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dbCall = await storage.getCall(callId);
         const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
 
-        const twiml = twilioService.generateTwiML('gather', {
+        const twiml = await twilioService.generateTwiML('gather', {
           text: 'I\'m here. Please speak when you\'re ready.',
           action: `/api/calls/${callId}/process-speech`,
+          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
           language: campaign?.language || 'en',
           addTypingSound: true, // Customer will hear typing sounds
           addThinkingPause: true
@@ -801,7 +802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dbCall = await storage.getCall(callId);
         const campaign = dbCall?.campaignId ? await storage.getCampaign(dbCall.campaignId) : null;
 
-        const twiml = twilioService.generateTwiML('hangup', {
+        const twiml = await twilioService.generateTwiML('hangup', {
           text: 'I understand. Thank you for your time. Have a great day!',
           language: campaign?.language || 'en',
           addTypingSound: true // Customer will hear typing sounds
@@ -818,7 +819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.type('text/xml').send(result.twiml);
     } catch (error) {
       console.error('Enhanced speech processing error:', error);
-      const twiml = twilioService.generateTwiML('hangup', {
+      const twiml = await twilioService.generateTwiML('hangup', {
         text: 'Thank you for your time. Goodbye.'
       });
       res.type('text/xml').send(twiml);

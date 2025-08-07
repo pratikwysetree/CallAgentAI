@@ -62,8 +62,8 @@ export class CallManager {
       }
 
       // Update call with Twilio SID
-      await storage.updateCall(newCall.id, { 
-        twilioCallSid: twilioResult.twilioCallSid 
+      await storage.updateCall(newCall.id, {
+        twilioCallSid: twilioResult.twilioCallSid
       });
 
       // Track active call
@@ -81,9 +81,9 @@ export class CallManager {
       return { success: true, callId: newCall.id };
     } catch (error) {
       console.error('Error starting call:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -137,7 +137,7 @@ export class CallManager {
         } else {
           console.log(`❌ Call ${callId} not found in database or not active`);
           return {
-            twiml: twilioService.generateTwiML('hangup', { 
+            twiml: await twilioService.generateTwiML('hangup', {
               text: 'Thank you for your time. Goodbye.',
               language: 'en',
               voice: 'alice'
@@ -151,7 +151,7 @@ export class CallManager {
       const campaign = await storage.getCampaign(activeCall.campaignId);
       if (!campaign) {
         return {
-          twiml: twilioService.generateTwiML('hangup', { 
+          twiml: await twilioService.generateTwiML('hangup', {
             text: 'Thank you for your time. Goodbye.',
             language: 'en',
             voice: 'alice'
@@ -216,7 +216,7 @@ export class CallManager {
         });
         await storage.createCallMessage({
           callId,
-          role: 'assistant', 
+          role: 'assistant',
           content: aiResponse
         });
         console.log('✅ Messages saved to database successfully');
@@ -227,7 +227,7 @@ export class CallManager {
       // Check if conversation should end (only after collecting BOTH WhatsApp and email)
       const hasAllContactInfo = hasContactInfo.whatsapp && hasContactInfo.email;
       const shouldEndCall = (hasAllContactInfo && (
-                           activeCall.conversationHistory.length >= 8 || 
+                           activeCall.conversationHistory.length >= 8 ||
                            aiResponse.toLowerCase().includes('thank you for your time') ||
                            aiResponse.toLowerCase().includes('goodbye')
                            )) ||
@@ -266,8 +266,8 @@ export class CallManager {
         fs.default.writeFileSync(audioFilePath, audioBuffer);
 
         // Create accessible URL
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
-          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN ?
+          `https://${process.env.REPLIT_DEV_DOMAIN}` :
           `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
         const audioUrl = `${baseUrl}/audio/${audioFileName}`;
 
@@ -312,7 +312,7 @@ export class CallManager {
       console.error('❌ Error processing speech input:', error);
       console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
       return {
-        twiml: twilioService.generateTwiML('hangup', { 
+        twiml: await twilioService.generateTwiML('hangup', {
           text: 'I apologize, there was a technical issue. Thank you for your time.',
           language: 'en', // Default language for error cases
           voice: 'alice'

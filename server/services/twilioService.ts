@@ -64,7 +64,7 @@ export class TwilioService {
   }
 
   // Generate TwiML for call handling with ElevenLabs-only voice synthesis
-  generateTwiML(action: 'gather' | 'say' | 'hangup', options: any = {}): string {
+  async generateTwiML(action: 'gather' | 'say' | 'hangup', options: any = {}): Promise<string> {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
 
@@ -74,11 +74,11 @@ export class TwilioService {
     // Add subtle typing sound before responses to simulate human-like behavior
     if (options.addTypingSound !== false) {
       // Add typing sound URL that customers will hear
-      const fs = require('fs');
-      const path = require('path');
-      const typingPath = path.join(process.cwd(), 'temp', 'static-audio', 'typing-sound.mp3');
+      const fs = await import('fs');
+      const path = await import('path');
+      const typingPath = path.default.join(process.cwd(), 'temp', 'static-audio', 'typing-sound.mp3');
       
-      if (fs.existsSync(typingPath)) {
+      if (fs.default.existsSync(typingPath)) {
         const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
           `https://${process.env.REPLIT_DEV_DOMAIN}` : 
           `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
