@@ -43,7 +43,7 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 - **COMPLETE SUCCESS**: AI calling system now working with natural conversation flow and contact extraction
 - **WEBHOOK ANALYSIS COMPLETE**: Examined and fixed all call disconnection issues through enhanced webhook logging
 - **FAST CALL CONNECTIONS**: Optimized Twilio settings reduced connection time to under 1 second
-- **CONTACT COLLECTION VERIFIED**: AI successfully extracts and saves WhatsApp numbers and email addresses from speech
+- **CONTACT COLLECTION VERIFIED**: AI successfully extracts and saves WhatsApp numbers and any email addresses from speech (flexible domain support)
 - **SMART CONVERSATION FLOW**: Calls continue until BOTH WhatsApp number AND email address are collected
 - **INTELLIGENT AI RESPONSES**: AI detects missing/incorrect contact info and asks for clarification
 - **CALL PERSISTENCE**: Calls remain active throughout conversation and don't drop unexpectedly

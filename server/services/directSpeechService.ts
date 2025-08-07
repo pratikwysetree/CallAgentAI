@@ -109,7 +109,8 @@ export class DirectSpeechService {
     
     // If no standard email match, try to parse spoken email format
     if (!emailMatch) {
-      const spokenEmailPattern = /\b[\w\d]+\s*(?:at|@)\s*[\w\d]+\s*(?:dot|\.)\s*(?:com|org|net|edu|in|co|gmail|yahoo|hotmail)\b/i;
+      // More flexible pattern to capture any spoken email format
+      const spokenEmailPattern = /\b[\w\d]+\s*(?:at|@)\s*[\w\d]+(?:\s*(?:dot|\.)\s*[\w\d]+)*\b/i;
       const spokenEmail = speechText.match(spokenEmailPattern);
       if (spokenEmail) {
         const cleanEmail = spokenEmail[0]
