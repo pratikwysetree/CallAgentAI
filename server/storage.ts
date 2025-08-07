@@ -136,38 +136,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContacts(limit = 3000): Promise<Contact[]> {
-    // Optimized query with reduced limit for better performance
+    // Bypass Drizzle ORM issue with raw SQL query
     const startTime = Date.now();
     
-    const results = await db.select({
-      id: contacts.id,
-      name: contacts.name,
-      phone: contacts.phone,
-      email: contacts.email,
-      city: contacts.city,
-      state: contacts.state,
-      company: contacts.company,
-      status: contacts.status,
-      createdAt: contacts.createdAt,
-      updatedAt: contacts.updatedAt,
-      // Add mock engagement data for now to prevent frontend errors
-      lastContactedAt: sql<Date | null>`NULL`,
-      nextFollowUp: sql<Date | null>`NULL`,
-      totalEngagements: sql<number>`0`
-    })
-    .from(contacts)
-    .where(and(
-      sql`${contacts.phone} IS NOT NULL`,
-      sql`${contacts.phone} != ''`,
-      sql`${contacts.name} != 'Unknown Lab'`
-    ))
-    .orderBy(desc(contacts.createdAt))
-    .limit(limit);
-    
-    const endTime = Date.now();
-    console.log(`📊 Contacts query completed in ${endTime - startTime}ms - ${results.length} contacts`);
-    
-    return results;
+    try {
+      const results = await db.execute(sql`
+        SELECT id, name, phone, email, city, state, company, notes, 
+               whatsapp_number as "whatsappNumber", 
+               phone_number as "phoneNumber",
+               imported_from as "importedFrom",
+               created_at as "createdAt", 
+               updated_at as "updatedAt"
+        FROM contacts 
+        WHERE phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'
+        ORDER BY created_at DESC 
+        LIMIT ${limit}
+      `);
+      
+      // Extract rows from the database result
+      const contacts = (results as any).rows || [];
+      
+      const endTime = Date.now();
+      console.log(`📊 Raw SQL contacts query completed in ${endTime - startTime}ms - ${contacts.length} contacts`);
+      
+      return contacts as Contact[];
+    } catch (error) {
+      console.error('Error in getContacts:', error);
+      const endTime = Date.now();
+      console.log(`❌ Contacts query failed after ${endTime - startTime}ms`);
+      throw error;
+    }
   }
 
   // Campaigns
