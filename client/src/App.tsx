@@ -1,3 +1,4 @@
+import React from "react";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -17,7 +18,7 @@ import LiveCallsPage from "@/pages/live-calls";
 import CallsAnalytics from "@/pages/calls-analytics";
 import NotFound from "@/pages/not-found";
 
-function Navigation() {
+function Navigation({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
 
   const navigation = [
@@ -62,86 +63,102 @@ function Navigation() {
 
 
   return (
-    <nav className="nav-palette shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <PhoneCall className="h-8 w-8 palette-primary-text" />
-              <span className="ml-2 text-xl font-bold palette-text">
-                LabsCheck AI
-              </span>
-            </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`nav-palette-item ${
-                      item.current ? "active" : ""
-                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {item.name}
-                  </Link>
-                );
-              })}
-              
-              {/* WhatsApp Navigation - Simple Links */}
-              <Link
-                href="/whatsapp-bulk"
-                className={`nav-palette-item ${
-                  location === "/whatsapp-bulk" ? "active" : ""
-                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                WhatsApp Bulk
+    <div className="flex h-screen palette-background">
+      {/* Left Sidebar */}
+      <div className="flex flex-col w-64 nav-palette border-r">
+        {/* Logo/Header */}
+        <div className="flex items-center h-16 px-4 border-b">
+          <PhoneCall className="h-8 w-8 palette-primary-text" />
+          <span className="ml-2 text-xl font-bold palette-text">
+            LabsCheck AI
+          </span>
+        </div>
+        
+        {/* Navigation Menu */}
+        <nav className="flex-1 px-4 py-4 space-y-2">
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link key={item.name} href={item.href}>
+                <a
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    item.current
+                      ? "palette-primary text-white"
+                      : "palette-text-secondary hover:palette-text hover:palette-surface"
+                  }`}
+                >
+                  <Icon className="mr-3 h-5 w-5" />
+                  {item.name}
+                </a>
               </Link>
-              
-              <Link
-                href="/whatsapp-chats"
-                className={`nav-palette-item ${
-                  location === "/whatsapp-chats" ? "active" : ""
-                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                WhatsApp Chat
-              </Link>
-            </div>
-          </div>
+            );
+          })}
           
-          <div className="flex items-center">
+          {/* WhatsApp Navigation */}
+          <Link href="/whatsapp-bulk">
+            <a
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                location === "/whatsapp-bulk"
+                  ? "palette-primary text-white"
+                  : "palette-text-secondary hover:palette-text hover:palette-surface"
+              }`}
+            >
+              <Send className="mr-3 h-5 w-5" />
+              WhatsApp Bulk
+            </a>
+          </Link>
+          
+          <Link href="/whatsapp-chats">
+            <a
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                location === "/whatsapp-chats"
+                  ? "palette-primary text-white"
+                  : "palette-text-secondary hover:palette-text hover:palette-surface"
+              }`}
+            >
+              <MessageCircle className="mr-3 h-5 w-5" />
+              WhatsApp Chat
+            </a>
+          </Link>
+        </nav>
+        
+        {/* Color Palette Switcher at bottom */}
+        <div className="px-4 py-4 border-t">
+          <div className="flex items-center justify-between">
+            <span className="text-sm palette-text-secondary">Theme</span>
             <ColorPaletteSwitcher />
           </div>
         </div>
       </div>
-    </nav>
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }
 
 function Router() {
   return (
-    <div className="min-h-screen palette-background">
-      <Navigation />
-      <main>
-        <Switch>
-          <Route path="/" component={CampaignDashboard} />
-          <Route path="/campaign-dashboard" component={CampaignDashboard} />
-          <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
-          <Route path="/live-calls" component={LiveCallsPage} />
-          <Route path="/calls-analytics" component={CallsAnalytics} />
-          <Route path="/campaign-manager" component={CampaignManager} />
-          <Route path="/contact-campaigns" component={ContactCampaigns} />
-          <Route path="/whatsapp-chats" component={WhatsAppChats} />
-          <Route path="/whatsapp-messaging" component={WhatsAppMessaging} />
-          <Route path="/settings" component={SettingsPage} />
-          <Route path="/enhanced-settings" component={EnhancedSettings} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-    </div>
+    <Navigation>
+      <Switch>
+        <Route path="/" component={CampaignDashboard} />
+        <Route path="/campaign-dashboard" component={CampaignDashboard} />
+        <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
+        <Route path="/live-calls" component={LiveCallsPage} />
+        <Route path="/calls-analytics" component={CallsAnalytics} />
+        <Route path="/campaign-manager" component={CampaignManager} />
+        <Route path="/contact-campaigns" component={ContactCampaigns} />
+        <Route path="/whatsapp-chats" component={WhatsAppChats} />
+        <Route path="/whatsapp-messaging" component={WhatsAppMessaging} />
+        <Route path="/settings" component={SettingsPage} />
+        <Route path="/enhanced-settings" component={EnhancedSettings} />
+        <Route component={NotFound} />
+      </Switch>
+    </Navigation>
   );
 }
 
