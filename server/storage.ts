@@ -1,6 +1,6 @@
 import { 
   users, contacts, campaigns, calls, callMessages, whatsappTemplates, bulkMessageJobs,
-  contactEngagement, campaignMetrics,
+  contactEngagement, campaignMetrics, whatsappMessages,
   type User, type InsertUser, 
   type Contact, type InsertContact,
   type Campaign, type InsertCampaign,
@@ -9,6 +9,7 @@ import {
   type WhatsAppTemplate, type InsertWhatsAppTemplate,
   type BulkMessageJob, type InsertBulkMessageJob,
   type ContactEngagement, type CampaignMetrics,
+  type WhatsAppMessage, type InsertWhatsAppMessage,
   type DashboardStats, type CallWithDetails
 } from "@shared/schema";
 import { db } from "./db";
@@ -77,6 +78,14 @@ export interface IStorage {
   updateBulkMessageJob(job: BulkMessageJob): Promise<BulkMessageJob>;
   getBulkMessageJob(id: string): Promise<BulkMessageJob | undefined>;
   getBulkMessageJobs(): Promise<BulkMessageJob[]>;
+
+  // WhatsApp Messages
+  createWhatsAppMessage(message: InsertWhatsAppMessage): Promise<WhatsAppMessage>;
+  getWhatsAppMessages(contactId?: string, limit?: number): Promise<WhatsAppMessage[]>;
+  getWhatsAppMessage(id: string): Promise<WhatsAppMessage | undefined>;
+  updateWhatsAppMessage(id: string, message: Partial<InsertWhatsAppMessage>): Promise<WhatsAppMessage | undefined>;
+  deleteWhatsAppMessage(id: string): Promise<boolean>;
+  getWhatsAppChatsByContact(): Promise<any[]>; // Grouped chats
 }
 
 export class DatabaseStorage implements IStorage {
@@ -383,6 +392,68 @@ export class DatabaseStorage implements IStorage {
         ? Math.round((completedCalls.count / callCount.count) * 100)
         : 0,
     };
+  }
+
+  // WhatsApp Messages
+  async createWhatsAppMessage(message: InsertWhatsAppMessage): Promise<WhatsAppMessage> {
+    const [newMessage] = await db.insert(whatsappMessages).values(message).returning();
+    return newMessage;
+  }
+
+  async getWhatsAppMessages(contactId?: string, limit: number = 50): Promise<WhatsAppMessage[]> {
+    const query = db.select().from(whatsappMessages).orderBy(desc(whatsappMessages.createdAt)).limit(limit);
+    
+    if (contactId) {
+      return await query.where(eq(whatsappMessages.contactId, contactId));
+    }
+    
+    return await query;
+  }
+
+  async getWhatsAppMessage(id: string): Promise<WhatsAppMessage | undefined> {
+    const [message] = await db.select().from(whatsappMessages).where(eq(whatsappMessages.id, id));
+    return message || undefined;
+  }
+
+  async updateWhatsAppMessage(id: string, message: Partial<InsertWhatsAppMessage>): Promise<WhatsAppMessage | undefined> {
+    const [updated] = await db.update(whatsappMessages)
+      .set({ ...message, createdAt: new Date() })
+      .where(eq(whatsappMessages.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteWhatsAppMessage(id: string): Promise<boolean> {
+    const result = await db.delete(whatsappMessages).where(eq(whatsappMessages.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getWhatsAppChatsByContact(): Promise<any[]> {
+    // Get latest message for each contact to create chat list
+    const chats = await db.select({
+      contactId: whatsappMessages.contactId,
+      contactName: contacts.name,
+      contactPhone: contacts.phone,
+      lastMessage: whatsappMessages.message,
+      lastMessageTime: whatsappMessages.createdAt,
+      status: whatsappMessages.status,
+      direction: whatsappMessages.direction,
+      unreadCount: count(whatsappMessages.id)
+    })
+    .from(whatsappMessages)
+    .leftJoin(contacts, eq(whatsappMessages.contactId, contacts.id))
+    .groupBy(
+      whatsappMessages.contactId, 
+      contacts.name, 
+      contacts.phone,
+      whatsappMessages.message,
+      whatsappMessages.createdAt,
+      whatsappMessages.status,
+      whatsappMessages.direction
+    )
+    .orderBy(desc(whatsappMessages.createdAt));
+
+    return chats;
   }
 }
 

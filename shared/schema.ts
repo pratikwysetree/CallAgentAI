@@ -3,6 +3,7 @@ import { pgTable, text, varchar, timestamp, boolean, integer, jsonb, serial, dat
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { nanoid } from "nanoid";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -127,6 +128,24 @@ export const campaignMetrics = pgTable("campaign_metrics", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// WhatsApp Messages Table
+export const whatsappMessages = pgTable("whatsapp_messages", {
+  id: varchar("id").primaryKey().$defaultFn(() => nanoid()),
+  contactId: varchar("contact_id").references(() => contacts.id).notNull(),
+  phone: varchar("phone").notNull(),
+  message: text("message").notNull(),
+  messageType: varchar("message_type").notNull().default("text"), // text, image, document, etc.
+  direction: varchar("direction").notNull(), // 'outbound' or 'inbound'
+  status: varchar("status").notNull().default("pending"), // pending, sent, delivered, read, failed
+  whatsappMessageId: varchar("whatsapp_message_id"), // Meta's message ID
+  templateName: varchar("template_name"),
+  campaignId: varchar("campaign_id").references(() => campaigns.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at"),
+  failedReason: text("failed_reason"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   // Users don't have direct relations in this messaging platform
@@ -135,12 +154,14 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const contactsRelations = relations(contacts, ({ many }) => ({
   calls: many(calls),
   engagements: many(contactEngagement),
+  whatsappMessages: many(whatsappMessages),
 }));
 
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
   calls: many(calls),
   engagements: many(contactEngagement),
   metrics: many(campaignMetrics),
+  whatsappMessages: many(whatsappMessages),
 }));
 
 export const whatsappTemplatesRelations = relations(whatsappTemplates, ({ many }) => ({
@@ -194,6 +215,17 @@ export const campaignMetricsRelations = relations(campaignMetrics, ({ one }) => 
   }),
 }));
 
+export const whatsappMessagesRelations = relations(whatsappMessages, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [whatsappMessages.contactId],
+    references: [contacts.id],
+  }),
+  campaign: one(campaigns, {
+    fields: [whatsappMessages.campaignId],
+    references: [campaigns.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -220,6 +252,9 @@ export type InsertBulkMessageJob = typeof bulkMessageJobs.$inferInsert;
 
 export type ContactEngagement = typeof contactEngagement.$inferSelect;
 export type CampaignMetrics = typeof campaignMetrics.$inferSelect;
+
+export type WhatsAppMessage = typeof whatsappMessages.$inferSelect;
+export type InsertWhatsAppMessage = typeof whatsappMessages.$inferInsert;
 
 export interface DashboardStats {
   totalContacts: number;
@@ -248,3 +283,4 @@ export const insertCallMessageSchema = createInsertSchema(callMessages);
 // Removed audio recording schema - using direct speech processing only
 export const insertWhatsAppTemplateSchema = createInsertSchema(whatsappTemplates);
 export const insertBulkMessageJobSchema = createInsertSchema(bulkMessageJobs);
+export const insertWhatsAppMessageSchema = createInsertSchema(whatsappMessages);

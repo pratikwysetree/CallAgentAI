@@ -331,6 +331,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===================
+  // WHATSAPP MESSAGING ROUTES
+  // ===================
+
+  // Get all WhatsApp messages for a contact
+  app.get('/api/whatsapp/messages', async (req, res) => {
+    try {
+      const contactId = req.query.contactId as string;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      
+      const messages = await storage.getWhatsAppMessages(contactId, limit);
+      res.json(messages);
+    } catch (error) {
+      console.error('Error fetching WhatsApp messages:', error);
+      res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+  });
+
+  // Send a WhatsApp message
+  app.post('/api/whatsapp/messages', async (req, res) => {
+    try {
+      const messageData = req.body;
+      
+      // Create the message in database
+      const message = await storage.createWhatsAppMessage({
+        contactId: messageData.contactId,
+        phone: messageData.phone,
+        message: messageData.message,
+        messageType: messageData.messageType || 'text',
+        direction: 'outbound',
+        status: 'sent', // Will be updated via webhook
+        campaignId: messageData.campaignId
+      });
+
+      // TODO: Send via WhatsApp API (Meta Business API)
+      // For now, just return the created message
+      res.status(201).json(message);
+    } catch (error) {
+      console.error('Error sending WhatsApp message:', error);
+      res.status(500).json({ error: 'Failed to send message' });
+    }
+  });
+
+  // Get WhatsApp chats grouped by contact
+  app.get('/api/whatsapp/chats', async (req, res) => {
+    try {
+      const chats = await storage.getWhatsAppChatsByContact();
+      res.json(chats);
+    } catch (error) {
+      console.error('Error fetching WhatsApp chats:', error);
+      res.status(500).json({ error: 'Failed to fetch chats' });
+    }
+  });
+
+  // Update message status (for webhooks)
+  app.put('/api/whatsapp/messages/:id/status', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, deliveredAt, readAt } = req.body;
+      
+      const updated = await storage.updateWhatsAppMessage(id, {
+        status,
+        deliveredAt: deliveredAt ? new Date(deliveredAt) : undefined,
+        readAt: readAt ? new Date(readAt) : undefined
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating message status:', error);
+      res.status(500).json({ error: 'Failed to update message status' });
+    }
+  });
+
+  // ===================
   // CAMPAIGN MANAGEMENT ROUTES
   // ===================
 

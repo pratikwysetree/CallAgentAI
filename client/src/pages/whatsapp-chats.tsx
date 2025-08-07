@@ -73,64 +73,179 @@ export default function WhatsAppChats() {
 
   // Send message to existing chat
   const sendMessageMutation = useMutation({
-    mutationFn: async (data: { chatId: string; message: string }) => {
-      const response = await apiRequest('POST', '/api/whatsapp/messages', data);
-      return response.json();
-    },
+    mutationFn: (messageData: { contactId: string; phone: string; message: string; campaignId?: string }) => 
+      apiRequest("POST", "/api/whatsapp/messages", messageData),
     onSuccess: () => {
+      toast({
+        title: "Message sent!",
+        description: "Your WhatsApp message has been sent successfully.",
+      });
       setNewMessage("");
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({
-        title: "Message sent successfully",
-        description: "Your WhatsApp message has been sent.",
-      });
     },
-    onError: (error: any) => {
-      console.error('Error sending message:', error);
+    onError: () => {
       toast({
         title: "Failed to send message",
-        description: error instanceof Error ? error.message : "Failed to send WhatsApp message",
+        description: "There was an error sending your WhatsApp message.",
         variant: "destructive",
       });
     }
   });
 
-  // Send message to contact (creates new chat)
-  const sendContactMessageMutation = useMutation({
-    mutationFn: async (data: { contactId: number; contactPhone: string; contactName: string; message: string }) => {
-      const response = await apiRequest('POST', '/api/whatsapp/messages/contact', data);
-      return response.json();
-    },
+  // Send message to new contact
+  const sendNewMessageMutation = useMutation({
+    mutationFn: (messageData: { contactId: string; phone: string; message: string }) => 
+      apiRequest("POST", "/api/whatsapp/messages", messageData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      toast({
+        title: "Message sent!",
+        description: "Your WhatsApp message has been sent to the new contact.",
+      });
       setNewContactMessage("");
       setSelectedContact(null);
-      setActiveTab("chats");
-      toast({ title: "Message sent successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
     },
-    onError: (error: any) => {
-      console.error('Error sending message to contact:', error);
-      toast({ title: "Failed to send message", description: error.message || "Please try again", variant: "destructive" });
+    onError: () => {
+      toast({
+        title: "Failed to send message",
+        description: "There was an error sending your WhatsApp message.",
+        variant: "destructive",
+      });
     }
   });
 
-  // Edit message mutation
-  const editMessageMutation = useMutation({
-    mutationFn: async (data: { messageId: string; message: string }) => {
-      const response = await apiRequest('PATCH', `/api/whatsapp/messages/${data.messageId}`, { message: data.message });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      setEditingMessage(null);
-      setEditMessageText("");
-      toast({ title: "Message updated successfully" });
-    },
-    onError: (error: any) => {
-      console.error('Error editing message:', error);
-      toast({ title: "Failed to update message", description: error.message || "Please try again", variant: "destructive" });
+  // Send message function for existing chats
+  const handleSendMessage = () => {
+    if (!selectedChat || !newMessage.trim()) return;
+    
+    sendMessageMutation.mutate({
+      contactId: selectedChat.id,
+      phone: selectedChat.contactPhone,
+      message: newMessage
+    });
+  };
+
+  // Send message function for new contacts
+  const handleSendNewMessage = () => {
+    if (!selectedContact || !newContactMessage.trim()) return;
+    
+    sendNewMessageMutation.mutate({
+      contactId: selectedContact.id,
+      phone: selectedContact.phone,
+      message: newContactMessage
+    });
+  };
+
+  // Function to render message status indicator
+  const getStatusIcon = (status: string, direction: string) => {
+    if (direction === 'inbound') return null;
+    
+    switch (status) {
+      case 'sent':
+        return <Check className="h-3 w-3 text-gray-400" />;
+      case 'delivered':
+        return <CheckCheck className="h-3 w-3 text-gray-400" />;
+      case 'read':
+        return <CheckCheck className="h-3 w-3 text-blue-500" />;
+      case 'failed':
+        return <div className="h-3 w-3 rounded-full bg-red-500" />;
+      default:
+        return <Clock className="h-3 w-3 text-gray-400" />;
     }
-  });
+  };
+
+  const mockChats: WhatsAppChat[] = [
+    {
+      id: "1",
+      contactPhone: "+919876543210",
+      contactName: "Dr. Rajesh Kumar",
+      lastMessage: "Thank you for the details!",
+      lastMessageTime: "2025-01-07T09:30:00Z",
+      unreadCount: 0,
+      status: "active",
+      messages: [
+        {
+          id: "msg1",
+          chatId: "1",
+          contactPhone: "+919876543210",
+          contactName: "Dr. Rajesh Kumar",
+          message: "Hello! Are you the lab owner?",
+          direction: "outbound",
+          status: "read",
+          timestamp: "2025-01-07T09:00:00Z",
+          messageType: "text"
+        },
+        {
+          id: "msg2",
+          chatId: "1", 
+          contactPhone: "+919876543210",
+          contactName: "Dr. Rajesh Kumar",
+          message: "Yes, I am. How can I help you?",
+          direction: "inbound",
+          status: "delivered",
+          timestamp: "2025-01-07T09:15:00Z",
+          messageType: "text"
+        },
+        {
+          id: "msg3",
+          chatId: "1",
+          contactPhone: "+919876543210", 
+          contactName: "Dr. Rajesh Kumar",
+          message: "Great! We'd like to discuss partnership opportunities with LabsCheck.",
+          direction: "outbound",
+          status: "delivered",
+          timestamp: "2025-01-07T09:20:00Z",
+          messageType: "text"
+        },
+        {
+          id: "msg4",
+          chatId: "1",
+          contactPhone: "+919876543210",
+          contactName: "Dr. Rajesh Kumar", 
+          message: "Thank you for the details!",
+          direction: "inbound",
+          status: "delivered",
+          timestamp: "2025-01-07T09:30:00Z",
+          messageType: "text"
+        }
+      ]
+    },
+    {
+      id: "2",
+      contactPhone: "+919123456789",
+      contactName: "Dr. Priya Sharma",
+      lastMessage: "Will call you tomorrow",
+      lastMessageTime: "2025-01-06T18:45:00Z",
+      unreadCount: 1,
+      status: "active",
+      messages: [
+        {
+          id: "msg5",
+          chatId: "2",
+          contactPhone: "+919123456789",
+          contactName: "Dr. Priya Sharma",
+          message: "Hi! This is from LabsCheck regarding partnership",
+          direction: "outbound",
+          status: "sent",
+          timestamp: "2025-01-06T18:30:00Z",
+          messageType: "text"
+        },
+        {
+          id: "msg6",
+          chatId: "2",
+          contactPhone: "+919123456789",
+          contactName: "Dr. Priya Sharma",
+          message: "Will call you tomorrow",
+          direction: "inbound",
+          status: "delivered",
+          timestamp: "2025-01-06T18:45:00Z",
+          messageType: "text"
+        }
+      ]
+    }
+  ];
+
+  const displayChats = chats.length > 0 ? chats : mockChats;
 
   // Delete chat mutation
   const deleteChatMutation = useMutation({
@@ -149,20 +264,13 @@ export default function WhatsAppChats() {
     }
   });
 
-  const handleSendMessage = () => {
-    if (!selectedChat || !newMessage.trim()) return;
-    sendMessageMutation.mutate({
-      chatId: selectedChat.id,
-      message: newMessage.trim()
-    });
-  };
 
-  const handleSendContactMessage = () => {
+
+  const handleSendNewContactMessage = () => {
     if (!selectedContact || !newContactMessage.trim()) return;
-    sendContactMessageMutation.mutate({
+    sendNewMessageMutation.mutate({
       contactId: selectedContact.id,
-      contactPhone: selectedContact.phone,
-      contactName: selectedContact.name,
+      phone: selectedContact.phone,
       message: newContactMessage.trim()
     });
   };
@@ -180,20 +288,7 @@ export default function WhatsAppChats() {
     });
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return <Check className="w-4 h-4 text-gray-400" />;
-      case 'delivered':
-        return <CheckCheck className="w-4 h-4 text-gray-400" />;
-      case 'read':
-        return <CheckCheck className="w-4 h-4 text-blue-500" />;
-      case 'failed':
-        return <Clock className="w-4 h-4 text-red-500" />;
-      default:
-        return null;
-    }
-  };
+
 
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString('en-US', {

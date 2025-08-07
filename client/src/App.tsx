@@ -9,6 +9,7 @@ import SettingsPage from "@/pages/settings";
 import EnhancedSettings from "@/pages/enhanced-settings";
 import WhatsAppBulk from "@/pages/whatsapp-bulk";
 import WhatsAppChats from "@/pages/whatsapp-chats";
+import WhatsAppMessaging from "@/pages/whatsapp-messaging";
 import LiveCallsPage from "@/pages/live-calls";
 import CallsAnalytics from "@/pages/calls-analytics";
 import NotFound from "@/pages/not-found";
@@ -52,6 +53,12 @@ function Navigation() {
       href: "/whatsapp-chats",
       icon: MessageSquare,
       current: location === "/whatsapp-chats",
+    },
+    {
+      name: "WhatsApp Messaging",
+      href: "/whatsapp-messaging",
+      icon: MessageSquare,
+      current: location === "/whatsapp-messaging",
     },
     {
       name: "Settings",
@@ -111,6 +118,7 @@ function Router() {
           <Route path="/campaign-manager" component={CampaignManager} />
           <Route path="/contact-campaigns" component={ContactCampaigns} />
           <Route path="/whatsapp-chats" component={WhatsAppChats} />
+          <Route path="/whatsapp-messaging" component={WhatsAppMessaging} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/enhanced-settings" component={EnhancedSettings} />
           <Route component={NotFound} />
