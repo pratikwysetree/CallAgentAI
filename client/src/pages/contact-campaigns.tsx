@@ -722,57 +722,28 @@ export default function ContactCampaigns() {
                       </p>
                       <div className="space-y-3">
                         <div>
-                          <Label className="text-sm font-medium flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            Select Preapproved WhatsApp Template
-                          </Label>
+                          <Label className="text-sm font-medium">Select WhatsApp Template</Label>
                           <Select 
                             value={campaignConfig.whatsappTemplate} 
                             onValueChange={(value) => setCampaignConfig(prev => ({ ...prev, whatsappTemplate: value }))}
                           >
-                            <SelectTrigger className="bg-white border-green-200">
-                              <SelectValue placeholder="Choose from Meta-approved templates..." />
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Choose approved template..." />
                             </SelectTrigger>
-                            <SelectContent className="max-h-60">
+                            <SelectContent>
                               {approvedTemplates.length === 0 ? (
                                 <SelectItem value="no-templates" disabled>
-                                  <div className="flex items-center gap-2">
-                                    <XCircle className="h-4 w-4 text-red-500" />
-                                    No approved templates available - Click "Sync Templates" button above
-                                  </div>
+                                  No approved templates - Sync templates first
                                 </SelectItem>
                               ) : (
                                 approvedTemplates.map((template: any) => (
                                   <SelectItem key={template.id} value={template.name}>
-                                    <div className="flex flex-col gap-1 py-1">
-                                      <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                                          {template.category}
-                                        </Badge>
-                                        <span className="font-medium">{template.name}</span>
-                                        <Badge className="text-xs bg-green-100 text-green-700">
-                                          APPROVED
-                                        </Badge>
-                                      </div>
-                                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                                        {template.language && (
-                                          <span>🌐 {template.language}</span>
-                                        )}
-                                        {template.status && (
-                                          <span>📝 Status: {template.status}</span>
-                                        )}
-                                      </div>
-                                    </div>
+                                    {template.name} ({template.category})
                                   </SelectItem>
                                 ))
                               )}
                             </SelectContent>
                           </Select>
-                          {approvedTemplates.length > 0 && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Showing {approvedTemplates.length} preapproved template(s) ready for immediate use
-                            </p>
-                          )}
                         </div>
                         
                         {campaignConfig.whatsappTemplate && (
