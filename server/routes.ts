@@ -566,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log(`🔊 Using ElevenLabs audio file: ${audioUrl}`);
         
-        // Generate TwiML to play ElevenLabs audio instead of using Twilio TTS
+        // Generate TwiML to play ElevenLabs audio and record response
         console.log('🎬 Generating TwiML with audio URL:', audioUrl);
         const twilio = await import('twilio');
         const VoiceResponse = twilio.default.twiml.VoiceResponse;
@@ -576,19 +576,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add typing pause
         response.pause({ length: 1 });
         
-        const gather = response.gather({
-          input: ['speech'],
-          timeout: 10,
-          speechTimeout: 'auto',
-          speechModel: 'phone_call',
-          enhanced: true,
-          language: 'en-US' as any, // Fix TypeScript language issue
-          action: `/api/calls/${callId}/process-speech`,
+        // Play ElevenLabs generated audio
+        response.play(audioUrl);
+        
+        // Record user response for OpenAI Whisper processing
+        response.record({
+          timeout: 10, // Give user time to speak
+          transcribe: false, // We'll use OpenAI Whisper instead
+          recordingStatusCallback: `/api/calls/recording-complete?callId=${callId}`,
+          recordingStatusCallbackMethod: 'POST',
+          playBeep: false, // No beep sound
+          action: `/api/calls/${callId}/process-speech`, // Continue to next action
           method: 'POST'
         });
-        
-        // Play ElevenLabs generated audio instead of using Twilio TTS
-        gather.play(audioUrl);
         
         // Fallback text if no speech detected
         response.say({
@@ -773,6 +773,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Global reference for broadcasting
   (global as any).broadcastToClients = broadcast;
+
+  // Serve temporary audio files for TwiML playback
+  app.get('/audio/:filename', (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const audioPath = path.join(process.cwd(), 'temp', filename);
+      
+      if (fs.existsSync(audioPath)) {
+        res.set('Content-Type', 'audio/mpeg');
+        res.sendFile(audioPath);
+      } else {
+        res.status(404).send('Audio file not found');
+      }
+    } catch (error) {
+      console.error('Error serving audio file:', error);
+      res.status(500).send('Error serving audio');
+    }
+  });
 
   return httpServer;
 }

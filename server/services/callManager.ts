@@ -268,11 +268,25 @@ export class CallManager {
         console.log(`✅ Generated ElevenLabs audio (${audioBuffer.length} bytes) with voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
 
         // Store audio temporarily and create accessible URL
-        // For now, we'll use base64 data URL (not ideal for production but works for testing)
-        const audioBase64 = audioBuffer.toString('base64');
-        const audioUrl = `data:audio/mpeg;base64,${audioBase64}`;
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Save audio file temporarily for Twilio to play
+        const audioFileName = `response_${callId}_${Date.now()}.mp3`;
+        const tempDir = path.join(process.cwd(), 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        const audioFilePath = path.join(tempDir, audioFileName);
+        fs.writeFileSync(audioFilePath, audioBuffer);
+        
+        // Create accessible URL
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
+          `https://${process.env.REPLIT_DEV_DOMAIN}` : 
+          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+        const audioUrl = `${baseUrl}/audio/${audioFileName}`;
 
-        console.log('🔗 Created audio data URL for ElevenLabs TTS');
+        console.log('🔗 Created audio file URL for ElevenLabs TTS:', audioUrl);
 
         if (shouldEndCall) {
           // End the call gracefully - use ElevenLabs audio
@@ -290,6 +304,7 @@ export class CallManager {
             text: aiResponse,
             audioUrl: audioUrl, // Use ElevenLabs audio
             action: `/api/calls/${callId}/process-speech`,
+            recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
             language: campaign.language, // Use campaign language
             addTypingSound: true // Enable background typing sounds
           });

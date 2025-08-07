@@ -97,32 +97,6 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
       return response.text || "";
     } catch (error) {
       console.error('OpenAI Whisper transcription error:', error);
-      throw error;
-    }
-  }
-      const path = await import('path');
-      const tempFilePath = path.join(process.cwd(), 'temp', `audio_${Date.now()}.wav`);
-      
-      // Ensure temp directory exists
-      const tempDir = path.dirname(tempFilePath);
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
-      
-      fs.writeFileSync(tempFilePath, audioBuffer);
-      
-      const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tempFilePath),
-        model: "whisper-1",
-        language: "en", // Can be adjusted for Hindi/Hinglish if needed
-      });
-
-      // Clean up temp file
-      fs.unlinkSync(tempFilePath);
-      
-      return transcription.text;
-    } catch (error) {
-      console.error('Whisper transcription error:', error);
       return "Sorry, I couldn't understand that. Could you please repeat?";
     }
   }

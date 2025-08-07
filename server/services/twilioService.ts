@@ -116,7 +116,9 @@ export class TwilioService {
           transcribe: false, // We'll use OpenAI Whisper instead
           recordingStatusCallback: options.recordingCallback || '/api/calls/recording-complete',
           recordingStatusCallbackMethod: 'POST',
-          playBeep: false // No beep sound
+          playBeep: false, // No beep sound
+          action: options.action || '/api/calls/process-speech', // Continue to next action
+          method: 'POST'
         });
         
         // Fallback if no speech detected
