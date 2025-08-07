@@ -52,6 +52,10 @@ const LANGUAGES = [
 export default function CampaignManagerPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
+  const [makingCall, setMakingCall] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [showCallDialog, setShowCallDialog] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -182,6 +186,61 @@ export default function CampaignManagerPage() {
     setEditingCampaign(null);
     form.reset();
     setIsDialogOpen(true);
+  };
+
+  const handleMakeCall = (campaignId: string) => {
+    const campaign = campaigns.find((c: any) => c.id === campaignId);
+    setSelectedCampaign(campaign);
+    setPhoneNumber("");
+    setShowCallDialog(true);
+  };
+
+  const initiateCall = async () => {
+    if (!phoneNumber || !selectedCampaign) {
+      toast({
+        title: "Error",
+        description: "Please enter a phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setMakingCall(true);
+    try {
+      const response = await fetch('/api/calls/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: phoneNumber,
+          campaignId: selectedCampaign.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Call Initiated",
+          description: `AI call started to ${phoneNumber} with background typing sounds for natural conversation flow`,
+        });
+        setShowCallDialog(false);
+        setPhoneNumber("");
+      } else {
+        toast({
+          title: "Call Failed",
+          description: result.error || "Failed to initiate call",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to initiate call",
+        variant: "destructive",
+      });
+    } finally {
+      setMakingCall(false);
+    }
   };
 
   return (
@@ -337,6 +396,63 @@ export default function CampaignManagerPage() {
               </form>
             </DialogContent>
           </Dialog>
+
+          {/* Call Initiation Dialog */}
+          <Dialog open={showCallDialog} onOpenChange={setShowCallDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Initiate AI Call</DialogTitle>
+                <DialogDescription>
+                  Start an AI call using the "{selectedCampaign?.name}" campaign with natural background typing sounds.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+1234567890"
+                    type="tel"
+                  />
+                  <p className="text-sm text-gray-500">
+                    Include country code (e.g., +1 for US, +91 for India)
+                  </p>
+                </div>
+
+                {selectedCampaign && (
+                  <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                    <p className="text-sm font-medium mb-1">Campaign Details:</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Voice: {voices.find((v: any) => v.voice_id === selectedCampaign.voiceId)?.name || "Default"}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Language: {LANGUAGES.find(l => l.value === selectedCampaign.language)?.label || selectedCampaign.language}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Background typing enabled for natural conversation flow
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowCallDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={initiateCall} 
+                  disabled={makingCall || !phoneNumber}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {makingCall ? "Initiating..." : "Start Call"}
+                  <Phone className="h-4 w-4 ml-2" />
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -388,6 +504,15 @@ export default function CampaignManagerPage() {
                       </CardDescription>
                     </div>
                     <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleMakeCall(campaign.id)}
+                        disabled={makingCall}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Phone className="h-4 w-4 mr-1" />
+                        Make Call
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"

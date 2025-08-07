@@ -358,6 +358,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initiate call from campaign manager 
+  app.post('/api/calls/initiate', async (req, res) => {
+    try {
+      const { phoneNumber, campaignId } = req.body;
+      
+      if (!phoneNumber || !campaignId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Phone number and campaign ID are required' 
+        });
+      }
+
+      // Create a temporary contact for this call
+      const contactId = `temp_${Date.now()}`;
+      
+      const result = await callManager.startCall(contactId, campaignId, phoneNumber);
+      
+      if (result.success) {
+        console.log(`🎹 AI call initiated with background typing sounds to ${phoneNumber}`);
+        res.json({ 
+          success: true, 
+          callId: result.callId,
+          message: 'Call initiated with natural conversation flow including background typing sounds'
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.error 
+        });
+      }
+    } catch (error) {
+      console.error('Error initiating call:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to initiate call' 
+      });
+    }
+  });
+
   // Get all calls
   app.get("/api/calls", async (req, res) => {
     try {
