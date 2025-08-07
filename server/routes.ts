@@ -481,6 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
         action: `/api/calls/${callId}/process-speech`,
         language: campaign.language, // Use campaign language setting
+        voice: 'alice', // Twilio voice (separate from ElevenLabs voice)
         addTypingSound: true // Enable background typing simulation
       });
       
@@ -524,7 +525,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const twiml = twilioService.generateTwiML('hangup', {
           text: 'I understand. Thank you for your time. Have a great day!',
-          language: campaign?.language || 'en'
+          language: campaign?.language || 'en',
+          voice: 'alice' // Twilio voice
         });
         res.type('text/xml').send(twiml);
         return;

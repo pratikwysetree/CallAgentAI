@@ -77,7 +77,7 @@ export class TwilioService {
     switch (action) {
       case 'say':
         twiml.say({
-          voice: 'alice',
+          voice: options.voice || 'alice', // Use campaign voice if provided
           language: language
         }, options.text || 'Hello');
         break;
@@ -102,14 +102,14 @@ export class TwilioService {
           }
           
           gather.say({
-            voice: 'alice',
+            voice: options.voice || 'alice', // Use campaign voice if provided
             language: language
           }, options.text);
         }
         
         // Fallback if no speech detected
         twiml.say({
-          voice: 'alice',
+          voice: options.voice || 'alice', // Use campaign voice if provided
           language: language
         }, "I didn't catch that. Let me continue.");
         break;
@@ -117,7 +117,7 @@ export class TwilioService {
       case 'hangup':
         if (options.text) {
           twiml.say({
-            voice: 'alice',
+            voice: options.voice || 'alice', // Use campaign voice if provided
             language: language
           }, options.text);
         }

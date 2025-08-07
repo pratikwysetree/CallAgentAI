@@ -1,11 +1,11 @@
 export class ElevenLabsService {
   private static readonly API_BASE = 'https://api.elevenlabs.io/v1';
-  private static readonly DEFAULT_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice
+  private static readonly FALLBACK_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice (fallback only)
 
   // Convert text to speech using ElevenLabs
   static async textToSpeech(
     text: string, 
-    voiceId: string = this.DEFAULT_VOICE_ID,
+    voiceId?: string, // Campaign voice should be passed explicitly
     settings: {
       stability?: number;
       similarityBoost?: number;
@@ -27,10 +27,13 @@ export class ElevenLabsService {
         style = 0.0,
         speakerBoost = false,
         addTypingSound = true,
-        model = 'eleven_multilingual_v2'
+        model = 'eleven_turbo_v2' // Default to fast model
       } = settings;
 
-      const response = await fetch(`${this.API_BASE}/text-to-speech/${voiceId}`, {
+      // Use provided voiceId or fallback
+      const finalVoiceId = voiceId || this.FALLBACK_VOICE_ID;
+
+      const response = await fetch(`${this.API_BASE}/text-to-speech/${finalVoiceId}`, {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',

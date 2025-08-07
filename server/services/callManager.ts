@@ -139,7 +139,8 @@ export class CallManager {
           return {
             twiml: twilioService.generateTwiML('hangup', { 
               text: 'Thank you for your time. Goodbye.',
-              language: 'en'
+              language: 'en',
+              voice: 'alice'
             }),
             success: false
           };
@@ -152,7 +153,8 @@ export class CallManager {
         return {
           twiml: twilioService.generateTwiML('hangup', { 
             text: 'Thank you for your time. Goodbye.',
-            language: 'en'
+            language: 'en',
+            voice: 'alice'
           }),
           success: false
         };
@@ -245,7 +247,8 @@ export class CallManager {
         // End the call gracefully
         twiml = twilioService.generateTwiML('hangup', {
           text: aiResponse,
-          language: campaign.language // Use campaign language
+          language: campaign.language, // Use campaign language
+          voice: 'alice' // Twilio voice
         });
         // Mark call for completion
         setTimeout(() => this.completeCall(callId), 1000);
@@ -255,6 +258,7 @@ export class CallManager {
           text: aiResponse,
           action: `/api/calls/${callId}/process-speech`,
           language: campaign.language, // Use campaign language
+          voice: 'alice', // Twilio voice (separate from ElevenLabs)
           addTypingSound: true // Enable background typing sounds
         });
       }
@@ -269,7 +273,8 @@ export class CallManager {
       return {
         twiml: twilioService.generateTwiML('hangup', { 
           text: 'I apologize, there was a technical issue. Thank you for your time.',
-          language: 'en' // Default language for error cases
+          language: 'en', // Default language for error cases
+          voice: 'alice'
         }),
         success: false
       };
