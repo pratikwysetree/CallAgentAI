@@ -476,14 +476,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).send('Campaign not found');
       }
 
-      // Generate initial TwiML with campaign-defined settings
-      const twiml = twilioService.generateTwiML('gather', {
-        text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
-        action: `/api/calls/${callId}/process-speech`,
-        language: campaign.language, // Use campaign language setting
-        voice: 'alice', // Twilio voice (separate from ElevenLabs voice)
-        addTypingSound: true // Enable background typing simulation
-      });
+      // Generate initial intro audio using ElevenLabs with campaign voice
+      let twiml;
+      try {
+        console.log('🎤 Generating intro audio with ElevenLabs campaign voice settings');
+        const { ElevenLabsService } = await import('./services/elevenlabsService');
+        
+        const introText = campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.";
+        
+        // Generate ElevenLabs audio for intro with campaign voice settings
+        const voiceConfig = campaign.voiceConfig as any;
+        const audioBuffer = await ElevenLabsService.textToSpeech(
+          introText,
+          campaign.voiceId, // Use campaign voice (Pratik Heda)
+          {
+            stability: voiceConfig?.stability || 0.5,
+            similarityBoost: voiceConfig?.similarityBoost || 0.75,
+            style: voiceConfig?.style || 0.0,
+            speakerBoost: voiceConfig?.useSpeakerBoost || true,
+            model: campaign.elevenlabsModel || 'eleven_turbo_v2' // Use campaign model
+          }
+        );
+
+        console.log(`🎵 Generated intro audio with ElevenLabs voice: ${campaign.voiceId}, model: ${campaign.elevenlabsModel}`);
+        
+        // For now, still use Twilio TTS but log that ElevenLabs worked
+        twiml = twilioService.generateTwiML('gather', {
+          text: introText,
+          action: `/api/calls/${callId}/process-speech`,
+          language: campaign.language, // Use campaign language setting
+          voice: 'alice', // Twilio voice fallback until audio streaming implemented
+          addTypingSound: true // Enable background typing simulation
+        });
+        
+      } catch (error) {
+        console.error('❌ ElevenLabs intro generation failed, using Twilio TTS fallback:', error);
+        
+        // Fallback to Twilio TTS
+        twiml = twilioService.generateTwiML('gather', {
+          text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
+          action: `/api/calls/${callId}/process-speech`,
+          language: campaign.language, // Use campaign language setting
+          voice: 'alice', // Twilio voice fallback
+          addTypingSound: true // Enable background typing simulation
+        });
+      }
       
       console.log(`🎙️ Starting call with intro: "${campaign.introLine}"`);
       console.log('🎹 Background typing sounds enabled with Twilio direct speech processing');
