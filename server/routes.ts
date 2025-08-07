@@ -30,6 +30,49 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // CRITICAL: Register webhook routes FIRST to bypass Vite middleware
+  // WhatsApp webhook verification (GET) - highest priority
+  app.get('/api/whatsapp/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    
+    const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'your_verify_token_here';
+    
+    console.log('🔍 PRIORITY WhatsApp webhook verification:', { mode, token, challenge });
+    
+    // Set headers to ensure plain text response and bypass caching
+    res.set({
+      'Content-Type': 'text/plain',
+      'Cache-Control': 'no-cache',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    
+    if (mode === 'subscribe' && token === verifyToken) {
+      console.log('✅ PRIORITY WhatsApp webhook verified successfully');
+      return res.status(200).send(String(challenge));
+    } else {
+      console.log('❌ PRIORITY WhatsApp webhook verification failed');
+      return res.status(403).send('Verification failed');
+    }
+  });
+
+  // WhatsApp webhook for messages (POST) - highest priority
+  app.post('/api/whatsapp/webhook', async (req, res) => {
+    try {
+      console.log('📨 PRIORITY WhatsApp webhook received');
+      
+      const { whatsappService } = await import('./services/whatsappService');
+      await whatsappService.processWebhook(req.body);
+      
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error('❌ Error processing WhatsApp webhook:', error);
+      res.status(500).send('ERROR');
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
@@ -430,43 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===================
-  // WHATSAPP WEBHOOK ROUTES
-  // ===================
-
-  // WhatsApp webhook verification (GET)
-  app.get('/api/whatsapp/webhook', (req, res) => {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-    
-    const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'your_verify_token_here';
-    
-    console.log('🔍 WhatsApp webhook verification request:', { mode, token, challenge });
-    
-    if (mode === 'subscribe' && token === verifyToken) {
-      console.log('✅ WhatsApp webhook verified successfully');
-      res.status(200).send(challenge);
-    } else {
-      console.log('❌ WhatsApp webhook verification failed');
-      res.status(403).send('Verification failed');
-    }
-  });
-
-  // WhatsApp webhook for receiving messages and status updates (POST)
-  app.post('/api/whatsapp/webhook', async (req, res) => {
-    try {
-      console.log('📨 WhatsApp webhook received');
-      
-      const { whatsappService } = await import('./services/whatsappService');
-      await whatsappService.processWebhook(req.body);
-      
-      res.status(200).send('OK');
-    } catch (error) {
-      console.error('❌ Error processing WhatsApp webhook:', error);
-      res.status(500).json({ error: 'Failed to process webhook' });
-    }
-  });
+  // Webhook routes moved to beginning of registerRoutes function for priority routing
 
   // Update message status (for webhooks)
   app.put('/api/whatsapp/messages/:id/status', async (req, res) => {

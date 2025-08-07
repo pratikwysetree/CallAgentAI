@@ -40,14 +40,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // CRITICAL: Register ALL API middleware FIRST to bypass Vite catch-all
-  app.use('/api', (req, res, next) => {
-    console.log(`🎯 API MIDDLEWARE HIT: ${req.method} ${req.path}`);
-    console.log(`🎯 Full URL: ${req.originalUrl}`);
-    // Let the route handlers take over
-    next();
-  });
-
+  // CRITICAL: Register ALL API routes FIRST before Vite middleware
   const server = await registerRoutes(app);
 
   // Database seeding removed - no calling functionality needed
