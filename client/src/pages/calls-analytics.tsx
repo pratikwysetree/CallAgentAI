@@ -205,8 +205,8 @@ export default function CallsAnalyticsPage() {
                       <div>
                         <p className="font-medium">{call.phoneNumber}</p>
                         <p className="text-sm text-gray-500">
-                          {new Date(call.createdAt).toLocaleDateString()} at{' '}
-                          {new Date(call.createdAt).toLocaleTimeString()}
+                          {call.startTime ? new Date(call.startTime).toLocaleDateString() : 'N/A'} at{' '}
+                          {call.startTime ? new Date(call.startTime).toLocaleTimeString() : 'N/A'}
                         </p>
                       </div>
                       <Badge variant={getStatusColor(call.status)}>

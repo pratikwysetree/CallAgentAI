@@ -285,6 +285,16 @@ export type InsertCallTranscription = typeof callTranscriptions.$inferInsert;
 
 export type CallRecording = typeof callRecordings.$inferSelect;
 export type InsertCallRecording = typeof callRecordings.$inferInsert;
+export type InsertCall = typeof calls.$inferInsert;
+
+export type CallMessage = typeof callMessages.$inferSelect;
+export type InsertCallMessage = typeof callMessages.$inferInsert;
+
+export type CallTranscription = typeof callTranscriptions.$inferSelect;
+export type InsertCallTranscription = typeof callTranscriptions.$inferInsert;
+
+export type CallRecording = typeof callRecordings.$inferSelect;
+export type InsertCallRecording = typeof callRecordings.$inferInsert;
 
 export type WhatsAppTemplate = typeof whatsappTemplates.$inferSelect;
 export type InsertWhatsAppTemplate = typeof whatsappTemplates.$inferInsert;
