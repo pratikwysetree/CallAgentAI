@@ -39,7 +39,7 @@ export class ElevenLabsService {
       
       console.log(`🎤 Using campaign voice: ${voiceId}, model: ${model}, language: ${language}`);
 
-      const response = await fetch(`${this.API_BASE}/text-to-speech/${finalVoiceId}`, {
+      const response = await fetch(`${this.API_BASE}/text-to-speech/${voiceId}`, {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',

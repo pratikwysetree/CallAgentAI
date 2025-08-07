@@ -96,43 +96,28 @@ export class TwilioService {
         break;
         
       case 'gather':
-        // Play response with continuous typing effects for natural conversation
-        if (options.text) {
-          // Add natural typing pauses throughout conversation
-          if (options.addTypingSound) {
-            twiml.pause({ length: 0.5 }); // Pre-response typing pause
-            console.log('⌨️ Added pre-response typing pause for natural conversation flow');
-          }
-          
-          // ONLY use ElevenLabs audio - no Twilio TTS fallback
-          if (options.audioUrl) {
-            console.log('🎵 Using ElevenLabs audio for TTS');
-            twiml.play(options.audioUrl);
-          } else {
-            console.error('❌ ERROR: No ElevenLabs audio URL provided - ElevenLabs is required');
-            // Add silence instead of Twilio TTS
-            twiml.pause({ length: 2 });
-          }
-        }
-        
-        // Add post-response typing effect for continuous natural ambiance
-        if (options.addTypingSound) {
-          twiml.pause({ length: 0.5 }); // Post-response typing pause
-          console.log('✨ Added post-response typing pause for ongoing natural conversation ambiance');
+        // Play ElevenLabs audio if provided
+        if (options.audioUrl) {
+          console.log('🎵 Playing ElevenLabs audio:', options.audioUrl);
+          twiml.play(options.audioUrl);
+        } else if (options.text) {
+          console.log('🗣️ Using Twilio TTS as fallback');
+          twiml.say({
+            voice: options.voice || 'alice',
+            language: options.language || 'en'
+          }, options.text);
         }
         
         // Record user response for OpenAI Whisper processing
         twiml.record({
-          timeout: 10, // Give user time to speak
-          transcribe: false, // We'll use OpenAI Whisper instead
+          timeout: 10,
+          transcribe: false,
           recordingStatusCallback: options.recordingCallback || '/api/calls/recording-complete',
           recordingStatusCallbackMethod: 'POST',
-          playBeep: false, // No beep sound
-          action: options.action || '/api/calls/process-speech', // Continue to next action
+          playBeep: false,
+          action: options.action || '/api/calls/process-speech',
           method: 'POST'
         });
-        
-        // No fallback speech - just silence if no audio provided
         break;
         
       case 'hangup':

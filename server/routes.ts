@@ -490,17 +490,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Answer webhook - when Twilio call is answered (returns TwiML with intro)  
   // This route MUST return TwiML XML for Twilio to work properly
-  app.get("/api/calls/webhook/answer", async (req, res) => {
+  app.post("/api/calls/webhook/answer", async (req, res) => {
     console.log('🔔 ANSWER WEBHOOK CALLED - Generating intro with ElevenLabs');
     console.log('📞 Query params:', req.query);
-
-    // IMMEDIATE TEST: Return simple TwiML to verify route works
-    const simpleTest = false; // Set to true for testing
-    if (simpleTest) {
-      console.log('🧪 RETURNING TEST TWIML');
-      const testTwiml = '<?xml version="1.0" encoding="UTF-8"?><Response><Say>This is a test</Say></Response>';
-      return res.type('text/xml').send(testTwiml);
-    }
+    console.log('📞 Request body:', req.body);
 
     try {
       const { callId, campaignId } = req.query;
@@ -577,16 +570,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       } catch (elevenlabsError) {
-        console.error('❌ ElevenLabs intro failed, using Twilio TTS fallback:', elevenlabsError);
-
-        // Fallback to Twilio TTS
-        twiml = twilioService.generateTwiML('gather', {
-          text: introText,
-          action: `/api/calls/${callId}/process-speech`,
-          recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
-          language: campaign.language || 'en',
-          voice: 'alice'
-        });
+        console.error('❌ ElevenLabs intro failed:', elevenlabsError);
+        
+        // Return error TwiML that will end call gracefully
+        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en">I apologize, there was a technical issue. Please try again later.</Say>
+  <Hangup/>
+</Response>`;
+        return res.type('text/xml').send(errorTwiml);
       }
 
       console.log(`🎙️ Returning TwiML for intro: "${introText}"`);
