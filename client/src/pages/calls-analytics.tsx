@@ -53,23 +53,11 @@ export default function CallsAnalyticsPage() {
 
   const handleDownloadRecording = async (callId: string) => {
     try {
-      const response = await fetch(`/api/calls/${callId}/recording`);
-      if (!response.ok) {
-        alert('Recording not available for this call');
-        return;
-      }
-      
-      const recording: CallRecording = await response.json();
-      const url = recording.mp4Url || recording.recordingUrl;
-      
-      if (!url) {
-        alert('Recording file not found');
-        return;
-      }
-      
+      // Use the server proxy endpoint for downloading
+      const downloadUrl = `/api/calls/${callId}/recording/download`;
       const link = document.createElement('a');
-      link.href = url;
-      link.download = `call-recording-${callId}.${recording.mp4Url ? 'mp4' : 'wav'}`;
+      link.href = downloadUrl;
+      link.download = `call-recording-${callId}.wav`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

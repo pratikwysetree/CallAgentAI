@@ -47,15 +47,20 @@ export function CallTranscription({ callId, isActive = false }: CallTranscriptio
   }, [transcriptions, autoScroll, callId]);
 
   const handleDownloadRecording = async () => {
-    if (!recording?.mp4Url && !recording?.recordingUrl) return;
+    if (!recording) return;
     
-    const url = recording.mp4Url || recording.recordingUrl;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `call-recording-${callId}.${recording.mp4Url ? 'mp4' : 'wav'}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Use the server proxy endpoint for downloading
+      const downloadUrl = `/api/calls/${callId}/recording/download`;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `call-recording-${callId}.${recording.mp4Url ? 'mp4' : 'wav'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading recording:', error);
+    }
   };
 
   const formatTimestamp = (timestamp: string | Date) => {
