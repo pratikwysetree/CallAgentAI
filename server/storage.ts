@@ -1,11 +1,12 @@
 import { 
-  users, contacts, campaigns, calls, callMessages, whatsappTemplates, bulkMessageJobs,
+  users, contacts, campaigns, calls, callMessages, audioRecordings, whatsappTemplates, bulkMessageJobs,
   contactEngagement, campaignMetrics,
   type User, type InsertUser, 
   type Contact, type InsertContact,
   type Campaign, type InsertCampaign,
   type Call, type InsertCall,
   type CallMessage, type InsertCallMessage,
+  type AudioRecording, type InsertAudioRecording,
   type WhatsAppTemplate, type InsertWhatsAppTemplate,
   type BulkMessageJob, type InsertBulkMessageJob,
   type ContactEngagement, type CampaignMetrics,

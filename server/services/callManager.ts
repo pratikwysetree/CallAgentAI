@@ -183,7 +183,6 @@ export class CallManager {
         twiml = twilioService.generateTwiML('gather', {
           text: aiResponse,
           action: `/api/calls/${callId}/process-speech`,
-          recordAction: `/api/calls/${callId}/process-recording`,
           voice: campaign.voiceId, // Use campaign voice
           addTypingSound: true // Enable background typing sounds
         });

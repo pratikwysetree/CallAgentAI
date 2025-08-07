@@ -72,6 +72,19 @@ export const callMessages = pgTable("call_messages", {
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
+// New table for storing audio recordings directly in database
+export const audioRecordings = pgTable("audio_recordings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callId: varchar("call_id").references(() => calls.id),
+  audioData: text("audio_data"), // Base64 encoded audio
+  duration: integer("duration"), // in seconds
+  format: text("format").default("wav"), // audio format
+  sampleRate: integer("sample_rate").default(8000),
+  transcription: text("transcription"),
+  messageIndex: integer("message_index"), // which turn in conversation
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const whatsappTemplates = pgTable("whatsapp_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -173,11 +186,19 @@ export const callsRelations = relations(calls, ({ one, many }) => ({
     references: [campaigns.id],
   }),
   messages: many(callMessages),
+  audioRecordings: many(audioRecordings),
 }));
 
 export const callMessagesRelations = relations(callMessages, ({ one }) => ({
   call: one(calls, {
     fields: [callMessages.callId],
+    references: [calls.id],
+  }),
+}));
+
+export const audioRecordingsRelations = relations(audioRecordings, ({ one }) => ({
+  call: one(calls, {
+    fields: [audioRecordings.callId],
     references: [calls.id],
   }),
 }));
@@ -204,6 +225,9 @@ export type InsertCall = typeof calls.$inferInsert;
 
 export type CallMessage = typeof callMessages.$inferSelect;
 export type InsertCallMessage = typeof callMessages.$inferInsert;
+
+export type AudioRecording = typeof audioRecordings.$inferSelect;
+export type InsertAudioRecording = typeof audioRecordings.$inferInsert;
 
 export type WhatsAppTemplate = typeof whatsappTemplates.$inferSelect;
 export type InsertWhatsAppTemplate = typeof whatsappTemplates.$inferInsert;
@@ -238,5 +262,6 @@ export const insertContactSchema = createInsertSchema(contacts);
 export const insertCampaignSchema = createInsertSchema(campaigns);
 export const insertCallSchema = createInsertSchema(calls);
 export const insertCallMessageSchema = createInsertSchema(callMessages);
+export const insertAudioRecordingSchema = createInsertSchema(audioRecordings);
 export const insertWhatsAppTemplateSchema = createInsertSchema(whatsappTemplates);
 export const insertBulkMessageJobSchema = createInsertSchema(bulkMessageJobs);

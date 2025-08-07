@@ -81,11 +81,14 @@ export class TwilioService {
         break;
         
       case 'gather':
-        // Use simple pause and record instead of Twilio speech recognition
+        // Use Twilio speech recognition but process results directly
         const gather = twiml.gather({
-          input: ['dtmf'], // Just for key presses, not speech
-          timeout: 1, // Short timeout to proceed to recording quickly
-          numDigits: 1,
+          input: ['speech'], // Enable speech input
+          timeout: 10, // Give user time to speak
+          speechTimeout: 'auto',
+          speechModel: 'phone_call', // Optimized for phone calls
+          enhanced: true,
+          language: 'en-IN', // Indian English
           action: options.action || '/api/calls/process-speech',
           method: 'POST'
         });
@@ -102,16 +105,11 @@ export class TwilioService {
           }, options.text);
         }
         
-        // After speaking, record user response for Google Speech processing
-        twiml.record({
-          maxLength: 30, // Max 30 seconds per response
-          timeout: 3, // Stop recording after 3 seconds of silence
-          transcribe: false, // We'll use Google Speech instead
-          action: options.recordAction || '/api/calls/process-recording',
-          method: 'POST',
-          recordingStatusCallback: options.recordingCallback || '/api/calls/recording-complete',
-          recordingStatusCallbackMethod: 'POST'
-        });
+        // Fallback if no speech detected
+        twiml.say({
+          voice: 'alice',
+          language: 'en-IN'
+        }, "I didn't catch that. Let me continue.");
         break;
         
       case 'hangup':

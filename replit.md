@@ -39,13 +39,13 @@ The project emphasizes type safety with full TypeScript coverage. Development be
 
 ## Recent Changes (August 7, 2025)
 
-### Speech Processing Fix with OpenAI Whisper (Latest)
-- **CRITICAL FIX**: Replaced Twilio speech recognition with OpenAI Whisper for better accuracy
-- Fixed authentication issue: Added Twilio Basic Auth for downloading call recordings
-- Improved error handling: Calls now end gracefully when speech processing fails instead of dropping
-- Updated TwiML generation to use recording-based speech processing instead of real-time recognition
-- Enhanced conversation flow with better end conditions (user disinterest, max turns)
-- System now properly processes user speech through: Record → Download with Auth → OpenAI Whisper → AI Response
+### Speech Processing Fix with Twilio Direct Recognition (Latest)
+- **CRITICAL FIX**: Reverted to Twilio's built-in speech recognition to avoid authentication issues
+- Eliminated recording download problems by using direct speech-to-text processing
+- Enhanced TwiML configuration with proper speech model (phone_call) and language (en-IN)
+- Improved error handling: Calls now continue gracefully when speech processing fails
+- Updated conversation flow with better end conditions (user disinterest, max turns)
+- System now properly processes user speech through: Twilio Speech Recognition → AI Response → Continue
 
 ### AI Calling Agent with Natural Conversation Flow (Previous)
 - **MAJOR ARCHITECTURAL CHANGE**: Rebuilt complete AI calling functionality from fresh implementation

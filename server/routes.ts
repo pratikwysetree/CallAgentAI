@@ -473,7 +473,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const twiml = twilioService.generateTwiML('gather', {
         text: campaign.introLine || "Hello, this is an AI calling agent from LabsCheck.",
         action: `/api/calls/${callId}/process-speech`,
-        recordAction: `/api/calls/${callId}/process-recording`,
         voice: campaign.voiceId,
         addTypingSound: true // Enable background typing simulation
       });
@@ -488,51 +487,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Handle recording completion and process with Google Speech
-  app.post("/api/calls/:callId/process-recording", async (req, res) => {
-    try {
-      const { callId } = req.params;
-      const recordingUrl = req.body.RecordingUrl;
-      
-      console.log(`🎙️ Recording received for call ${callId}: ${recordingUrl}`);
-      
-      if (recordingUrl) {
-        // Download and process recording with Google Speech
-        const result = await callManager.processRecording(callId, recordingUrl);
-        res.type('text/xml').send(result.twiml);
-      } else {
-        // No recording, continue with default response
-        const result = await callManager.processSpeechInput(callId, "I didn't hear anything");
-        res.type('text/xml').send(result.twiml);
-      }
-    } catch (error) {
-      console.error('Recording processing error:', error);
-      const twiml = twilioService.generateTwiML('hangup', {
-        text: 'Thank you for your time. Goodbye.'
-      });
-      res.type('text/xml').send(twiml);
-    }
-  });
-
-  // Fallback for DTMF input (if user presses keys)
+  // Process speech input during call - directly from Twilio speech recognition
   app.post("/api/calls/:callId/process-speech", async (req, res) => {
     try {
       const { callId } = req.params;
-      const digits = req.body.Digits;
+      const speechText = req.body.SpeechResult || req.body.UnstableSpeechResult || 
+                        req.body.Digits || "I didn't catch that";
       
-      if (digits) {
-        console.log(`📞 DTMF received for call ${callId}: ${digits}`);
-        // Process as speech input
-        const result = await callManager.processSpeechInput(callId, `User pressed ${digits}`);
-        res.type('text/xml').send(result.twiml);
-      } else {
-        // Redirect to recording
-        const twiml = twilioService.generateTwiML('gather', {
-          text: "I'm listening...",
-          recordAction: `/api/calls/${callId}/process-recording`
-        });
-        res.type('text/xml').send(twiml);
-      }
+      console.log(`🎤 Speech received for call ${callId}: "${speechText}"`);
+      console.log('🎹 Processing with background typing simulation enabled');
+
+      const result = await callManager.processSpeechInput(callId, speechText);
+      
+      console.log(`🤖 AI response generated successfully`);
+      
+      res.type('text/xml').send(result.twiml);
     } catch (error) {
       console.error('Speech processing error:', error);
       const twiml = twilioService.generateTwiML('hangup', {
