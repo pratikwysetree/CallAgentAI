@@ -4,6 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Phone, PhoneCall, Clock, User, MessageSquare } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import type { Call, Contact, Campaign, CallMessage } from "@shared/schema";
+
+interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
 
 interface ActiveCall {
   id: string;
@@ -11,18 +18,14 @@ interface ActiveCall {
   campaignId: string;
   phoneNumber: string;
   twilioCallSid: string;
-  conversationHistory: Array<{
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: Date;
-  }>;
+  conversationHistory: ConversationTurn[];
   status: 'active' | 'completed' | 'failed';
   startTime: Date;
 }
 
 export default function LiveCallsPage() {
   // Fetch active calls - no need for separate state since React Query handles caching
-  const { data: activeCalls = [], isLoading } = useQuery({
+  const { data: activeCalls = [], isLoading } = useQuery<ActiveCall[]>({
     queryKey: ['/api/calls/active'],
     refetchInterval: 3000, // Refresh every 3 seconds
   });
@@ -67,7 +70,7 @@ export default function LiveCallsPage() {
               <PhoneCall className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{calls.length}</div>
+              <div className="text-2xl font-bold">{activeCalls.length}</div>
             </CardContent>
           </Card>
 
@@ -78,7 +81,7 @@ export default function LiveCallsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {calls.reduce((total, call) => {
+                {activeCalls.reduce((total: number, call: ActiveCall) => {
                   const duration = Math.floor((Date.now() - new Date(call.startTime).getTime()) / 1000 / 60);
                   return total + duration;
                 }, 0)} min
@@ -107,7 +110,7 @@ export default function LiveCallsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {calls.length === 0 ? (
+            {activeCalls.length === 0 ? (
               <div className="text-center py-8">
                 <Phone className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
@@ -119,7 +122,7 @@ export default function LiveCallsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {calls.map((call: any) => (
+                {activeCalls.map((call: ActiveCall) => (
                   <div
                     key={call.id}
                     className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -130,7 +133,7 @@ export default function LiveCallsPage() {
                         <div>
                           <p className="font-medium">{call.phoneNumber}</p>
                           <p className="text-sm text-gray-500">
-                            Campaign: {call.campaign?.name || 'Unknown'}
+                            Campaign: {call.campaignId}
                           </p>
                         </div>
                       </div>
@@ -168,7 +171,7 @@ export default function LiveCallsPage() {
                     <div className="flex justify-between items-center mt-3">
                       <div className="flex items-center space-x-2 text-sm text-gray-500">
                         <User className="h-4 w-4" />
-                        <span>Contact: {call.contact?.name || 'Unknown'}</span>
+                        <span>Contact: {call.contactId}</span>
                       </div>
                       <Button
                         variant="outline"
