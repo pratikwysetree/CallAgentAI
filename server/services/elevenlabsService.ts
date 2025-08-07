@@ -23,12 +23,12 @@ export class ElevenLabsService {
       }
 
       const {
-        stability = 0.5,
-        similarityBoost = 0.7,
+        stability = 0.3, // Lower for faster processing
+        similarityBoost = 0.5, // Reduced for speed
         style = 0.0,
         speakerBoost = false,
         addTypingSound = true,
-        model = 'eleven_turbo_v2', // Default to fast model
+        model = 'eleven_turbo_v2_5', // Use fastest available model
         language = 'en' // Campaign language
       } = settings;
 

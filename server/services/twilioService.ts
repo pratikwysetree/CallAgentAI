@@ -45,8 +45,8 @@ export class TwilioService {
         statusCallback: `${statusWebhookUrl}?callId=${callId}`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
         statusCallbackMethod: 'POST',
-        timeout: 20, // Reduce timeout to speed up call connection
-        machineDetection: 'Enable' // Enable machine detection for faster processing
+        timeout: 15, // Faster connection timeout
+        machineDetection: 'DetectMessageEnd' // Faster machine detection
         // NO RECORDING - using direct speech recognition only
       });
 
@@ -71,13 +71,13 @@ export class TwilioService {
     // Add natural typing sounds throughout entire conversation for human-like experience
     console.log('🎹 Adding continuous background typing effects throughout conversation');
 
-    // Add initial thinking pause with typing sounds
-    twiml.pause({ length: 1 });
+    // Add minimal thinking pause for faster response
+    twiml.pause({ length: 0.5 });
 
-    // Add additional natural pauses for extended typing effect
+    // Add minimal pauses for faster conversation flow
     if (action === 'gather') {
-      twiml.pause({ length: 1.5 }); // Extended thinking with typing
-      console.log('💭 Added extended thinking pause with natural typing ambiance');
+      twiml.pause({ length: 0.8 }); // Reduced thinking pause for speed
+      console.log('💭 Added minimal thinking pause for faster conversation');
     }
 
     switch (action) {
@@ -107,13 +107,13 @@ export class TwilioService {
         // Use Twilio Gather with speech recognition for direct OpenAI Whisper processing
         const gather = twiml.gather({
           input: 'speech',
-          speechTimeout: 5,
+          speechTimeout: 3, // Faster speech detection
           speechModel: 'experimental_conversations',
           enhanced: true,
           language: options.language || 'en-US',
           action: options.action || '/api/calls/process-speech',
           method: 'POST',
-          timeout: 10
+          timeout: 7 // Reduced overall timeout for faster flow
         });
 
         // Add a pause to let user speak

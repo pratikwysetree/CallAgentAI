@@ -48,14 +48,14 @@ CRITICAL: You MUST collect both WhatsApp number and email ID before ending the c
       ];
 
       const completion = await openai.chat.completions.create({
-        model: model, // Use campaign's OpenAI model
+        model: 'gpt-4o-mini', // Faster model
         messages,
-        temperature: 0.7,
-        max_tokens: 50, // Reduced for faster response and shorter replies
+        temperature: 0.6, // Slightly lower for consistency
+        max_tokens: 100, // Shorter responses for speed
         top_p: 0.9,
         frequency_penalty: 0.1,
         presence_penalty: 0.1,
-        stream: false // Ensure no streaming for fastest response
+        stream: false // Ensure non-streaming for predictable timing
       });
 
       const response = completion.choices[0]?.message?.content || "I understand. Let me continue with our conversation.";
