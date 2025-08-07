@@ -38,23 +38,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
     
-    const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'your_verify_token_here';
+    console.log('🔍 WEBHOOK VALIDATION - Full request details:');
+    console.log('Query params:', req.query);
+    console.log('Headers:', req.headers);
+    console.log('URL:', req.originalUrl);
     
-    console.log('🔍 PRIORITY WhatsApp webhook verification:', { mode, token, challenge });
+    const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'whatsapp_verify_token_2025';
     
-    // Set headers to ensure plain text response and bypass caching
+    console.log('Expected mode: subscribe, Received:', mode);
+    console.log('Expected token:', verifyToken);
+    console.log('Received token:', token);
+    console.log('Challenge to return:', challenge);
+    
+    // Set headers to ensure plain text response
     res.set({
-      'Content-Type': 'text/plain',
-      'Cache-Control': 'no-cache',
-      'X-Content-Type-Options': 'nosniff'
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
     
     if (mode === 'subscribe' && token === verifyToken) {
-      console.log('✅ PRIORITY WhatsApp webhook verified successfully');
+      console.log('✅ WEBHOOK VERIFIED - Returning challenge:', challenge);
       return res.status(200).send(String(challenge));
     } else {
-      console.log('❌ PRIORITY WhatsApp webhook verification failed');
-      return res.status(403).send('Verification failed');
+      console.log('❌ WEBHOOK VERIFICATION FAILED');
+      console.log('Mode check:', mode === 'subscribe');
+      console.log('Token check:', token === verifyToken);
+      return res.status(403).send('Forbidden');
     }
   });
 
