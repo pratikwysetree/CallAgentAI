@@ -194,7 +194,7 @@ export default function ContactCampaigns() {
     }
   };
 
-  const approvedTemplates = templates.filter((t: any) => t.status === 'APPROVED');
+  const approvedTemplates = (templates as any[])?.filter((t: any) => t.status === 'APPROVED') || [];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -327,7 +327,7 @@ export default function ContactCampaigns() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Contact Database ({contacts.length} contacts)</CardTitle>
+              <CardTitle>Contact Database ({(contacts as any[])?.length || 0} contacts)</CardTitle>
               <CardDescription>
                 Select contacts for campaigns. Click checkboxes to select multiple contacts.
               </CardDescription>
@@ -352,7 +352,7 @@ export default function ContactCampaigns() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contacts.map((contact: Contact) => (
+                    {(contacts as any[])?.map((contact: any) => (
                       <TableRow key={contact.id}>
                         <TableCell>
                           <input

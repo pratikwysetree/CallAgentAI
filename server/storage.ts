@@ -126,7 +126,7 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async getContacts(limit = 50000): Promise<Contact[]> {
+  async getContacts(limit = 10000): Promise<Contact[]> {
     return await db.select().from(contacts).orderBy(desc(contacts.createdAt)).limit(limit);
   }
 
