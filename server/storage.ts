@@ -123,10 +123,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteContact(id: string): Promise<boolean> {
     const result = await db.delete(contacts).where(eq(contacts.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
-  async getContacts(limit = 1000): Promise<Contact[]> {
+  async getContacts(limit = 50000): Promise<Contact[]> {
     return await db.select().from(contacts).orderBy(desc(contacts.createdAt)).limit(limit);
   }
 
@@ -160,7 +160,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(campaignMetrics).where(eq(campaignMetrics.campaignId, id));
     
     const result = await db.delete(campaigns).where(eq(campaigns.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // WhatsApp Templates
@@ -189,7 +189,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWhatsAppTemplate(id: string): Promise<boolean> {
     const result = await db.delete(whatsappTemplates).where(eq(whatsappTemplates.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Contact Engagement
@@ -318,7 +318,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCall(id: string): Promise<boolean> {
     const result = await db.delete(calls).where(eq(calls.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getCallsByCampaign(campaignId: string): Promise<Call[]> {
@@ -349,7 +349,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCallMessage(id: string): Promise<boolean> {
     const result = await db.delete(callMessages).where(eq(callMessages.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Dashboard Stats
