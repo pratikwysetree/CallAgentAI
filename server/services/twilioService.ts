@@ -40,11 +40,8 @@ export class TwilioService {
         url: `${webhookUrl}?callId=${callId}&campaignId=${campaignId}`,
         statusCallback: `${webhookUrl}/status?callId=${callId}`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-        statusCallbackMethod: 'POST',
-        record: true, // Record for Google Speech processing
-        recordingStatusCallback: `${webhookUrl}/recording?callId=${callId}`,
-        recordingChannels: 'dual', // Separate channels for better processing
-        recordingStatusCallbackEvent: ['completed']
+        statusCallbackMethod: 'POST'
+        // NO RECORDING - using direct speech recognition only
       });
 
       return {

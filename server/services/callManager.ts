@@ -1,7 +1,7 @@
 import { OpenAIService } from './openaiService';
 import { ElevenLabsService } from './elevenlabsService';
 import { twilioService } from './twilioService';
-import { openaiSpeechService } from './googleSpeechService';
+// Removed OpenAI speech service import - using Twilio direct speech recognition
 import { storage } from '../storage';
 // Using built-in fetch available in Node.js 18+
 
@@ -204,31 +204,7 @@ export class CallManager {
     }
   }
 
-  // Process recording using Google Speech-to-Text
-  async processRecording(
-    callId: string,
-    recordingUrl: string
-  ): Promise<{ twiml: string; success: boolean }> {
-    try {
-      console.log(`🎙️ Processing recording for call ${callId}: ${recordingUrl}`);
-      
-      // Transcribe using OpenAI Whisper directly from URL
-      const speechText = await openaiSpeechService.transcribeFromUrl(recordingUrl);
-      console.log(`🎤 OpenAI Whisper transcription: "${speechText}"`);
-      
-      // Process the transcribed text with AI
-      return await this.processSpeechInput(callId, speechText);
-    } catch (error) {
-      console.error('❌ Error processing recording:', error);
-      // If recording processing fails, gracefully end the call
-      return {
-        twiml: twilioService.generateTwiML('hangup', {
-          text: 'Thank you for your time. We will follow up with you soon. Goodbye.'
-        }),
-        success: false
-      };
-    }
-  }
+  // Removed processRecording method - using direct speech recognition only
 
   // Handle call completion
   async completeCall(callId: string, duration?: number): Promise<void> {

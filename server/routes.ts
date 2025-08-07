@@ -478,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       console.log(`🎙️ Starting call with intro: "${campaign.introLine}"`);
-      console.log('🎹 Background typing sounds enabled with OpenAI Whisper processing');
+      console.log('🎹 Background typing sounds enabled with Twilio direct speech processing');
 
       res.type('text/xml').send(twiml);
     } catch (error) {
@@ -491,12 +491,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calls/:callId/process-speech", async (req, res) => {
     try {
       const { callId } = req.params;
-      const speechText = req.body.SpeechResult || req.body.UnstableSpeechResult || 
-                        req.body.Digits || "I didn't catch that";
       
-      console.log(`🎤 Speech received for call ${callId}: "${speechText}"`);
+      // Import direct speech service
+      const { directSpeechService } = await import('../services/directSpeechService');
+      
+      // Process speech directly from Twilio webhook without any recording
+      const rawSpeechText = directSpeechService.processTwilioSpeechInput(
+        req.body.SpeechResult,
+        req.body.UnstableSpeechResult, 
+        req.body.Digits
+      );
+      
+      // Validate and clean the speech input
+      const speechText = directSpeechService.validateSpeechInput(rawSpeechText);
+      
+      console.log(`🎤 Processed speech for call ${callId}: "${speechText}"`);
       console.log('🎹 Processing with background typing simulation enabled');
 
+      // Check if call should end based on speech content
+      if (directSpeechService.shouldEndCall(speechText)) {
+        console.log('🔚 User indicated call should end');
+        const twiml = twilioService.generateTwiML('hangup', {
+          text: 'I understand. Thank you for your time. Have a great day!'
+        });
+        res.type('text/xml').send(twiml);
+        return;
+      }
+
+      // Process with AI
       const result = await callManager.processSpeechInput(callId, speechText);
       
       console.log(`🤖 AI response generated successfully`);
@@ -537,22 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Recording webhook
-  app.post("/api/calls/webhook/recording", async (req, res) => {
-    try {
-      const { callId } = req.query;
-      const { RecordingUrl } = req.body;
-
-      if (callId && RecordingUrl) {
-        await storage.updateCall(callId as string, { recordingUrl: RecordingUrl });
-      }
-
-      res.status(200).send('OK');
-    } catch (error) {
-      console.error('Recording webhook error:', error);
-      res.status(500).send('Error');
-    }
-  });
+  // Removed recording webhook - not needed for direct speech processing
 
   // Global reference for broadcasting
   (global as any).broadcastToClients = broadcast;
