@@ -69,17 +69,15 @@ export class TwilioService {
     const twiml = new VoiceResponse();
 
     // Add natural typing sounds throughout entire conversation for human-like experience
-    if (options.addTypingSound) {
-      console.log('🎹 Adding continuous background typing effects throughout conversation');
+    console.log('🎹 Adding continuous background typing effects throughout conversation');
 
-      // Add initial thinking pause with typing sounds
-      twiml.pause({ length: 1 });
+    // Add initial thinking pause with typing sounds
+    twiml.pause({ length: 1 });
 
-      // Add additional natural pauses for extended typing effect
-      if (options.addThinkingPause && action === 'gather') {
-        twiml.pause({ length: 1.5 }); // Extended thinking with typing
-        console.log('💭 Added extended thinking pause with natural typing ambiance');
-      }
+    // Add additional natural pauses for extended typing effect
+    if (action === 'gather') {
+      twiml.pause({ length: 1.5 }); // Extended thinking with typing
+      console.log('💭 Added extended thinking pause with natural typing ambiance');
     }
 
     switch (action) {
@@ -96,16 +94,14 @@ export class TwilioService {
         break;
 
       case 'gather':
-        // Play ElevenLabs audio if provided
+        // ONLY use ElevenLabs audio - no Twilio TTS fallback to maintain voice consistency
         if (options.audioUrl) {
           console.log('🎵 Playing ElevenLabs audio:', options.audioUrl);
           twiml.play(options.audioUrl);
-        } else if (options.text) {
-          console.log('🗣️ Using Twilio TTS as fallback');
-          twiml.say({
-            voice: options.voice || 'alice',
-            language: options.language || 'en'
-          }, options.text);
+        } else {
+          console.error('❌ ERROR: No ElevenLabs audio URL provided - voice consistency requires ElevenLabs only');
+          // Add silence instead of changing voice
+          twiml.pause({ length: 2 });
         }
 
         // Use Twilio Gather with speech recognition for direct OpenAI Whisper processing

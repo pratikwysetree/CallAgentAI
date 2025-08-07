@@ -274,25 +274,30 @@ export class CallManager {
         if (shouldEndCall) {
           twiml = twilioService.generateTwiML('hangup', {
             audioUrl: audioUrl, // Use ElevenLabs audio
-            language: campaign.language
+            language: campaign.language || 'en',
+            addTypingSound: true,
+            addThinkingPause: true
           });
           setTimeout(() => this.completeCall(callId), 1000);
         } else {
           twiml = twilioService.generateTwiML('gather', {
-            audioUrl: audioUrl, // Use ElevenLabs audio
+            audioUrl: audioUrl,
             action: `/api/calls/${callId}/process-speech`,
             recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
-            language: campaign.language
+            language: campaign.language || 'en',
+            addTypingSound: true,
+            addThinkingPause: true
           });
         }
 
       } catch (elevenlabsError) {
-        console.error('❌ ElevenLabs TTS failed - NO TWILIO FALLBACK ALLOWED:', elevenlabsError);
+        console.error('❌ ElevenLabs TTS failed - maintaining voice consistency, no fallback:', elevenlabsError);
 
-        // End call if ElevenLabs fails - DO NOT use Twilio TTS
+        // No fallback to maintain voice consistency - end call gracefully
         twiml = twilioService.generateTwiML('hangup', {
-          text: 'Voice synthesis error. Call ending.',
-          language: campaign.language
+          text: 'I apologize, there was a technical issue. We will call you back shortly.',
+          language: campaign.language || 'en',
+          addTypingSound: true
         });
         setTimeout(() => this.completeCall(callId), 1000);
       }

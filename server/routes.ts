@@ -561,12 +561,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`✅ ElevenLabs intro generated successfully: ${audioUrl}`);
 
-        // Generate TwiML with ElevenLabs audio
+        // Generate TwiML with ElevenLabs audio and background typing sounds
         twiml = twilioService.generateTwiML('gather', {
           audioUrl: audioUrl,
           action: `/api/calls/${callId}/process-speech`,
           recordingCallback: `/api/calls/recording-complete?callId=${callId}`,
-          language: campaign.language || 'en'
+          language: campaign.language || 'en',
+          addTypingSound: true,
+          addThinkingPause: true
         });
 
       } catch (elevenlabsError) {
@@ -782,7 +784,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const twiml = twilioService.generateTwiML('gather', {
           text: 'I\'m here. Please speak when you\'re ready.',
           action: `/api/calls/${callId}/process-speech`,
-          language: campaign?.language || 'en'
+          language: campaign?.language || 'en',
+          addTypingSound: true,
+          addThinkingPause: true
         });
         res.type('text/xml').send(twiml);
         return;
@@ -799,7 +803,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const twiml = twilioService.generateTwiML('hangup', {
           text: 'I understand. Thank you for your time. Have a great day!',
-          language: campaign?.language || 'en'
+          language: campaign?.language || 'en',
+          addTypingSound: true
         });
         res.type('text/xml').send(twiml);
         return;
