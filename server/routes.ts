@@ -233,9 +233,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
-      // Import contacts from CSV/Excel
+      // Import contacts from CSV/Excel with progress tracking
+      console.log(`Starting CSV import of ${req.file.originalname} (${req.file.size} bytes)`);
       const { ExcelService } = await import('./services/excelService');
       const result = await ExcelService.importContactsFromExcel(req.file.buffer);
+      console.log(`CSV import completed: ${result.imported} imported, ${result.errors.length} errors`);
 
       res.json(result);
     } catch (error) {

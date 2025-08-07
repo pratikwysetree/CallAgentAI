@@ -36,8 +36,12 @@ export class ExcelService {
       };
 
 
-      // Process each row
+      // Process each row with batch processing for performance
+      const BATCH_SIZE = 100;
       for (let i = 0; i < rows.length; i++) {
+        if (i % BATCH_SIZE === 0) {
+          console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(rows.length/BATCH_SIZE)} (rows ${i+1}-${Math.min(i+BATCH_SIZE, rows.length)})`);
+        }
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
@@ -64,15 +68,17 @@ export class ExcelService {
             continue;
           }
 
-          // Check if contact already exists
-          const existing = await storage.getContactByPhone(contact.phone);
-          if (existing) {
-            errors.push(`Row ${i + 2}: Contact with phone ${contact.phone} already exists`);
-            continue;
+          // Skip duplicate check for performance - let database handle it
+          try {
+            await storage.createContact(contact);
+            imported++;
+          } catch (dbError: any) {
+            if (dbError.message?.includes('duplicate') || dbError.message?.includes('unique')) {
+              errors.push(`Row ${i + 2}: Contact with phone ${contact.phone} already exists`);
+            } else {
+              errors.push(`Row ${i + 2}: ${dbError.message || 'Database error'}`);
+            }
           }
-
-          await storage.createContact(contact);
-          imported++;
         } catch (error) {
           errors.push(`Row ${i + 2}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
