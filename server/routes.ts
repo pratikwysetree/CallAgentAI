@@ -545,9 +545,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calls/webhook/status", async (req, res) => {
     try {
       const { callId } = req.query;
-      const { CallStatus, CallDuration } = req.body;
+      const { CallStatus, CallDuration, CallSid, From, To } = req.body;
+      
+      console.log(`📞 Call Status Update - CallID: ${callId}, Status: ${CallStatus}, Duration: ${CallDuration}, SID: ${CallSid}, From: ${From}, To: ${To}`);
+      console.log(`📋 Full webhook body:`, req.body);
 
       if (callId && (CallStatus === 'completed' || CallStatus === 'failed')) {
+        console.log(`🔚 Call ${callId} ending with status: ${CallStatus}, duration: ${CallDuration}`);
         await callManager.completeCall(
           callId as string, 
           CallDuration ? parseInt(CallDuration) : undefined
