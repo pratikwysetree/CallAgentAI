@@ -431,6 +431,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         console.log('✅ Message sent via WhatsApp API:', whatsappResponse.messages?.[0]?.id);
+        console.log('📡 Real delivery receipts will come through webhook');
+        
       } catch (whatsappError) {
         console.log('⚠️ WhatsApp API not available, using simulation mode');
         console.log('WhatsApp Error:', whatsappError instanceof Error ? whatsappError.message : whatsappError);
