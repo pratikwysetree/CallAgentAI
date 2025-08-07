@@ -189,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const filename = req.params.filename;
       let audioFilePath;
-      
+
       // Check both temp/ and temp/static-audio/ directories
       if (filename === 'typing-sound.mp3') {
         audioFilePath = path.join(process.cwd(), 'temp', 'static-audio', filename);
@@ -202,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const alternatePath = filename === 'typing-sound.mp3' 
           ? path.join(process.cwd(), 'temp', filename)
           : path.join(process.cwd(), 'temp', 'static-audio', filename);
-        
+
         if (fs.existsSync(alternatePath)) {
           audioFilePath = alternatePath;
         } else {
@@ -611,7 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('🚨 ANSWER WEBHOOK ERROR:', error instanceof Error ? error.message : String(error));
       console.error('🚨 Stack trace:', error instanceof Error ? error.stack : 'No stack');
-      
+
       // Provide a more robust fallback TwiML
       const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>

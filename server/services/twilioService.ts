@@ -68,50 +68,18 @@ export class TwilioService {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
 
-    // Add natural typing sounds that customers will actually hear during conversation
-    console.log('🎹 Adding REAL background typing effects that customers will hear');
-
-    // Add subtle typing sound before responses to simulate human-like behavior
+    // Play background typing sound immediately for natural conversation ambiance
     if (options.addTypingSound !== false) {
       try {
-        const fs = await import('fs');
-        const path = await import('path');
-        
-        // Ensure static-audio directory exists
-        const staticAudioDir = path.default.join(process.cwd(), 'temp', 'static-audio');
-        if (!fs.default.existsSync(staticAudioDir)) {
-          fs.default.mkdirSync(staticAudioDir, { recursive: true });
-        }
-        
-        const typingPath = path.default.join(staticAudioDir, 'typing-sound.mp3');
-        
-        // Create a simple typing sound file if it doesn't exist
-        if (!fs.default.existsSync(typingPath)) {
-          try {
-            // Create a more complete minimal MP3 file with proper headers
-            const minimalMp3 = Buffer.from([
-              // MP3 frame header
-              0xFF, 0xFB, 0x90, 0x00, 0x00, 0x03, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-              // Add some audio data for subtle clicking sounds
-              0x55, 0x55, 0x55, 0x55, 0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 0xAA, 0xAA, 0xAA, 0xAA,
-              0x55, 0x55, 0x55, 0x55, 0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 0xAA, 0xAA, 0xAA, 0xAA
-            ]);
-            fs.default.writeFileSync(typingPath, minimalMp3);
-            console.log('📁 Created enhanced minimal typing sound file');
-          } catch (writeError) {
-            console.error('Error creating typing sound file:', writeError);
-            // Create an even simpler file as last resort
-            fs.default.writeFileSync(typingPath, Buffer.from(''));
-          }
-        }
+        const { ElevenLabsService } = await import('./elevenlabsService');
+        await ElevenLabsService.ensureTypingSoundExists();
         
         const baseUrl = process.env.REPLIT_DEV_DOMAIN ? 
           `https://${process.env.REPLIT_DEV_DOMAIN}` : 
           `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
         const typingUrl = `${baseUrl}/audio/typing-sound.mp3`;
         
-        console.log('🎵 Adding typing sound effect for natural conversation flow');
+        console.log('🎹 Playing background typing sound for natural conversation ambiance');
         twiml.play(typingUrl);
       } catch (error) {
         console.warn('⚠️ Could not add typing sound, continuing without it:', error);
