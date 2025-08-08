@@ -16,6 +16,7 @@ import WhatsAppChats from "@/pages/whatsapp-chats";
 import WhatsAppMessaging from "@/pages/whatsapp-messaging";
 import LiveCallsPage from "@/pages/live-calls";
 import CallsAnalytics from "@/pages/calls-analytics";
+import CampaignTimingAnalytics from "@/pages/campaign-timing-analytics";
 import NotFound from "@/pages/not-found";
 
 function Navigation({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,12 @@ function Navigation({ children }: { children: React.ReactNode }) {
       href: "/calls-analytics",
       icon: BarChart3,
       current: location === "/calls-analytics",
+    },
+    {
+      name: "Campaign Timing",
+      href: "/campaign-timing",
+      icon: BarChart3,
+      current: location === "/campaign-timing",
     },
     {
       name: "Campaign Manager",
@@ -150,6 +157,7 @@ function Router() {
         <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
         <Route path="/live-calls" component={LiveCallsPage} />
         <Route path="/calls-analytics" component={CallsAnalytics} />
+        <Route path="/campaign-timing" component={CampaignTimingAnalytics} />
         <Route path="/campaign-manager" component={CampaignManager} />
         <Route path="/contact-campaigns" component={ContactCampaigns} />
         <Route path="/whatsapp-chats" component={WhatsAppChats} />

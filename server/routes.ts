@@ -5,16 +5,20 @@ import path from 'path';
 import fs from "fs";
 import { storage } from "./storage";
 import { db } from "./db";
-import { contacts } from "@shared/schema";
-import { sql } from "drizzle-orm";
 import { 
+  contacts, 
+  campaigns, 
+  calls, 
+  callMessages, 
+  callTranscriptions, 
+  whatsappMessages,
   insertContactSchema, 
   insertCampaignSchema,
   insertCallSchema,
   insertWhatsAppTemplateSchema, 
-  insertBulkMessageJobSchema,
-  campaigns
+  insertBulkMessageJobSchema
 } from "@shared/schema";
+import { sql, eq, desc, and } from "drizzle-orm";
 import { MessagingService } from "./services/messagingService";
 import { WhatsAppTemplateService } from "./services/whatsappTemplateService";
 import { WhatsAppService } from "./services/whatsappService";
@@ -1113,6 +1117,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching day-wise analytics:', error);
       res.status(500).json({ error: 'Failed to fetch day-wise analytics' });
+    }
+  });
+
+  // Get detailed campaign timing analytics
+  app.get('/api/campaigns/:id/detailed-analytics', async (req, res) => {
+    try {
+      const { id: campaignId } = req.params;
+      
+      // Get all calls for this campaign with detailed timing
+      const campaignCalls = await db.select({
+        call: calls,
+        contact: contacts,
+      })
+        .from(calls)
+        .leftJoin(contacts, eq(calls.contactId, contacts.id))
+        .where(eq(calls.campaignId, campaignId))
+        .orderBy(desc(calls.startTime));
+
+      const detailedAnalytics = {
+        campaignId,
+        totalCalls: campaignCalls.length,
+        callBreakdown: {
+          completed: campaignCalls.filter((c: any) => c.call.status === 'completed').length,
+          failed: campaignCalls.filter((c: any) => c.call.status === 'failed').length,
+          active: campaignCalls.filter((c: any) => c.call.status === 'active').length,
+        },
+        timingAnalysis: {
+          totalDuration: campaignCalls.reduce((sum: number, c: any) => sum + (c.call.duration || 0), 0),
+          averageDuration: campaignCalls.length ? Math.round(campaignCalls.reduce((sum: number, c: any) => sum + (c.call.duration || 0), 0) / campaignCalls.length) : 0,
+          averageAiResponseTime: campaignCalls.length ? Math.round(campaignCalls.reduce((sum: number, c: any) => sum + (c.call.aiResponseTime || 0), 0) / campaignCalls.length) : 0,
+          longestCall: Math.max(...campaignCalls.map((c: any) => c.call.duration || 0)),
+          shortestCall: Math.min(...campaignCalls.map((c: any) => c.call.duration || 0).filter((d: number) => d > 0)),
+        },
+        successMetrics: {
+          averageSuccessScore: campaignCalls.length ? Math.round(campaignCalls.reduce((sum: number, c: any) => sum + (c.call.successScore || 0), 0) / campaignCalls.length) : 0,
+          whatsappSentCount: campaignCalls.filter((c: any) => c.call.whatsappSent).length,
+          emailSentCount: campaignCalls.filter((c: any) => c.call.emailSent).length,
+          dataCollectedCount: campaignCalls.filter((c: any) => c.call.collectedData).length,
+        },
+        recentCalls: campaignCalls.slice(0, 10).map((c: any) => ({
+          id: c.call.id,
+          contactName: c.contact?.name || 'Unknown',
+          phoneNumber: c.call.phoneNumber,
+          duration: c.call.duration,
+          status: c.call.status,
+          startTime: c.call.startTime,
+          endTime: c.call.endTime,
+          aiResponseTime: c.call.aiResponseTime,
+          successScore: c.call.successScore,
+          whatsappSent: c.call.whatsappSent,
+          emailSent: c.call.emailSent,
+          conversationSummary: c.call.conversationSummary,
+        })),
+      };
+
+      res.json(detailedAnalytics);
+    } catch (error) {
+      console.error('Error fetching detailed campaign analytics:', error);
+      res.status(500).json({ error: 'Failed to fetch detailed analytics' });
+    }
+  });
+
+  // Get call flow timing details for a specific call
+  app.get('/api/calls/:id/timing-details', async (req, res) => {
+    try {
+      const { id: callId } = req.params;
+      
+      // Get call details
+      const [call] = await db.select().from(calls).where(eq(calls.id, callId));
+      if (!call) {
+        return res.status(404).json({ error: 'Call not found' });
+      }
+
+      // Get call messages with timing
+      const messages = await db.select()
+        .from(callMessages)
+        .where(eq(callMessages.callId, callId))
+        .orderBy(callMessages.timestamp);
+
+      // Get transcriptions with timing
+      const transcriptions = await db.select()
+        .from(callTranscriptions)
+        .where(eq(callTranscriptions.callId, callId))
+        .orderBy(callTranscriptions.timestamp);
+
+      // Get WhatsApp messages sent during/after this call
+      const callWhatsappMessages = await db.select()
+        .from(whatsappMessages)
+        .where(and(
+          eq(whatsappMessages.contactId, call.contactId || ''),
+          sql`${whatsappMessages.createdAt} >= ${call.startTime}`
+        ))
+        .orderBy(whatsappMessages.createdAt);
+
+      // Calculate timing breakdown
+      const callDuration = call.duration || 0;
+      const aiResponseTime = call.aiResponseTime || 0;
+      const totalTranscriptionTime = transcriptions.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+      
+      const timingBreakdown = {
+        callId,
+        callOverview: {
+          totalDuration: callDuration,
+          startTime: call.startTime,
+          endTime: call.endTime,
+          status: call.status,
+        },
+        stageTimings: {
+          callInitiation: {
+            description: 'Time from call start to first AI response',
+            estimatedDuration: Math.min(aiResponseTime / 1000, 10), // Convert to seconds, cap at 10s
+          },
+          conversationFlow: {
+            description: 'Active conversation duration',
+            estimatedDuration: Math.max(callDuration - 10, 0), // Subtract setup/teardown time
+            aiProcessingTime: aiResponseTime,
+            totalSpeechSegments: transcriptions.length,
+            totalSpeechDuration: totalTranscriptionTime,
+          },
+          messageProcessing: {
+            description: 'Post-call WhatsApp/Email processing',
+            whatsappSent: call.whatsappSent,
+            emailSent: call.emailSent,
+            messagesCount: callWhatsappMessages.length,
+          },
+        },
+        conversationLog: messages.map((msg: any) => ({
+          timestamp: msg.timestamp,
+          role: msg.role,
+          content: msg.content,
+          timeSinceStart: Math.floor((new Date(msg.timestamp).getTime() - new Date(call.startTime).getTime()) / 1000),
+        })),
+        speechSegments: transcriptions.map((t: any) => ({
+          timestamp: t.timestamp,
+          speaker: t.speaker,
+          transcript: t.transcript,
+          duration: t.duration,
+          confidence: t.confidence,
+          timeSinceStart: Math.floor((new Date(t.timestamp).getTime() - new Date(call.startTime).getTime()) / 1000),
+        })),
+        followUpActions: callWhatsappMessages.map((msg: any) => ({
+          timestamp: msg.createdAt,
+          status: msg.status,
+          templateName: msg.templateName,
+          deliveredAt: msg.deliveredAt,
+          readAt: msg.readAt,
+          timeSinceCallEnd: call.endTime ? Math.floor((new Date(msg.createdAt).getTime() - new Date(call.endTime).getTime()) / 1000) : null,
+        })),
+      };
+
+      res.json(timingBreakdown);
+    } catch (error) {
+      console.error('Error fetching call timing details:', error);
+      res.status(500).json({ error: 'Failed to fetch call timing details' });
     }
   });
 
