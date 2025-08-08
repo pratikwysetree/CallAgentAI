@@ -1079,10 +1079,10 @@ export default function ContactCampaigns() {
                 </Table>
                 
                 {/* Pagination Controls */}
-                {filteredContacts.length > pageSize && (
+                {paginationInfo.total > pageSize && (
                   <div className="flex items-center justify-between px-4 py-3 border-t">
                     <div className="flex items-center text-sm text-gray-500">
-                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredContacts.length)} of {filteredContacts.length} filtered contacts
+                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, paginationInfo.total)} of {paginationInfo.total} total contacts
                     </div>
                     <div className="flex items-center space-x-2">
                       <Button 
