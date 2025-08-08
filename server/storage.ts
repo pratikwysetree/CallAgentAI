@@ -211,39 +211,8 @@ export class DatabaseStorage implements IStorage {
     const startTime = Date.now();
     
     try {
-      // Build WHERE clause dynamically with separate param arrays
-      let whereConditions = "phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'";
-      const filterParams: any[] = [];
-      
-      if (options.searchTerm) {
-        const paramIndex = filterParams.length + 1;
-        whereConditions += ` AND (name ILIKE $${paramIndex} OR phone LIKE $${paramIndex} OR email ILIKE $${paramIndex} OR company ILIKE $${paramIndex})`;
-        filterParams.push(`%${options.searchTerm}%`);
-      }
-      
-      if (options.city) {
-        const paramIndex = filterParams.length + 1;
-        whereConditions += ` AND city ILIKE $${paramIndex}`;
-        filterParams.push(`%${options.city}%`);
-      }
-      
-      if (options.state) {
-        const paramIndex = filterParams.length + 1;
-        whereConditions += ` AND state ILIKE $${paramIndex}`;
-        filterParams.push(`%${options.state}%`);
-      }
-      
-      // Get total count first (using filter params only)
-      const countQuery = `SELECT COUNT(*) as total FROM contacts WHERE ${whereConditions}`;
-      const countResult = await db.execute(sql.raw(countQuery, filterParams));
-      const total = parseInt((countResult as any).rows[0].total);
-      
-      // Get paginated results (filter params + limit + offset)
-      const limitParam = filterParams.length + 1;
-      const offsetParam = filterParams.length + 2;
-      const allParams = [...filterParams, options.limit, options.offset];
-      
-      const dataQuery = `
+      // Use simple approach similar to working getContacts() method
+      let baseQuery = `
         SELECT id, name, phone, email, city, state, company, notes, 
                whatsapp_number as "whatsappNumber", 
                phone_number as "phoneNumber",
@@ -251,12 +220,41 @@ export class DatabaseStorage implements IStorage {
                created_at as "createdAt", 
                updated_at as "updatedAt"
         FROM contacts 
-        WHERE ${whereConditions}
-        ORDER BY created_at DESC 
-        LIMIT $${limitParam} OFFSET $${offsetParam}
+        WHERE phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'
       `;
+
+      let countQuery = `
+        SELECT COUNT(*) as total
+        FROM contacts 
+        WHERE phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'
+      `;
+
+      // Add filters if provided
+      if (options.searchTerm) {
+        const searchFilter = ` AND (name ILIKE '%${options.searchTerm}%' OR phone LIKE '%${options.searchTerm}%' OR email ILIKE '%${options.searchTerm}%' OR company ILIKE '%${options.searchTerm}%')`;
+        baseQuery += searchFilter;
+        countQuery += searchFilter;
+      }
       
-      const dataResult = await db.execute(sql.raw(dataQuery, allParams));
+      if (options.city) {
+        const cityFilter = ` AND city ILIKE '%${options.city}%'`;
+        baseQuery += cityFilter;
+        countQuery += cityFilter;
+      }
+      
+      if (options.state) {
+        const stateFilter = ` AND state ILIKE '%${options.state}%'`;
+        baseQuery += stateFilter;
+        countQuery += stateFilter;
+      }
+
+      // Get total count
+      const countResult = await db.execute(sql.raw(countQuery));
+      const total = parseInt((countResult as any).rows[0].total);
+
+      // Get paginated results
+      baseQuery += ` ORDER BY created_at DESC LIMIT ${options.limit} OFFSET ${options.offset}`;
+      const dataResult = await db.execute(sql.raw(baseQuery));
       const contacts = (dataResult as any).rows || [];
       
       const endTime = Date.now();
