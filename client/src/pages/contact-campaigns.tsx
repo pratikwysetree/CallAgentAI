@@ -113,7 +113,7 @@ export default function ContactCampaigns() {
   // Ensure contacts is always an array
   const contacts = useMemo(() => {
     if (Array.isArray(contactsData)) return contactsData;
-    if (contactsData?.rows && Array.isArray(contactsData.rows)) return contactsData.rows;
+    if (contactsData && typeof contactsData === 'object' && 'rows' in contactsData && Array.isArray((contactsData as any).rows)) return (contactsData as any).rows;
     return [];
   }, [contactsData]);
 
@@ -1012,12 +1012,12 @@ export default function ContactCampaigns() {
                   <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found</h3>
                   <p className="text-gray-500 mb-4">
-                    {(contacts as any[])?.length === 0 
+                    {contacts.length === 0 
                       ? "No contacts in database. Upload a CSV file or add contacts manually."
                       : "No contacts match your current filters. Try adjusting the filter criteria above."
                     }
                   </p>
-                  {(contacts as any[])?.length > 0 && (
+                  {contacts.length > 0 && (
                     <Button onClick={clearAllFilters} variant="outline">
                       Clear All Filters
                     </Button>
