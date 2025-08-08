@@ -56,11 +56,14 @@ export default function WhatsAppChats() {
   });
 
   // Fetch all contacts with reduced refresh frequency 
-  const { data: contacts = [], isLoading: contactsLoading } = useQuery<Contact[]>({
+  const { data: contactsResponse, isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/contacts/enhanced'],
     refetchInterval: 30000, // Auto-refresh every 30 seconds for contacts
     staleTime: 15000, // Consider data stale after 15 seconds
   });
+
+  // Extract contacts from the paginated response
+  const contacts = contactsResponse?.contacts || [];
 
   // Filter contacts based on search term
   const filteredContacts = contacts.filter(contact => 
