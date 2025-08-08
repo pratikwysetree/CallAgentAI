@@ -178,22 +178,20 @@ export class WhatsAppService {
         language: {
           code: "en",
         },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              {
+                type: "text",
+                text: parameters && parameters.length > 0 ? String(parameters[0]) : "User",
+                parameter_name: "name"
+              }
+            ]
+          }
+        ]
       },
     };
-
-    // Add parameters if provided - match Meta's exact API structure
-    if (parameters && parameters.length > 0) {
-      whatsappMessage.template!.components = [
-        {
-          type: "body",
-          parameter_name: "name",
-          parameters: parameters.map((param) => ({
-            type: "text",
-            text: String(param), // Ensure string type
-          })),
-        },
-      ];
-    }
 
     console.log(
       `📱 Meta Business API: Sending template "${templateName}" to ${cleanedPhoneNumber}`,
