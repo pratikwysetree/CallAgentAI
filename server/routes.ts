@@ -846,40 +846,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 continue;
               }
 
-              // Extract template parameters based on template structure
-              const templateParameters = [];
-              
-              // Check if template has components with parameters
-              if (template.components && Array.isArray(template.components)) {
-                const bodyComponent = template.components.find((comp: { type: string; text?: string }) => comp.type === 'BODY');
-                if (bodyComponent && bodyComponent.text) {
-                  // Count {{1}}, {{2}}, etc. parameters in template
-                  const paramMatches = bodyComponent.text.match(/\{\{\d+\}\}/g) || [];
-                  
-                  // Map contact data to template parameters in order
-                  for (let i = 1; i <= paramMatches.length; i++) {
-                    const paramPattern = `{{${i}}}`;
-                    if (bodyComponent.text.includes(paramPattern)) {
-                      // Map parameters based on common patterns
-                      if (i === 1 && contact.name) {
-                        templateParameters.push(contact.name);
-                      } else if (i === 2 && contact.company) {
-                        templateParameters.push(contact.company);
-                      } else if (i === 3 && contact.city) {
-                        templateParameters.push(contact.city);
-                      } else {
-                        // Default fallback
-                        templateParameters.push(contact.name || 'valued customer');
-                      }
-                    }
-                  }
-                }
-              } else if (template.content) {
-                // Fallback for legacy content field
-                if (template.content.includes('{{name}}') && contact.name) {
-                  templateParameters.push(contact.name);
-                }
-              }
+              // Always pass contact name as the first parameter
+              const templateParameters = [contact.name || 'valued customer'];
 
               console.log(`📋 Template parameters for ${contact.phone}:`, templateParameters);
 
