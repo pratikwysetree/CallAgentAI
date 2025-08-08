@@ -103,6 +103,13 @@ export const whatsappTemplates = pgTable("whatsapp_templates", {
   name: text("name").notNull(),
   content: text("content").notNull(),
   variables: jsonb("variables"), // Dynamic variables for template
+  // Complete Meta Business API template structure
+  metaTemplateId: text("meta_template_id"), // Original Meta template ID
+  status: text("status"), // APPROVED, PENDING, etc.
+  category: text("category"), // MARKETING, UTILITY, etc.
+  language: text("language"), // Language code
+  components: jsonb("components"), // Complete components structure from Meta
+  metaTemplate: jsonb("meta_template"), // Complete template structure as received from Meta API
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

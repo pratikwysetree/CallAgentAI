@@ -419,31 +419,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Update database with real templates
+      // Update database with complete Meta template structures
       let syncedCount = 0;
       for (const metaTemplate of metaTemplates) {
         try {
+          console.log(`🔄 Syncing complete template structure for: ${metaTemplate.name}`);
+          console.log(`📋 Template structure:`, JSON.stringify(metaTemplate, null, 2));
+          
           // Check if template exists
           const existingTemplates = await storage.getWhatsAppTemplates();
           const existing = existingTemplates.find(t => t.name === metaTemplate.name);
           
+          // Extract content from body component for backward compatibility
+          const bodyComponent = metaTemplate.components?.find((comp: any) => comp.type === 'BODY');
+          const content = bodyComponent?.text || metaTemplate.name;
+          const variables = bodyComponent?.example?.body_text?.[0] || null;
+          
+          const templateData = {
+            name: metaTemplate.name,
+            content: content, // Backward compatibility
+            variables: variables, // Backward compatibility  
+            // NEW: Complete Meta Business API fields
+            metaTemplateId: metaTemplate.id,
+            status: metaTemplate.status,
+            category: metaTemplate.category,
+            language: JSON.stringify(metaTemplate.language),
+            components: metaTemplate.components,
+            metaTemplate: metaTemplate // Complete template structure as received from Meta
+          };
+          
           if (existing) {
-            // Update existing template with real content
-            await storage.updateWhatsAppTemplate(existing.id, {
-              content: metaTemplate.content,
-              components: metaTemplate.components,
-              variables: metaTemplate.variables
-            });
-            console.log(`✅ Updated template: ${metaTemplate.name}`);
+            // Update existing template with complete Meta structure
+            await storage.updateWhatsAppTemplate(existing.id, templateData);
+            console.log(`✅ Updated complete template structure: ${metaTemplate.name}`);
           } else {
-            // Create new template
-            await storage.createWhatsAppTemplate({
-              name: metaTemplate.name,
-              content: metaTemplate.content,
-              components: metaTemplate.components,
-              variables: metaTemplate.variables
-            });
-            console.log(`➕ Created template: ${metaTemplate.name}`);
+            // Create new template with complete Meta structure
+            await storage.createWhatsAppTemplate(templateData);
+            console.log(`➕ Created complete template structure: ${metaTemplate.name}`);
           }
           syncedCount++;
         } catch (error) {

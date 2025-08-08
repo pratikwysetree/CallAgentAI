@@ -77,40 +77,17 @@ export class WhatsAppService {
       const templates = data.data || [];
       console.log(`📋 Found ${templates.length} templates from Meta Business API`);
       
-      // Filter only approved templates and preserve complete structure
+      // Filter only approved templates and preserve EXACT Meta Business API structure
       const approvedTemplates = templates
         .filter((template: any) => template.status === 'APPROVED')
         .map((template: any) => {
-          // Extract content from body component for display purposes
-          const bodyComponent = template.components?.find((comp: any) => comp.type === 'BODY');
-          const content = bodyComponent?.text || '';
+          console.log(`📋 Preserving complete Meta template structure for ${template.name}:`, template);
           
-          // Extract variables from components for reference
-          const variables = bodyComponent?.example?.body_text?.[0] || null;
-          
-          console.log(`📋 Complete template ${template.name}:`, {
-            id: template.id,
-            name: template.name,
-            status: template.status,
-            category: template.category,
-            language: template.language,
-            components: template.components,
-            content_preview: content.substring(0, 100) + '...'
-          });
-          
-          // Return the complete approved template structure
+          // Return template exactly as received from Meta Business API - NO transformation
           return {
-            id: template.id,
-            name: template.name,
-            status: template.status,
-            category: template.category,
-            language: template.language,
-            components: template.components, // Complete components structure
-            content: content, // Content for display/reference
-            variables: variables, // Variables for reference
-            createdAt: new Date().toISOString(),
-            // Preserve any other template metadata
-            ...template
+            ...template, // Preserve ALL fields exactly as received from Meta
+            // Only add a timestamp for our internal tracking
+            _fetchedAt: new Date().toISOString()
           };
         });
 
