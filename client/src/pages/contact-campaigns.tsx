@@ -189,7 +189,7 @@ export default function ContactCampaigns() {
   });
 
   // Fetch existing campaigns from campaign manager
-  const { data: campaigns = [] } = useQuery({
+  const { data: campaigns = [] } = useQuery<any[]>({
     queryKey: ['/api/campaigns'],
   });
 
@@ -1132,7 +1132,7 @@ export default function ContactCampaigns() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="default">Use Default Template</SelectItem>
-                        {campaigns.map((campaign: any) => (
+                        {(campaigns as any[]).map((campaign: any) => (
                           <SelectItem key={campaign.id} value={campaign.id}>
                             <div className="flex flex-col">
                               <span className="font-medium">{campaign.name}</span>
@@ -1273,7 +1273,7 @@ export default function ContactCampaigns() {
                       <div className="bg-green-50 p-3 rounded border">
                         <div className="text-sm">
                           {(selectedTemplate.content || 'Hello {{name}}, welcome to LabsCheck! We are excited to partner with your lab {{company}} in {{city}}. Please reply YES to get started with our zero-commission platform.')
-                            .replace(/\{\{(\w+)\}\}/g, (match, variable) => {
+                            .replace(/\{\{(\w+)\}\}/g, (match: string, variable: string) => {
                               const mapping = campaignConfig.variableMapping[variable];
                               const sampleData: Record<string, string> = {
                                 name: 'Dr. Sharma',
@@ -1314,7 +1314,7 @@ export default function ContactCampaigns() {
                   <li>• Selected contacts: {selectedContacts.length}</li>
                   <li>• Channel: {campaignConfig.channel}</li>
                   {campaignConfig.campaignTemplate && campaignConfig.campaignTemplate !== 'default' && (
-                    <li>• Campaign template: {campaigns.find((c: any) => c.id === campaignConfig.campaignTemplate)?.name || 'Selected template'}</li>
+                    <li>• Campaign template: {(campaigns as any[]).find((c: any) => c.id === campaignConfig.campaignTemplate)?.name || 'Selected template'}</li>
                   )}
                   {campaignConfig.campaignTemplate === 'default' && (
                     <li>• Campaign template: Default Template</li>
