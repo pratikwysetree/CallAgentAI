@@ -111,6 +111,9 @@ export default function ContactCampaigns() {
   const { data: contactsResponse, isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/contacts/enhanced', currentPage, filters],
     queryFn: () => {
+      console.log('🔍 Frontend: Current filters state:', filters);
+      console.log('📄 Frontend: Current page:', currentPage);
+      
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: pageSize.toString()
@@ -121,6 +124,8 @@ export default function ContactCampaigns() {
       if (filters.selectedStates.length > 0) params.set('states', filters.selectedStates.join(','));
       if (filters.selectedStatuses.length > 0) params.set('statuses', filters.selectedStatuses.join(','));
       if (filters.engagementMin > 0) params.set('engagementMin', filters.engagementMin.toString());
+      
+      console.log('📡 Frontend: API request URL:', `/api/contacts/enhanced?${params.toString()}`);
       
       return fetch(`/api/contacts/enhanced?${params.toString()}`).then(res => res.json());
     },
