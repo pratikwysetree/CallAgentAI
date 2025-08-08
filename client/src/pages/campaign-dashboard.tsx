@@ -30,8 +30,10 @@ export default function CampaignDashboard() {
   const [activeTab, setActiveTab] = useState("today");
 
   // Get campaigns data with query - only real data
+  const dateString = selectedDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
   const { data: campaigns, isLoading, error } = useQuery({
-    queryKey: ['/api/campaigns/dashboard', selectedDate.toISOString()],
+    queryKey: ['/api/campaigns/dashboard', dateString],
+    queryFn: () => fetch(`/api/campaigns/dashboard?date=${dateString}`).then(res => res.json()),
     select: (data: any) => data || []
   });
 
@@ -99,7 +101,9 @@ export default function CampaignDashboard() {
   };
 
   const goToToday = () => {
-    setSelectedDate(new Date());
+    const now = new Date();
+    console.log('Setting date to today:', now.toISOString());
+    setSelectedDate(now);
   };
 
   if (isLoading) {
