@@ -150,10 +150,11 @@ export class WhatsAppService {
     return await this.sendMessage(whatsappMessage);
   }
 
-  // Send a template message using complete template structure (required for new conversations and 24+ hour rule)
+  // Send a template message using Meta Business API template endpoint (required for campaigns and 24+ hour rule)
   async sendTemplateMessage(to: string, templateName: string, languageCode: string = 'en_US', parameters?: string[]): Promise<any> {
     const cleanedPhoneNumber = this.cleanPhoneNumber(to);
     
+    // Construct Meta Business API template message payload
     const whatsappMessage: WhatsAppMessage = {
       messaging_product: 'whatsapp',
       to: cleanedPhoneNumber,
@@ -166,22 +167,30 @@ export class WhatsAppService {
       }
     };
 
-    // Add parameters if provided - match the exact structure expected by Meta API
+    // Add parameters if provided - match Meta's exact API structure
     if (parameters && parameters.length > 0) {
       whatsappMessage.template!.components = [
         {
           type: 'body',
           parameters: parameters.map(param => ({
             type: 'text',
-            text: param
+            text: String(param) // Ensure string type
           }))
         }
       ];
     }
 
-    console.log(`📱 Sending WhatsApp template "${templateName}" to ${cleanedPhoneNumber}${parameters ? ` with params: ${parameters.join(', ')}` : ''}`);
-    console.log('📋 Complete template message structure:', JSON.stringify(whatsappMessage, null, 2));
-    return await this.sendMessage(whatsappMessage);
+    console.log(`📱 Meta Business API: Sending template "${templateName}" to ${cleanedPhoneNumber}`);
+    console.log('📋 Template API payload:', JSON.stringify(whatsappMessage, null, 2));
+    
+    // Call Meta Business API template endpoint
+    const response = await this.sendMessage(whatsappMessage);
+    
+    if (response.messages && response.messages[0]) {
+      console.log(`✅ Meta Business API template sent successfully: ${response.messages[0].id}`);
+    }
+    
+    return response;
   }
 
   // Process incoming webhook from WhatsApp

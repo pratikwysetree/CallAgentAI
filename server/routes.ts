@@ -561,16 +561,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let whatsappResponse;
         
         // Check if this is a template message
-        if (messageData.isTemplate) {
-          console.log('📋 Sending as WhatsApp template:', messageData.message);
+        if (messageData.isTemplate || messageData.templateName) {
+          console.log('📋 Sending as WhatsApp template via Meta Business API:', messageData.templateName || messageData.message);
+          
+          // Use Meta Business API template endpoint
           whatsappResponse = await whatsappService.sendTemplateMessage(
             messageData.phone,
-            messageData.message.trim(), // Template name
+            messageData.templateName || messageData.message.trim(), // Template name
             messageData.language || 'en_US',
             messageData.parameters || undefined
           );
         } else {
-          console.log('📱 Sending as regular text message');
+          console.log('📱 Sending as regular text message via Meta Business API');
+          
+          // For regular messages, still use Meta Business API but with text type
           whatsappResponse = await whatsappService.sendTextMessage(
             messageData.phone,
             messageData.message.trim()
@@ -830,11 +834,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           if (channel === 'WHATSAPP' || channel === 'BOTH') {
-            // Send WhatsApp message
+            // Send WhatsApp template message via Meta Business API
             try {
-              console.log(`📱 Sending WhatsApp to ${contact.phone} using template: ${whatsappTemplate}`);
+              console.log(`📱 Sending WhatsApp template "${whatsappTemplate}" to ${contact.phone}`);
               
-              // Get template details
+              // Get template details from database
               const templates = await storage.getWhatsAppTemplates();
               const template = templates.find(t => t.name === whatsappTemplate);
               
@@ -844,78 +848,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 continue;
               }
 
-              // Replace template variables with contact data
-              let messageContent = template.content || '';
+              // Extract template parameters based on template structure
+              const templateParameters = [];
               
-              // Simple variable replacement for {{name}}, {{1}}, etc.
-              messageContent = messageContent.replace(/\{\{name\}\}/g, contact.name || '');
-              messageContent = messageContent.replace(/\{\{1\}\}/g, contact.name || '');
-              messageContent = messageContent.replace(/\{\{phone\}\}/g, contact.phone || '');
-              messageContent = messageContent.replace(/\{\{email\}\}/g, contact.email || '');
-              messageContent = messageContent.replace(/\{\{city\}\}/g, contact.city || '');
-              messageContent = messageContent.replace(/\{\{company\}\}/g, contact.company || '');
+              // Check if template has components with parameters
+              if (template.components) {
+                const bodyComponent = template.components.find((comp: any) => comp.type === 'BODY');
+                if (bodyComponent && bodyComponent.text) {
+                  // Count {{1}}, {{2}}, etc. parameters in template
+                  const paramMatches = bodyComponent.text.match(/\{\{\d+\}\}/g) || [];
+                  
+                  // Map contact data to template parameters in order
+                  for (let i = 1; i <= paramMatches.length; i++) {
+                    const paramPattern = `{{${i}}}`;
+                    if (bodyComponent.text.includes(paramPattern)) {
+                      // Map parameters based on common patterns
+                      if (i === 1 && contact.name) {
+                        templateParameters.push(contact.name);
+                      } else if (i === 2 && contact.company) {
+                        templateParameters.push(contact.company);
+                      } else if (i === 3 && contact.city) {
+                        templateParameters.push(contact.city);
+                      } else {
+                        // Default fallback
+                        templateParameters.push(contact.name || 'valued customer');
+                      }
+                    }
+                  }
+                }
+              } else if (template.content) {
+                // Fallback for legacy content field
+                if (template.content.includes('{{name}}') && contact.name) {
+                  templateParameters.push(contact.name);
+                }
+              }
 
-              // Create WhatsApp message (without campaign reference for now)
+              console.log(`📋 Template parameters for ${contact.phone}:`, templateParameters);
+
+              // Create database record for tracking
               const message = await storage.createWhatsAppMessage({
                 contactId: contactId,
                 phone: contact.phone,
-                message: messageContent.trim(),
+                message: whatsappTemplate, // Store template name for reference
                 messageType: 'template',
                 direction: 'outbound',
                 status: 'pending',
-                campaignId: null // Set to null to avoid foreign key constraint
+                templateName: whatsappTemplate,
+                campaignId: null
               });
 
-              // Try to send via WhatsApp API using template message
+              // Send via Meta Business API using template endpoint
               try {
                 const { whatsappService } = await import('./services/whatsappService');
                 
-                console.log(`📱 Sending WhatsApp template "${whatsappTemplate}" to ${contact.phone}`);
+                console.log(`📱 Calling Meta Business API for template "${whatsappTemplate}" to ${contact.phone}`);
                 
-                // Extract template variables for parameters
-                const templateVariables = [];
-                if (template.content && template.content.includes('{{name}}') && contact.name) {
-                  templateVariables.push(contact.name);
-                }
-                
-                // Use template message instead of text message to comply with WhatsApp 24-hour rule
+                // Always use template API - never send regular text messages for campaigns
                 const whatsappResponse = await whatsappService.sendTemplateMessage(
                   contact.phone,
                   whatsappTemplate,
-                  'en_US', // Use English US as default language
-                  templateVariables.length > 0 ? templateVariables : undefined
+                  'en_US', // Use template's language or default
+                  templateParameters.length > 0 ? templateParameters : undefined
                 );
 
+                // Update database with Meta response
                 await storage.updateWhatsAppMessage(message.id, {
                   whatsappMessageId: whatsappResponse.messages?.[0]?.id,
                   status: 'sent'
                 });
 
-                console.log(`✅ WhatsApp template sent to ${contact.phone}: ${whatsappResponse.messages?.[0]?.id}`);
-                results.push({ contactId, status: 'whatsapp_sent', messageId: message.id });
+                console.log(`✅ Meta Business API template message sent to ${contact.phone}: ${whatsappResponse.messages?.[0]?.id}`);
+                results.push({ contactId, status: 'whatsapp_sent', messageId: message.id, templateUsed: whatsappTemplate });
 
               } catch (whatsappError) {
-                console.log(`⚠️ WhatsApp API not available for ${contact.phone}, using simulation`);
+                console.error(`❌ Meta Business API error for ${contact.phone}:`, whatsappError);
                 
-                // Simulate message delivery
-                await storage.updateWhatsAppMessage(message.id, { status: 'sent' });
-                setTimeout(async () => {
-                  try {
-                    await storage.updateWhatsAppMessage(message.id, {
-                      status: 'delivered',
-                      deliveredAt: new Date()
-                    });
-                    console.log(`✅ WhatsApp simulated delivery to ${contact.phone}`);
-                  } catch (err) {
-                    console.error('Error updating delivery status:', err);
-                  }
-                }, 2000);
+                // Update status to failed - no fallback to regular messages for templates
+                await storage.updateWhatsAppMessage(message.id, { 
+                  status: 'failed',
+                  failedReason: whatsappError instanceof Error ? whatsappError.message : 'Meta API error'
+                });
                 
-                results.push({ contactId, status: 'whatsapp_simulated', messageId: message.id });
+                results.push({ 
+                  contactId, 
+                  status: 'whatsapp_failed', 
+                  error: `Meta Business API error: ${whatsappError instanceof Error ? whatsappError.message : 'Unknown error'}`,
+                  templateUsed: whatsappTemplate
+                });
               }
             } catch (messageError) {
-              console.error(`❌ WhatsApp error for ${contact.phone}:`, messageError);
-              results.push({ contactId, status: 'whatsapp_failed', error: messageError instanceof Error ? messageError.message : 'Unknown message error' });
+              console.error(`❌ WhatsApp template error for ${contact.phone}:`, messageError);
+              results.push({ 
+                contactId, 
+                status: 'whatsapp_failed', 
+                error: messageError instanceof Error ? messageError.message : 'Unknown message error',
+                templateUsed: whatsappTemplate
+              });
             }
           }
 
