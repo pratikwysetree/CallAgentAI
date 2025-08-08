@@ -30,6 +30,14 @@ export interface IStorage {
   updateContact(id: string, contact: Partial<InsertContact>): Promise<Contact>;
   deleteContact(id: string): Promise<boolean>;
   getContacts(limit?: number): Promise<Contact[]>;
+  getContactsPaginated(options: {
+    limit: number;
+    offset: number;
+    searchTerm?: string;
+    city?: string;
+    state?: string;
+  }): Promise<{ contacts: Contact[]; total: number; }>;
+  getContactFilterOptions(): Promise<{ cities: string[]; states: string[]; statuses: string[]; }>;
 
   // Campaigns
   getCampaign(id: string): Promise<Campaign | undefined>;
@@ -190,6 +198,116 @@ export class DatabaseStorage implements IStorage {
       const endTime = Date.now();
       console.log(`❌ Contacts query failed after ${endTime - startTime}ms`);
       throw error;
+    }
+  }
+
+  async getContactsPaginated(options: {
+    limit: number;
+    offset: number;
+    searchTerm?: string;
+    city?: string;
+    state?: string;
+  }): Promise<{ contacts: Contact[]; total: number; }> {
+    const startTime = Date.now();
+    
+    try {
+      // Build WHERE clause dynamically
+      let whereConditions = "phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'";
+      const params: any[] = [];
+      let paramCount = 0;
+      
+      if (options.searchTerm) {
+        paramCount++;
+        whereConditions += ` AND (name ILIKE $${paramCount} OR phone LIKE $${paramCount} OR email ILIKE $${paramCount} OR company ILIKE $${paramCount})`;
+        params.push(`%${options.searchTerm}%`);
+      }
+      
+      if (options.city) {
+        paramCount++;
+        whereConditions += ` AND city ILIKE $${paramCount}`;
+        params.push(`%${options.city}%`);
+      }
+      
+      if (options.state) {
+        paramCount++;
+        whereConditions += ` AND state ILIKE $${paramCount}`;
+        params.push(`%${options.state}%`);
+      }
+      
+      // Add limit and offset parameters
+      paramCount++;
+      const limitParam = paramCount;
+      params.push(options.limit);
+      
+      paramCount++;
+      const offsetParam = paramCount;
+      params.push(options.offset);
+      
+      // Get total count
+      const countQuery = `SELECT COUNT(*) as total FROM contacts WHERE ${whereConditions}`;
+      const countResult = await db.execute(sql.raw(countQuery, params.slice(0, -2))); // Remove limit/offset params for count
+      const total = parseInt((countResult as any).rows[0].total);
+      
+      // Get paginated results
+      const dataQuery = `
+        SELECT id, name, phone, email, city, state, company, notes, 
+               whatsapp_number as "whatsappNumber", 
+               phone_number as "phoneNumber",
+               imported_from as "importedFrom",
+               created_at as "createdAt", 
+               updated_at as "updatedAt"
+        FROM contacts 
+        WHERE ${whereConditions}
+        ORDER BY created_at DESC 
+        LIMIT $${limitParam} OFFSET $${offsetParam}
+      `;
+      
+      const dataResult = await db.execute(sql.raw(dataQuery, params));
+      const contacts = (dataResult as any).rows || [];
+      
+      const endTime = Date.now();
+      console.log(`📊 Paginated contacts query completed in ${endTime - startTime}ms - ${contacts.length}/${total} contacts`);
+      
+      return { contacts: contacts as Contact[], total };
+    } catch (error) {
+      console.error('Error in getContactsPaginated:', error);
+      const endTime = Date.now();
+      console.log(`❌ Paginated contacts query failed after ${endTime - startTime}ms`);
+      throw error;
+    }
+  }
+
+  async getContactFilterOptions(): Promise<{ cities: string[]; states: string[]; statuses: string[]; }> {
+    try {
+      const startTime = Date.now();
+      
+      // Get unique cities
+      const citiesResult = await db.execute(sql`
+        SELECT DISTINCT city 
+        FROM contacts 
+        WHERE city IS NOT NULL AND city != '' 
+        ORDER BY city
+      `);
+      
+      // Get unique states
+      const statesResult = await db.execute(sql`
+        SELECT DISTINCT state 
+        FROM contacts 
+        WHERE state IS NOT NULL AND state != '' 
+        ORDER BY state
+      `);
+      
+      const cities = ((citiesResult as any).rows || []).map((row: any) => row.city);
+      const states = ((statesResult as any).rows || []).map((row: any) => row.state);
+      const statuses = ['active', 'inactive', 'pending']; // Common statuses
+      
+      const endTime = Date.now();
+      console.log(`📋 Filter options fetched in ${endTime - startTime}ms - ${cities.length} cities, ${states.length} states`);
+      
+      return { cities, states, statuses };
+    } catch (error) {
+      console.error('Error fetching contact filter options:', error);
+      return { cities: [], states: [], statuses: [] };
     }
   }
 

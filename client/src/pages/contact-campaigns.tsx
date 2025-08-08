@@ -106,98 +106,65 @@ export default function ContactCampaigns() {
   const [showStateFilter, setShowStateFilter] = useState(false);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
-  // Fetch contacts with engagement data (optimized with longer cache)
-  const { data: contactsData, isLoading: contactsLoading } = useQuery({
-    queryKey: ['/api/contacts/enhanced'],
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+  // Fetch contacts with server-side pagination and filtering
+  const { data: contactsResponse, isLoading: contactsLoading } = useQuery({
+    queryKey: ['/api/contacts/enhanced', currentPage, filters],
+    queryFn: () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString()
+      });
+      
+      if (filters.searchTerm) params.set('search', filters.searchTerm);
+      if (filters.selectedCities.length > 0) params.set('city', filters.selectedCities[0]);
+      if (filters.selectedStates.length > 0) params.set('state', filters.selectedStates[0]);
+      
+      return fetch(`/api/contacts/enhanced?${params.toString()}`).then(res => res.json());
+    },
+    staleTime: 60 * 1000, // Consider data fresh for 1 minute
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
   });
 
-  // Ensure contacts is always an array
+  // Extract contacts and pagination info from response
   const contacts = useMemo(() => {
-    if (Array.isArray(contactsData)) return contactsData;
-    if (contactsData && typeof contactsData === 'object' && 'rows' in contactsData && Array.isArray((contactsData as any).rows)) return (contactsData as any).rows;
-    return [];
-  }, [contactsData]);
-
-  // Extract unique cities, states, and statuses for filtering
-  const { uniqueCities, uniqueStates, uniqueStatuses } = useMemo(() => {
-    const cities = new Set<string>();
-    const states = new Set<string>();
-    const statuses = new Set<string>();
-    
-    contacts?.forEach((contact: any) => {
-      if (contact.city) cities.add(contact.city);
-      if (contact.state) states.add(contact.state);
-      if (contact.status) statuses.add(contact.status);
-    });
-    
-    return {
-      uniqueCities: Array.from(cities).sort(),
-      uniqueStates: Array.from(states).sort(),
-      uniqueStatuses: Array.from(statuses).sort()
+    return contactsResponse?.contacts || [];
+  }, [contactsResponse]);
+  
+  const paginationInfo = useMemo(() => {
+    return contactsResponse?.pagination || {
+      page: 1,
+      limit: pageSize,
+      total: 0,
+      totalPages: 0,
+      hasMore: false
     };
-  }, [contacts]);
+  }, [contactsResponse, pageSize]);
 
-  // Filter contacts based on selected criteria
-  const filteredContacts = useMemo(() => {
-    if (!contacts) return [];
-    return contacts.filter((contact: any) => {
-      // Search term filter
-      if (filters.searchTerm) {
-        const searchLower = filters.searchTerm.toLowerCase();
-        const matchesSearch = 
-          contact.name.toLowerCase().includes(searchLower) ||
-          contact.phone.includes(filters.searchTerm) ||
-          contact.email?.toLowerCase().includes(searchLower) ||
-          contact.city?.toLowerCase().includes(searchLower) ||
-          contact.state?.toLowerCase().includes(searchLower);
-        if (!matchesSearch) return false;
-      }
+  // Fetch unique filter options separately for better performance
+  const { data: filterOptions } = useQuery({
+    queryKey: ['/api/contacts/filter-options'],
+    queryFn: () => fetch('/api/contacts/filter-options').then(res => res.json()),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes since this changes rarely
+  });
+  
+  const { uniqueCities, uniqueStates, uniqueStatuses } = useMemo(() => {
+    return {
+      uniqueCities: filterOptions?.cities || [],
+      uniqueStates: filterOptions?.states || [],
+      uniqueStatuses: filterOptions?.statuses || []
+    };
+  }, [filterOptions]);
 
-      // City filter
-      if (filters.selectedCities.length > 0) {
-        if (!contact.city || !filters.selectedCities.includes(contact.city)) {
-          return false;
-        }
-      }
+  // Server-side filtering means we use the contacts directly (no client-side filtering)
+  const filteredContacts = contacts;
 
-      // State filter
-      if (filters.selectedStates.length > 0) {
-        if (!contact.state || !filters.selectedStates.includes(contact.state)) {
-          return false;
-        }
-      }
-
-      // Status filter
-      if (filters.selectedStatuses.length > 0) {
-        if (!contact.status || !filters.selectedStatuses.includes(contact.status)) {
-          return false;
-        }
-      }
-
-      // Engagement filter
-      if (filters.engagementMin > 0) {
-        if (contact.totalEngagements < filters.engagementMin) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [contacts, filters]);
-
-  // Paginated contacts (apply pagination after filtering)
-  const paginatedContacts = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return filteredContacts.slice(startIndex, endIndex);
-  }, [filteredContacts, currentPage, pageSize]);
-
-  // Pagination info
-  const totalPages = Math.ceil(filteredContacts.length / pageSize);
-  const hasNextPage = currentPage < totalPages;
+  // Server-side pagination means we use the contacts directly
+  const paginatedContacts = contacts;
+  
+  // Pagination info from server response
+  const totalPages = paginationInfo.totalPages;
+  const hasNextPage = paginationInfo.hasMore;
   const hasPrevPage = currentPage > 1;
 
   // Reset to first page when filters change

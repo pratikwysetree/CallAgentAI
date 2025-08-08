@@ -199,32 +199,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced contacts with engagement data (optimized)
+  // Enhanced contacts with pagination and filtering
   app.get('/api/contacts/enhanced', async (req, res) => {
     try {
       console.log(`📊 Fetching enhanced contacts...`);
       const startTime = Date.now();
       
-      const contactsResult = await storage.getContacts();
+      // Parse pagination parameters
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = (page - 1) * limit;
       
-      // Extract contacts array from the result
-      const contacts = Array.isArray(contactsResult) ? contactsResult : 
-                      (contactsResult as any)?.rows || [];
+      // Parse filter parameters
+      const searchTerm = req.query.search as string || '';
+      const city = req.query.city as string || '';
+      const state = req.query.state as string || '';
       
-      // Add aggressive caching headers
-      res.set({
-        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
-        'ETag': `"contacts-${contacts.length}"`,
-        'Last-Modified': new Date().toUTCString()
+      console.log(`📋 Pagination: page=${page}, limit=${limit}, offset=${offset}`);
+      console.log(`🔍 Filters: search="${searchTerm}", city="${city}", state="${state}"`);
+      
+      const contactsResult = await storage.getContactsPaginated({
+        limit,
+        offset,
+        searchTerm,
+        city,
+        state
       });
       
       const endTime = Date.now();
-      console.log(`✅ Enhanced contacts fetched in ${endTime - startTime}ms - ${contacts.length} contacts`);
+      console.log(`✅ Enhanced contacts fetched in ${endTime - startTime}ms - ${contactsResult.contacts.length}/${contactsResult.total} contacts`);
       
-      res.json(contacts);
+      // Add caching headers
+      res.set({
+        'Cache-Control': 'public, max-age=60', // Cache for 1 minute (shorter due to filtering)
+        'ETag': `"contacts-p${page}-${contactsResult.total}"`,
+        'X-Total-Count': contactsResult.total.toString(),
+        'X-Page': page.toString(),
+        'X-Per-Page': limit.toString(),
+        'X-Total-Pages': Math.ceil(contactsResult.total / limit).toString()
+      });
+      
+      res.json({
+        contacts: contactsResult.contacts,
+        pagination: {
+          page,
+          limit,
+          total: contactsResult.total,
+          totalPages: Math.ceil(contactsResult.total / limit),
+          hasMore: offset + contactsResult.contacts.length < contactsResult.total
+        }
+      });
     } catch (error) {
       console.error('Error fetching enhanced contacts:', error);
       res.status(500).json({ error: 'Failed to fetch enhanced contacts' });
+    }
+  });
+
+  // Get unique filter options for contacts
+  app.get('/api/contacts/filter-options', async (req, res) => {
+    try {
+      const options = await storage.getContactFilterOptions();
+      res.json(options);
+    } catch (error) {
+      console.error('Error fetching contact filter options:', error);
+      res.status(500).json({ error: 'Failed to fetch filter options' });
     }
   });
 
