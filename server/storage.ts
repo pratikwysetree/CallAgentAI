@@ -150,12 +150,12 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async getContacts(limit = 3000): Promise<Contact[]> {
+  async getContacts(limit?: number): Promise<Contact[]> {
     // Bypass Drizzle ORM issue with raw SQL query
     const startTime = Date.now();
     
     try {
-      const results = await db.execute(sql`
+      const results = limit ? await db.execute(sql`
         SELECT id, name, phone, email, city, state, company, notes, 
                whatsapp_number as "whatsappNumber", 
                phone_number as "phoneNumber",
@@ -166,6 +166,16 @@ export class DatabaseStorage implements IStorage {
         WHERE phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'
         ORDER BY created_at DESC 
         LIMIT ${limit}
+      `) : await db.execute(sql`
+        SELECT id, name, phone, email, city, state, company, notes, 
+               whatsapp_number as "whatsappNumber", 
+               phone_number as "phoneNumber",
+               imported_from as "importedFrom",
+               created_at as "createdAt", 
+               updated_at as "updatedAt"
+        FROM contacts 
+        WHERE phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'
+        ORDER BY created_at DESC
       `);
       
       // Extract rows from the database result

@@ -205,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Fetching enhanced contacts...`);
       const startTime = Date.now();
       
-      const contactsResult = await storage.getContacts(3000);
+      const contactsResult = await storage.getContacts();
       
       // Extract contacts array from the result
       const contacts = Array.isArray(contactsResult) ? contactsResult : 
