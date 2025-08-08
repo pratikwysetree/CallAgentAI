@@ -25,16 +25,20 @@ import {
   Eye,
   RefreshCw
 } from 'lucide-react';
+import { WhatsAppTemplatePreview } from '@/components/WhatsAppTemplatePreview';
 
 interface WhatsAppTemplate {
   id: string;
   name: string;
-  category: 'AUTHENTICATION' | 'MARKETING' | 'UTILITY';
+  category: string;
   language: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  components: any[];
+  status: string;
+  content: string;
+  variables?: any;
+  metaTemplateId?: string;
+  components?: any[];
+  metaTemplate?: any;
   createdAt: string;
-  updatedAt: string;
 }
 
 interface BulkMessageJob {
@@ -300,37 +304,18 @@ export default function WhatsAppBulk() {
                     </p>
                   )}
                   
-                  {/* Template Preview */}
+                  {/* WhatsApp Template Preview */}
                   {selectedTemplate && (
-                    <div className="mt-3 p-3 border rounded-lg bg-muted/50">
-                      <h4 className="font-medium mb-2">Template Preview: {selectedTemplate}</h4>
+                    <div className="mt-3">
                       {(() => {
                         const template = (templates as WhatsAppTemplate[]).find(t => t.name === selectedTemplate);
-                        if (!template) return <p className="text-sm text-muted-foreground">Template not found</p>;
-                        
-                        return (
-                          <div className="space-y-2">
-                            <div className="flex gap-2">
-                              <Badge variant={template.status === 'APPROVED' ? 'default' : 'secondary'}>
-                                {template.status}
-                              </Badge>
-                              <Badge variant="outline">{template.category}</Badge>
-                              <Badge variant="outline">{template.language}</Badge>
-                            </div>
-                            <div className="text-sm">
-                              {template.components?.map((component: any, index: number) => (
-                                <div key={index} className="mb-2">
-                                  <div className="font-medium text-xs text-muted-foreground uppercase">
-                                    {component.type} {component.format && `(${component.format})`}
-                                  </div>
-                                  <div className="text-sm">
-                                    {component.text || 'Media content'}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                        if (!template) return (
+                          <div className="p-3 border rounded-lg bg-muted/50">
+                            <p className="text-sm text-muted-foreground">Template not found</p>
                           </div>
                         );
+                        
+                        return <WhatsAppTemplatePreview template={template} />;
                       })()}
                     </div>
                   )}

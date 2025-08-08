@@ -467,7 +467,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         message: `Successfully synced ${syncedCount} approved templates from Meta Business API`,
         synced: syncedCount,
-        templates: metaTemplates.map(t => ({ name: t.name, status: t.status, content: t.content.substring(0, 100) + '...' }))
+        templates: metaTemplates.map(t => ({ 
+          name: t.name, 
+          status: t.status, 
+          category: t.category,
+          components: t.components?.length || 0 
+        }))
       });
     } catch (error) {
       console.error('❌ Error syncing templates:', error);
