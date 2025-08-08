@@ -211,45 +211,38 @@ export class DatabaseStorage implements IStorage {
     const startTime = Date.now();
     
     try {
-      // Build WHERE clause dynamically
+      // Build WHERE clause dynamically with separate param arrays
       let whereConditions = "phone IS NOT NULL AND phone != '' AND name != 'Unknown Lab'";
-      const params: any[] = [];
-      let paramCount = 0;
+      const filterParams: any[] = [];
       
       if (options.searchTerm) {
-        paramCount++;
-        whereConditions += ` AND (name ILIKE $${paramCount} OR phone LIKE $${paramCount} OR email ILIKE $${paramCount} OR company ILIKE $${paramCount})`;
-        params.push(`%${options.searchTerm}%`);
+        const paramIndex = filterParams.length + 1;
+        whereConditions += ` AND (name ILIKE $${paramIndex} OR phone LIKE $${paramIndex} OR email ILIKE $${paramIndex} OR company ILIKE $${paramIndex})`;
+        filterParams.push(`%${options.searchTerm}%`);
       }
       
       if (options.city) {
-        paramCount++;
-        whereConditions += ` AND city ILIKE $${paramCount}`;
-        params.push(`%${options.city}%`);
+        const paramIndex = filterParams.length + 1;
+        whereConditions += ` AND city ILIKE $${paramIndex}`;
+        filterParams.push(`%${options.city}%`);
       }
       
       if (options.state) {
-        paramCount++;
-        whereConditions += ` AND state ILIKE $${paramCount}`;
-        params.push(`%${options.state}%`);
+        const paramIndex = filterParams.length + 1;
+        whereConditions += ` AND state ILIKE $${paramIndex}`;
+        filterParams.push(`%${options.state}%`);
       }
       
-      // Add limit and offset parameters
-      paramCount++;
-      const limitParam = paramCount;
-      params.push(options.limit);
-      
-      paramCount++;
-      const offsetParam = paramCount;
-      params.push(options.offset);
-      
-      // Get total count (without limit/offset parameters)
+      // Get total count first (using filter params only)
       const countQuery = `SELECT COUNT(*) as total FROM contacts WHERE ${whereConditions}`;
-      const countParams = params.slice(0, paramCount - 2); // Remove limit and offset
-      const countResult = await db.execute(sql.raw(countQuery, countParams));
+      const countResult = await db.execute(sql.raw(countQuery, filterParams));
       const total = parseInt((countResult as any).rows[0].total);
       
-      // Get paginated results
+      // Get paginated results (filter params + limit + offset)
+      const limitParam = filterParams.length + 1;
+      const offsetParam = filterParams.length + 2;
+      const allParams = [...filterParams, options.limit, options.offset];
+      
       const dataQuery = `
         SELECT id, name, phone, email, city, state, company, notes, 
                whatsapp_number as "whatsappNumber", 
@@ -263,7 +256,7 @@ export class DatabaseStorage implements IStorage {
         LIMIT $${limitParam} OFFSET $${offsetParam}
       `;
       
-      const dataResult = await db.execute(sql.raw(dataQuery, params));
+      const dataResult = await db.execute(sql.raw(dataQuery, allParams));
       const contacts = (dataResult as any).rows || [];
       
       const endTime = Date.now();
