@@ -833,17 +833,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 campaignId: null // Set to null to avoid foreign key constraint
               });
 
-              // Try to send via WhatsApp API
+              // Try to send via WhatsApp API using template message
               try {
                 const { whatsappService } = await import('./services/whatsappService');
                 
-                // Clean phone number before sending (remove + sign and non-digits)
-                const cleanedPhoneNumber = contact.phone.replace(/\+/g, '').replace(/\D/g, '');
-                console.log(`📱 Sending WhatsApp to ${contact.phone} (cleaned: ${cleanedPhoneNumber})`);
+                console.log(`📱 Sending WhatsApp template "${whatsappTemplate}" to ${contact.phone}`);
                 
-                const whatsappResponse = await whatsappService.sendTextMessage(
-                  contact.phone, // Let the service handle cleaning
-                  messageContent.trim()
+                // Extract template variables for parameters
+                const templateVariables = [];
+                if (template.content && template.content.includes('{{name}}') && contact.name) {
+                  templateVariables.push(contact.name);
+                }
+                
+                // Use template message instead of text message to comply with WhatsApp 24-hour rule
+                const whatsappResponse = await whatsappService.sendTemplateMessage(
+                  contact.phone,
+                  whatsappTemplate,
+                  'en_US', // Use English US as default language
+                  templateVariables.length > 0 ? templateVariables : undefined
                 );
 
                 await storage.updateWhatsAppMessage(message.id, {
@@ -851,7 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   status: 'sent'
                 });
 
-                console.log(`✅ WhatsApp sent to ${contact.phone} (${cleanedPhoneNumber}): ${whatsappResponse.messages?.[0]?.id}`);
+                console.log(`✅ WhatsApp template sent to ${contact.phone}: ${whatsappResponse.messages?.[0]?.id}`);
                 results.push({ contactId, status: 'whatsapp_sent', messageId: message.id });
 
               } catch (whatsappError) {

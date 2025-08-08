@@ -165,6 +165,39 @@ export class WhatsAppService {
     return await this.sendMessage(whatsappMessage);
   }
 
+  // Send a template message (required for new conversations and 24+ hour rule)
+  async sendTemplateMessage(to: string, templateName: string, languageCode: string = 'en_US', parameters?: string[]): Promise<any> {
+    const cleanedPhoneNumber = this.cleanPhoneNumber(to);
+    
+    const whatsappMessage: WhatsAppMessage = {
+      messaging_product: 'whatsapp',
+      to: cleanedPhoneNumber,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: {
+          code: languageCode
+        }
+      }
+    };
+
+    // Add parameters if provided
+    if (parameters && parameters.length > 0) {
+      whatsappMessage.template!.components = [
+        {
+          type: 'body',
+          parameters: parameters.map(param => ({
+            type: 'text',
+            text: param
+          }))
+        }
+      ];
+    }
+
+    console.log(`📱 Sending WhatsApp template "${templateName}" to ${cleanedPhoneNumber}${parameters ? ` with params: ${parameters.join(', ')}` : ''}`);
+    return await this.sendMessage(whatsappMessage);
+  }
+
   // Process incoming webhook from WhatsApp
   async processWebhook(body: any): Promise<void> {
     console.log('📨 WhatsApp webhook received:', JSON.stringify(body, null, 2));

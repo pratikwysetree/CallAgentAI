@@ -243,9 +243,10 @@ export class DatabaseStorage implements IStorage {
       const offsetParam = paramCount;
       params.push(options.offset);
       
-      // Get total count
+      // Get total count (without limit/offset parameters)
       const countQuery = `SELECT COUNT(*) as total FROM contacts WHERE ${whereConditions}`;
-      const countResult = await db.execute(sql.raw(countQuery, params.slice(0, -2))); // Remove limit/offset params for count
+      const countParams = params.slice(0, paramCount - 2); // Remove limit and offset
+      const countResult = await db.execute(sql.raw(countQuery, countParams));
       const total = parseInt((countResult as any).rows[0].total);
       
       // Get paginated results
