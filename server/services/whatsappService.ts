@@ -77,32 +77,40 @@ export class WhatsAppService {
       const templates = data.data || [];
       console.log(`📋 Found ${templates.length} templates from Meta Business API`);
       
-      // Filter only approved templates and parse content
+      // Filter only approved templates and preserve complete structure
       const approvedTemplates = templates
         .filter((template: any) => template.status === 'APPROVED')
         .map((template: any) => {
+          // Extract content from body component for display purposes
           const bodyComponent = template.components?.find((comp: any) => comp.type === 'BODY');
           const content = bodyComponent?.text || '';
           
-          // Extract variables from components
+          // Extract variables from components for reference
           const variables = bodyComponent?.example?.body_text?.[0] || null;
           
-          console.log(`📋 Template ${template.name}:`, {
+          console.log(`📋 Complete template ${template.name}:`, {
+            id: template.id,
+            name: template.name,
             status: template.status,
-            content: content,
-            variables: variables
+            category: template.category,
+            language: template.language,
+            components: template.components,
+            content_preview: content.substring(0, 100) + '...'
           });
           
+          // Return the complete approved template structure
           return {
             id: template.id,
             name: template.name,
             status: template.status,
             category: template.category,
-            content: content,
-            variables: variables,
             language: template.language,
-            components: template.components,
-            createdAt: new Date().toISOString()
+            components: template.components, // Complete components structure
+            content: content, // Content for display/reference
+            variables: variables, // Variables for reference
+            createdAt: new Date().toISOString(),
+            // Preserve any other template metadata
+            ...template
           };
         });
 
@@ -165,7 +173,7 @@ export class WhatsAppService {
     return await this.sendMessage(whatsappMessage);
   }
 
-  // Send a template message (required for new conversations and 24+ hour rule)
+  // Send a template message using complete template structure (required for new conversations and 24+ hour rule)
   async sendTemplateMessage(to: string, templateName: string, languageCode: string = 'en_US', parameters?: string[]): Promise<any> {
     const cleanedPhoneNumber = this.cleanPhoneNumber(to);
     
@@ -181,7 +189,7 @@ export class WhatsAppService {
       }
     };
 
-    // Add parameters if provided
+    // Add parameters if provided - match the exact structure expected by Meta API
     if (parameters && parameters.length > 0) {
       whatsappMessage.template!.components = [
         {
@@ -195,6 +203,7 @@ export class WhatsAppService {
     }
 
     console.log(`📱 Sending WhatsApp template "${templateName}" to ${cleanedPhoneNumber}${parameters ? ` with params: ${parameters.join(', ')}` : ''}`);
+    console.log('📋 Complete template message structure:', JSON.stringify(whatsappMessage, null, 2));
     return await this.sendMessage(whatsappMessage);
   }
 

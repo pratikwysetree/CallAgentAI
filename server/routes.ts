@@ -528,10 +528,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contactId: messageData.contactId,
         phone: messageData.phone,
         message: messageData.message.trim(),
-        messageType: messageData.messageType || 'text',
+        messageType: messageData.isTemplate ? 'template' : (messageData.messageType || 'text'),
         direction: 'outbound',
         status: 'pending',
-        campaignId: messageData.campaignId || null
+        campaignId: messageData.campaignId || null,
+        templateName: messageData.isTemplate ? messageData.message.trim() : null
       });
 
       console.log('✅ Message created in database:', message.id);
@@ -539,10 +540,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try to send via WhatsApp API if credentials are available
       try {
         const { whatsappService } = await import('./services/whatsappService');
-        const whatsappResponse = await whatsappService.sendTextMessage(
-          messageData.phone,
-          messageData.message.trim()
-        );
+        
+        let whatsappResponse;
+        
+        // Check if this is a template message
+        if (messageData.isTemplate) {
+          console.log('📋 Sending as WhatsApp template:', messageData.message);
+          whatsappResponse = await whatsappService.sendTemplateMessage(
+            messageData.phone,
+            messageData.message.trim(), // Template name
+            messageData.language || 'en_US',
+            messageData.parameters || undefined
+          );
+        } else {
+          console.log('📱 Sending as regular text message');
+          whatsappResponse = await whatsappService.sendTextMessage(
+            messageData.phone,
+            messageData.message.trim()
+          );
+        }
 
         // Update message with WhatsApp message ID and set status to sent
         await storage.updateWhatsAppMessage(message.id, {
