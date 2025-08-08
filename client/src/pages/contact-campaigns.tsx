@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -106,14 +107,13 @@ export default function ContactCampaigns() {
   const [showCityFilter, setShowCityFilter] = useState(false);
   const [showStateFilter, setShowStateFilter] = useState(false);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [filterPopupMessage, setFilterPopupMessage] = useState('');
 
   // Fetch contacts with server-side pagination and filtering
   const { data: contactsResponse, isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/contacts/enhanced', currentPage, filters],
     queryFn: () => {
-      console.log('🔍 Frontend: Current filters state:', filters);
-      console.log('📄 Frontend: Current page:', currentPage);
-      
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: pageSize.toString()
@@ -124,8 +124,6 @@ export default function ContactCampaigns() {
       if (filters.selectedStates.length > 0) params.set('states', filters.selectedStates.join(','));
       if (filters.selectedStatuses.length > 0) params.set('statuses', filters.selectedStatuses.join(','));
       if (filters.engagementMin > 0) params.set('engagementMin', filters.engagementMin.toString());
-      
-      console.log('📡 Frontend: API request URL:', `/api/contacts/enhanced?${params.toString()}`);
       
       return fetch(`/api/contacts/enhanced?${params.toString()}`).then(res => res.json());
     },
@@ -181,6 +179,21 @@ export default function ContactCampaigns() {
     setCurrentPage(1);
   };
 
+  // Show popup when filter results change
+  useEffect(() => {
+    if (paginationInfo.total > 0 && (filters.selectedCities.length > 0 || filters.selectedStates.length > 0 || filters.selectedStatuses.length > 0 || filters.searchTerm)) {
+      const filterDescriptions = [];
+      if (filters.selectedCities.length > 0) filterDescriptions.push(`${filters.selectedCities.length} cities`);
+      if (filters.selectedStates.length > 0) filterDescriptions.push(`${filters.selectedStates.length} states`);
+      if (filters.selectedStatuses.length > 0) filterDescriptions.push(`${filters.selectedStatuses.length} statuses`);
+      if (filters.searchTerm) filterDescriptions.push('search term');
+      
+      const message = `Found ${paginationInfo.total} labs matching your filter criteria (${filterDescriptions.join(', ')}). All pages will show only these filtered results.`;
+      setFilterPopupMessage(message);
+      setShowFilterPopup(true);
+    }
+  }, [paginationInfo.total, filters]);
+
   // Fetch approved WhatsApp templates
   const { data: templates = [] } = useQuery({
     queryKey: ['/api/whatsapp/templates'],
@@ -222,40 +235,44 @@ export default function ContactCampaigns() {
 
   // Helper functions for filter management
   const toggleCityFilter = (city: string) => {
-    setFilters(prev => ({
-      ...prev,
-      selectedCities: prev.selectedCities.includes(city)
-        ? prev.selectedCities.filter(c => c !== city)
-        : [...prev.selectedCities, city]
-    }));
+    const newFilters = {
+      ...filters,
+      selectedCities: filters.selectedCities.includes(city)
+        ? filters.selectedCities.filter(c => c !== city)
+        : [...filters.selectedCities, city]
+    };
+    handleFilterChange(newFilters);
   };
 
   const toggleStateFilter = (state: string) => {
-    setFilters(prev => ({
-      ...prev,
-      selectedStates: prev.selectedStates.includes(state)
-        ? prev.selectedStates.filter(s => s !== state)
-        : [...prev.selectedStates, state]
-    }));
+    const newFilters = {
+      ...filters,
+      selectedStates: filters.selectedStates.includes(state)
+        ? filters.selectedStates.filter(s => s !== state)
+        : [...filters.selectedStates, state]
+    };
+    handleFilterChange(newFilters);
   };
 
   const toggleStatusFilter = (status: string) => {
-    setFilters(prev => ({
-      ...prev,
-      selectedStatuses: prev.selectedStatuses.includes(status)
-        ? prev.selectedStatuses.filter(s => s !== status)
-        : [...prev.selectedStatuses, status]
-    }));
+    const newFilters = {
+      ...filters,
+      selectedStatuses: filters.selectedStatuses.includes(status)
+        ? filters.selectedStatuses.filter(s => s !== status)
+        : [...filters.selectedStatuses, status]
+    };
+    handleFilterChange(newFilters);
   };
 
   const clearAllFilters = () => {
-    setFilters({
+    const newFilters = {
       selectedCities: [],
       selectedStates: [],
       selectedStatuses: [],
       searchTerm: '',
       engagementMin: 0
-    });
+    };
+    handleFilterChange(newFilters);
     setSelectedContacts([]);
   };
 
@@ -599,7 +616,10 @@ export default function ContactCampaigns() {
                     id="search"
                     placeholder="Search by name, phone, email..."
                     value={filters.searchTerm}
-                    onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+                    onChange={(e) => {
+                      const newFilters = { ...filters, searchTerm: e.target.value };
+                      handleFilterChange(newFilters);
+                    }}
                   />
                 </div>
                 
@@ -611,7 +631,10 @@ export default function ContactCampaigns() {
                     min="0"
                     placeholder="0"
                     value={filters.engagementMin || ''}
-                    onChange={(e) => setFilters(prev => ({ ...prev, engagementMin: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => {
+                      const newFilters = { ...filters, engagementMin: parseInt(e.target.value) || 0 };
+                      handleFilterChange(newFilters);
+                    }}
                   />
                 </div>
 
@@ -1495,6 +1518,23 @@ export default function ContactCampaigns() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Filter Results Popup */}
+      <AlertDialog open={showFilterPopup} onOpenChange={setShowFilterPopup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Filter Results</AlertDialogTitle>
+            <AlertDialogDescription>
+              {filterPopupMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowFilterPopup(false)}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </div>
   );
