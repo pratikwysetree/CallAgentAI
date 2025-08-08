@@ -317,6 +317,167 @@ export class WhatsAppService {
     // For now, we'll skip signature verification
     return true;
   }
+
+  // Diagnostic function to check why messages aren't being received
+  async diagnosePossibleDeliveryIssues(phoneNumber?: string): Promise<any> {
+    try {
+      const diagnostics: any = {
+        timestamp: new Date().toISOString(),
+        businessAccount: {},
+        phoneNumberValidation: {},
+        recentMessageStats: {},
+        recommendations: []
+      };
+
+      // 1. Check business account quality rating
+      try {
+        const wabaId = await this.getWABAId();
+        const accountUrl = `${this.baseUrl}/${wabaId}?fields=account_review_status,business_verification_status,messaging_limit_tier`;
+        const accountResponse = await fetch(accountUrl, {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (accountResponse.ok) {
+          diagnostics.businessAccount = await accountResponse.json();
+          
+          if (diagnostics.businessAccount.account_review_status !== 'APPROVED') {
+            diagnostics.recommendations.push('❌ Business account not approved - this can cause delivery issues');
+          }
+          if (diagnostics.businessAccount.business_verification_status !== 'verified') {
+            diagnostics.recommendations.push('⚠️ Business not verified - consider completing business verification');
+          }
+        }
+      } catch (error) {
+        diagnostics.businessAccount.error = 'Could not fetch business account info';
+      }
+
+      // 2. Phone number validation
+      if (phoneNumber) {
+        const cleaned = this.cleanPhoneNumber(phoneNumber);
+        diagnostics.phoneNumberValidation = {
+          original: phoneNumber,
+          cleaned: cleaned,
+          isValid: this.validatePhoneNumber(cleaned),
+          length: cleaned.length,
+          startsWithCountryCode: cleaned.length >= 10
+        };
+
+        if (!this.validatePhoneNumber(cleaned)) {
+          diagnostics.recommendations.push(`❌ Phone number ${phoneNumber} may be invalid - ensure it includes country code`);
+        }
+      }
+
+      // 3. Check recent message patterns from database
+      try {
+        const recentMessages = await storage.getRecentWhatsAppMessages(50);
+        const last24Hours = recentMessages.filter(msg => {
+          const msgTime = new Date(msg.createdAt);
+          const now = new Date();
+          return (now.getTime() - msgTime.getTime()) < 24 * 60 * 60 * 1000;
+        });
+
+        const outboundMessages = last24Hours.filter(msg => msg.direction === 'outbound');
+        const deliveredMessages = outboundMessages.filter(msg => msg.status === 'delivered');
+        const failedMessages = outboundMessages.filter(msg => msg.status === 'failed');
+        const sentMessages = outboundMessages.filter(msg => msg.status === 'sent');
+
+        diagnostics.recentMessageStats = {
+          totalOutbound: outboundMessages.length,
+          delivered: deliveredMessages.length,
+          failed: failedMessages.length,
+          sent: sentMessages.length,
+          deliveryRate: outboundMessages.length > 0 ? (deliveredMessages.length / outboundMessages.length * 100).toFixed(1) + '%' : '0%'
+        };
+
+        // Analyze patterns
+        if (failedMessages.length > deliveredMessages.length) {
+          diagnostics.recommendations.push('❌ High failure rate detected - check phone number formats and templates');
+        }
+        if (outboundMessages.length > 50) {
+          diagnostics.recommendations.push('⚠️ High message volume in 24h - you may be hitting rate limits');
+        }
+        if (sentMessages.length > 10) {
+          diagnostics.recommendations.push('⚠️ Many messages stuck in "sent" status - possible delivery delays');
+        }
+      } catch (error) {
+        diagnostics.recentMessageStats.error = 'Could not analyze recent messages';
+      }
+
+      // 4. General recommendations
+      diagnostics.recommendations.push(
+        '✅ Use approved templates for new conversations (24-hour rule)',
+        '✅ Ensure phone numbers include country codes',
+        '✅ Monitor message quality rating in Meta Business Manager',
+        '✅ Avoid sending identical messages to many recipients quickly'
+      );
+
+      return diagnostics;
+    } catch (error) {
+      console.error('❌ Error running WhatsApp diagnostics:', error);
+      return {
+        error: 'Failed to run diagnostics',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Validate phone number format
+  private validatePhoneNumber(phoneNumber: string): boolean {
+    // Basic validation - should be 10-15 digits
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    return cleaned.length >= 10 && cleaned.length <= 15 && /^\d+$/.test(cleaned);
+  }
+
+  // Enhanced message sending with better error handling
+  async sendMessageWithDiagnostics(message: WhatsAppMessage): Promise<any> {
+    try {
+      const result = await this.sendMessage(message);
+      console.log('✅ WhatsApp message sent successfully:', result);
+      return { success: true, ...result };
+    } catch (error) {
+      console.error('❌ WhatsApp message failed:', error);
+      
+      // Try to extract meaningful error information
+      let errorDetails = 'Unknown error';
+      if (error instanceof Error) {
+        try {
+          const errorObj = JSON.parse(error.message.replace('WhatsApp API error: ', ''));
+          errorDetails = errorObj.error?.message || error.message;
+        } catch {
+          errorDetails = error.message;
+        }
+      }
+      
+      return { 
+        success: false, 
+        error: errorDetails,
+        recommendations: await this.getErrorRecommendations(errorDetails)
+      };
+    }
+  }
+
+  // Get recommendations based on error message
+  private async getErrorRecommendations(errorMessage: string): Promise<string[]> {
+    const recommendations: string[] = [];
+    
+    if (errorMessage.includes('invalid phone number')) {
+      recommendations.push('Ensure phone number includes country code (e.g., +1234567890)');
+    }
+    if (errorMessage.includes('template')) {
+      recommendations.push('Use approved templates for new conversations');
+    }
+    if (errorMessage.includes('rate limit')) {
+      recommendations.push('Reduce message sending frequency - you may be hitting rate limits');
+    }
+    if (errorMessage.includes('quality')) {
+      recommendations.push('Check your business account quality rating in Meta Business Manager');
+    }
+    
+    return recommendations;
+  }
 }
 
 export const whatsappService = new WhatsAppService();
