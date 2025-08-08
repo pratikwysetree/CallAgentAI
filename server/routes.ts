@@ -743,6 +743,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📋 Channel:', channel);
       console.log('📋 WhatsApp Template:', whatsappTemplate);
       console.log('📋 Campaign Template ID:', campaignTemplateId);
+      if (req.body.delaySeconds) {
+        console.log('⏱️ Delay between messages:', req.body.delaySeconds, 'seconds');
+      }
       
       const campaignId = `campaign_${Date.now()}`;
       
@@ -795,8 +798,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let processedCount = 0;
       const results = [];
 
-      // Process each contact
-      for (const contactId of contactIds) {
+      // Process each contact with delays for WhatsApp campaigns
+      for (let i = 0; i < contactIds.length; i++) {
+        const contactId = contactIds[i];
         try {
           // Get contact details
           const contact = await storage.getContact(contactId);
@@ -885,6 +889,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 console.log(`✅ Meta Business API template message sent to ${contact.phone}: ${whatsappResponse.messages?.[0]?.id}`);
                 results.push({ contactId, status: 'whatsapp_sent', messageId: message.id, templateUsed: whatsappTemplate });
+
+                // Apply random delay for WhatsApp-only campaigns
+                if (channel === 'WHATSAPP' && req.body.delaySeconds && i < contactIds.length - 1) {
+                  const baseDelay = req.body.delaySeconds * 1000; // Convert to milliseconds
+                  const randomMultiplier = 0.5 + Math.random(); // Random between 0.5 and 1.5
+                  const actualDelay = Math.round(baseDelay * randomMultiplier);
+                  
+                  console.log(`⏳ Applying random delay: ${actualDelay}ms (${randomMultiplier.toFixed(2)}x base delay)`);
+                  await new Promise(resolve => setTimeout(resolve, actualDelay));
+                }
 
               } catch (whatsappError) {
                 console.error(`❌ Meta Business API error for ${contact.phone}:`, whatsappError);

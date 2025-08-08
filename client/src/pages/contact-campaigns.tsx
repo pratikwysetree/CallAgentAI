@@ -78,7 +78,8 @@ export default function ContactCampaigns() {
     whatsappTemplate: '',
     followUpDays: 7,
     campaignTemplate: '',
-    variableMapping: {} as Record<string, string>
+    variableMapping: {} as Record<string, string>,
+    delaySeconds: 10
   });
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContact, setNewContact] = useState({
@@ -361,7 +362,8 @@ export default function ContactCampaigns() {
       channel: campaignConfig.channel,
       whatsappTemplate: campaignConfig.whatsappTemplate,
       followUpDays: campaignConfig.followUpDays,
-      campaignTemplateId: campaignConfig.campaignTemplate
+      campaignTemplateId: campaignConfig.campaignTemplate,
+      delaySeconds: campaignConfig.delaySeconds
     });
   };
 
@@ -1170,7 +1172,7 @@ export default function ContactCampaigns() {
                 )}
 
                 {(campaignConfig.channel === 'WHATSAPP' || campaignConfig.channel === 'BOTH') && (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label>WhatsApp Template</Label>
                       <Button
@@ -1313,6 +1315,22 @@ export default function ContactCampaigns() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {campaignConfig.channel === 'WHATSAPP' && (
+                <div className="space-y-2">
+                  <Label>Delay Between Messages (seconds)</Label>
+                  <Input
+                    type="number"
+                    value={campaignConfig.delaySeconds}
+                    onChange={(e) => setCampaignConfig(prev => ({ ...prev, delaySeconds: parseInt(e.target.value) || 10 }))}
+                    min={1}
+                    max={300}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Random delay of 0.5x to 1.5x this value will be applied between messages (1-300 seconds)
+                  </p>
                 </div>
               )}
 
