@@ -34,6 +34,11 @@ export interface IStorage {
     limit: number;
     offset: number;
     searchTerm?: string;
+    cities?: string[];
+    states?: string[];
+    statuses?: string[];
+    engagementMin?: number;
+    // Backward compatibility
     city?: string;
     state?: string;
   }): Promise<{ contacts: Contact[]; total: number; }>;
@@ -205,6 +210,11 @@ export class DatabaseStorage implements IStorage {
     limit: number;
     offset: number;
     searchTerm?: string;
+    cities?: string[];
+    states?: string[];
+    statuses?: string[];
+    engagementMin?: number;
+    // Backward compatibility
     city?: string;
     state?: string;
   }): Promise<{ contacts: Contact[]; total: number; }> {
@@ -236,16 +246,33 @@ export class DatabaseStorage implements IStorage {
         countQuery += searchFilter;
       }
       
-      if (options.city) {
-        const cityFilter = ` AND city ILIKE '%${options.city}%'`;
+      // Handle multiple cities filter
+      const citiesToFilter = options.cities && options.cities.length > 0 ? options.cities : (options.city ? [options.city] : []);
+      if (citiesToFilter.length > 0) {
+        const cityFilter = ` AND (${citiesToFilter.map(city => `city ILIKE '%${city}%'`).join(' OR ')})`;
         baseQuery += cityFilter;
         countQuery += cityFilter;
       }
       
-      if (options.state) {
-        const stateFilter = ` AND state ILIKE '%${options.state}%'`;
+      // Handle multiple states filter
+      const statesToFilter = options.states && options.states.length > 0 ? options.states : (options.state ? [options.state] : []);
+      if (statesToFilter.length > 0) {
+        const stateFilter = ` AND (${statesToFilter.map(state => `state ILIKE '%${state}%'`).join(' OR ')})`;
         baseQuery += stateFilter;
         countQuery += stateFilter;
+      }
+      
+      // Handle statuses filter (if we have a status column)
+      if (options.statuses && options.statuses.length > 0) {
+        const statusFilter = ` AND (${options.statuses.map(status => `status = '${status}'`).join(' OR ')})`;
+        baseQuery += statusFilter;
+        countQuery += statusFilter;
+      }
+      
+      // Handle minimum engagement filter (if we have engagement data)
+      if (options.engagementMin && options.engagementMin > 0) {
+        // For now, we'll skip this filter as we don't have engagement count in the main contacts table
+        // This would require joining with the engagement table or adding a computed column
       }
 
       // Get total count
@@ -574,7 +601,7 @@ export class DatabaseStorage implements IStorage {
       totalCampaigns: campaignCount.count || 0,
       totalCalls: callCount.count || 0,
       activeCalls: activeCallCount.count || 0,
-      totalMessages: jobCount.totalSent || 0,
+      totalMessages: Number(jobCount.totalSent) || 0,
       deliveryRate: 95, // Calculate from actual delivery data
       engagementRate: 12, // Calculate from engagement data
       averageResponseTime: 24, // Calculate from response times

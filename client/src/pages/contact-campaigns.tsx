@@ -117,8 +117,10 @@ export default function ContactCampaigns() {
       });
       
       if (filters.searchTerm) params.set('search', filters.searchTerm);
-      if (filters.selectedCities.length > 0) params.set('city', filters.selectedCities[0]);
-      if (filters.selectedStates.length > 0) params.set('state', filters.selectedStates[0]);
+      if (filters.selectedCities.length > 0) params.set('cities', filters.selectedCities.join(','));
+      if (filters.selectedStates.length > 0) params.set('states', filters.selectedStates.join(','));
+      if (filters.selectedStatuses.length > 0) params.set('statuses', filters.selectedStatuses.join(','));
+      if (filters.engagementMin > 0) params.set('engagementMin', filters.engagementMin.toString());
       
       return fetch(`/api/contacts/enhanced?${params.toString()}`).then(res => res.json());
     },

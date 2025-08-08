@@ -212,18 +212,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse filter parameters
       const searchTerm = req.query.search as string || '';
-      const city = req.query.city as string || '';
-      const state = req.query.state as string || '';
+      const cities = req.query.cities ? (req.query.cities as string).split(',').filter(c => c.trim()) : [];
+      const states = req.query.states ? (req.query.states as string).split(',').filter(s => s.trim()) : [];
+      const statuses = req.query.statuses ? (req.query.statuses as string).split(',').filter(s => s.trim()) : [];
+      const engagementMin = parseInt(req.query.engagementMin as string) || 0;
+      
+      // Backward compatibility for single city/state filters
+      const singleCity = req.query.city as string || '';
+      const singleState = req.query.state as string || '';
+      if (singleCity && !cities.length) cities.push(singleCity);
+      if (singleState && !states.length) states.push(singleState);
       
       console.log(`📋 Pagination: page=${page}, limit=${limit}, offset=${offset}`);
-      console.log(`🔍 Filters: search="${searchTerm}", city="${city}", state="${state}"`);
+      console.log(`🔍 Filters: search="${searchTerm}", cities=[${cities.join(', ')}], states=[${states.join(', ')}], statuses=[${statuses.join(', ')}], engagementMin=${engagementMin}`);
       
       const contactsResult = await storage.getContactsPaginated({
         limit,
         offset,
         searchTerm,
-        city,
-        state
+        cities,
+        states,
+        statuses,
+        engagementMin
       });
       
       const endTime = Date.now();
