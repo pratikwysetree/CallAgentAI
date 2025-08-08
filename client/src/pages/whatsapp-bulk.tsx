@@ -121,10 +121,10 @@ export default function WhatsAppBulk() {
   });
 
   // Send bulk messages mutation
-  const sendBulkMutation = useMutation<BulkMessageJob, Error, any>({
+  const sendBulkMutation = useMutation<any, Error, any>({
     mutationFn: async (bulkData: any) => {
       const response = await apiRequest('/api/whatsapp/bulk/send', 'POST', bulkData);
-      return response as BulkMessageJob;
+      return response;
     },
     onSuccess: (job: BulkMessageJob) => {
       toast({ 

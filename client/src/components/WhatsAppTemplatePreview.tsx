@@ -126,7 +126,7 @@ export function WhatsAppTemplatePreview({ template }: WhatsAppTemplatePreviewPro
       <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-3xl border border-green-200 dark:border-green-800">
         <div className="bg-white dark:bg-gray-700 rounded-2xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-600 max-w-xs">
           {components.length > 0 ? (
-            components.map((component, index) => renderComponent(component, index))
+            components.map((component: any, index: number) => renderComponent(component, index))
           ) : (
             <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
               No template components available

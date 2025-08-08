@@ -412,7 +412,7 @@ export class WhatsAppService {
 
       // 3. Check recent message patterns from database
       try {
-        const recentMessages = await storage.getRecentWhatsAppMessages(50);
+        const recentMessages = await storage.getWhatsAppMessages();
         const last24Hours = recentMessages.filter((msg) => {
           const msgTime = new Date(msg.createdAt);
           const now = new Date();

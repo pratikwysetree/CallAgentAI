@@ -650,7 +650,7 @@ export default function ContactCampaigns() {
                         <CommandList>
                           <CommandEmpty>No cities found.</CommandEmpty>
                           <CommandGroup>
-                            {uniqueCities.map(city => (
+                            {uniqueCities.map((city: string) => (
                               <CommandItem key={city} onSelect={() => toggleCityFilter(city)}>
                                 <Checkbox
                                   checked={filters.selectedCities.includes(city)}
@@ -685,7 +685,7 @@ export default function ContactCampaigns() {
                         <CommandList>
                           <CommandEmpty>No states found.</CommandEmpty>
                           <CommandGroup>
-                            {uniqueStates.map(state => (
+                            {uniqueStates.map((state: string) => (
                               <CommandItem key={state} onSelect={() => toggleStateFilter(state)}>
                                 <Checkbox
                                   checked={filters.selectedStates.includes(state)}
@@ -720,7 +720,7 @@ export default function ContactCampaigns() {
                         <CommandList>
                           <CommandEmpty>No statuses found.</CommandEmpty>
                           <CommandGroup>
-                            {uniqueStatuses.map(status => (
+                            {uniqueStatuses.map((status: string) => (
                               <CommandItem key={status} onSelect={() => toggleStatusFilter(status)}>
                                 <Checkbox
                                   checked={filters.selectedStatuses.includes(status)}
