@@ -98,6 +98,10 @@ export default function ContactCampaigns() {
     searchTerm: '',
     engagementMin: 0
   });
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 100;
   const [showCityFilter, setShowCityFilter] = useState(false);
   const [showStateFilter, setShowStateFilter] = useState(false);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
@@ -138,7 +142,8 @@ export default function ContactCampaigns() {
 
   // Filter contacts based on selected criteria
   const filteredContacts = useMemo(() => {
-    return contacts?.filter((contact: any) => {
+    if (!contacts) return [];
+    return contacts.filter((contact: any) => {
       // Search term filter
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();
@@ -180,8 +185,26 @@ export default function ContactCampaigns() {
       }
 
       return true;
-    }) || [];
+    });
   }, [contacts, filters]);
+
+  // Paginated contacts (apply pagination after filtering)
+  const paginatedContacts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredContacts.slice(startIndex, endIndex);
+  }, [filteredContacts, currentPage, pageSize]);
+
+  // Pagination info
+  const totalPages = Math.ceil(filteredContacts.length / pageSize);
+  const hasNextPage = currentPage < totalPages;
+  const hasPrevPage = currentPage > 1;
+
+  // Reset to first page when filters change
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
 
   // Fetch approved WhatsApp templates
   const { data: templates = [] } = useQuery({
@@ -623,7 +646,7 @@ export default function ContactCampaigns() {
                     disabled={filteredContacts.length === 0}
                   >
                     <Users className="h-4 w-4 mr-2" />
-                    Select All Filtered ({filteredContacts.length})
+                    Select All on Page ({paginatedContacts.length})
                   </Button>
                 </div>
 
@@ -972,7 +995,7 @@ export default function ContactCampaigns() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Contact Database ({filteredContacts.length} of {(contacts as any[])?.length || 0} contacts)</CardTitle>
+                  <CardTitle>Contact Database (Showing {paginatedContacts.length} of {filteredContacts.length} filtered contacts, Page {currentPage} of {totalPages})</CardTitle>
                   <CardDescription>
                     Select contacts for campaigns. Use filters above to target specific locations or criteria.
                   </CardDescription>
@@ -991,13 +1014,13 @@ export default function ContactCampaigns() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      console.log('Select All Filtered clicked - selecting all contacts');
-                      setSelectedContacts(filteredContacts.map((contact: any) => contact.id));
+                      console.log('Select All on Page clicked - selecting page contacts');
+                      setSelectedContacts(paginatedContacts.map((contact: any) => contact.id));
                     }}
                     disabled={filteredContacts.length === 0}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Select All Filtered ({filteredContacts.length})
+                    Select All on Page ({paginatedContacts.length})
                   </Button>
                 </div>
               </div>
@@ -1024,6 +1047,7 @@ export default function ContactCampaigns() {
                   )}
                 </div>
               ) : (
+                <>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1039,7 +1063,7 @@ export default function ContactCampaigns() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredContacts.map((contact: any) => (
+                    {paginatedContacts.map((contact: any) => (
                       <TableRow key={contact.id}>
                         <TableCell>
                           <input
@@ -1084,6 +1108,37 @@ export default function ContactCampaigns() {
                     ))}
                   </TableBody>
                 </Table>
+                
+                {/* Pagination Controls */}
+                {filteredContacts.length > pageSize && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t">
+                    <div className="flex items-center text-sm text-gray-500">
+                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredContacts.length)} of {filteredContacts.length} filtered contacts
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={!hasPrevPage}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={!hasNextPage}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                </>
               )}
             </CardContent>
           </Card>
