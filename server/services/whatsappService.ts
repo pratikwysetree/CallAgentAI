@@ -176,7 +176,7 @@ export class WhatsAppService {
       template: {
         name: templateName,
         language: {
-          code: languageCode,
+          code: "en",
         },
       },
     };
