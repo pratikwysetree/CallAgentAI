@@ -43,6 +43,13 @@ export default function CampaignDashboard() {
     select: (data: any) => data || []
   });
 
+  // Get all campaigns data
+  const { data: allCampaignsData, isLoading: isLoadingAllCampaigns } = useQuery({
+    queryKey: ['/api/campaigns/all', 1],
+    queryFn: () => fetch('/api/campaigns/all?page=1&limit=20').then(res => res.json()),
+    select: (data: any) => data || { campaigns: [], pagination: {} }
+  });
+
   // Filter campaigns based on actual data only
   const todaysCampaigns = (campaigns || []).filter((campaign: any) => 
     campaign.contacts && campaign.contacts.some((contact: any) => 
@@ -213,8 +220,9 @@ export default function CampaignDashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="today">Today's Activity</TabsTrigger>
+          <TabsTrigger value="pastcampaigns">Past Campaigns</TabsTrigger>
           <TabsTrigger value="campaigns">Active Campaigns</TabsTrigger>
           <TabsTrigger value="followups">Follow-ups</TabsTrigger>
         </TabsList>
@@ -312,6 +320,104 @@ export default function CampaignDashboard() {
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pastcampaigns" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign History</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                All your past campaigns and their performance metrics
+              </p>
+            </CardHeader>
+            <CardContent>
+              {isLoadingAllCampaigns ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Loading campaign history...</div>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Campaign</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Channel</TableHead>
+                      <TableHead>Contacts</TableHead>
+                      <TableHead>Completed</TableHead>
+                      <TableHead>Success Rate</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allCampaignsData?.campaigns?.length > 0 ? (
+                      allCampaignsData.campaigns.map((campaign: any) => (
+                        <TableRow key={campaign.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{campaign.name}</div>
+                              {campaign.description && (
+                                <div className="text-xs text-gray-500 max-w-xs truncate">
+                                  {campaign.description}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{campaign.agentName}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              campaign.channel === 'VOICE' ? 'bg-blue-50 text-blue-700' :
+                              campaign.channel === 'WHATSAPP' ? 'bg-green-50 text-green-700' :
+                              'bg-purple-50 text-purple-700'
+                            }>
+                              {campaign.channel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm font-medium">{campaign.totalContacts}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{campaign.completedContacts}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium">{campaign.successRate}%</div>
+                              <Progress 
+                                value={campaign.successRate} 
+                                className="w-16"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={
+                              campaign.status === 'active' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                            }>
+                              {campaign.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-gray-500">
+                              {campaign.createdAt ? format(new Date(campaign.createdAt), 'MMM dd, yyyy') : 'N/A'}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="text-gray-500">
+                            No campaigns found. Create your first campaign to get started.
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

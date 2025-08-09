@@ -964,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Real data only - Campaign Dashboard API
+  // Real data only - Campaign Dashboard API (for today's activity)
   app.get("/api/campaigns/dashboard", async (req, res) => {
     try {
       const { date } = req.query;
@@ -1033,6 +1033,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching campaign dashboard data:", error);
       res.status(500).json({ error: "Failed to fetch dashboard data" });
+    }
+  });
+
+  // All Campaigns API - Shows real campaign history
+  app.get("/api/campaigns/all", async (req, res) => {
+    try {
+      const { page = 1, limit = 10 } = req.query;
+      const offset = (Number(page) - 1) * Number(limit);
+
+      // Get all campaigns from database with their statistics
+      const allCampaigns = await db
+        .select()
+        .from(campaigns)
+        .orderBy(desc(campaigns.createdAt))
+        .limit(Number(limit))
+        .offset(offset);
+
+      // Get campaign statistics by counting related calls
+      const enrichedCampaigns = await Promise.all(
+        allCampaigns.map(async (campaign) => {
+          // Get call statistics for this campaign
+          const callStats = await db
+            .select({
+              totalCalls: sql<number>`count(*)`,
+              completedCalls: sql<number>`count(case when status = 'completed' then 1 end)`,
+              avgDuration: sql<number>`avg(duration)`,
+              avgSuccessScore: sql<number>`avg(success_score)`
+            })
+            .from(calls)
+            .where(eq(calls.campaignId, campaign.id));
+
+          const stats = callStats[0] || { 
+            totalCalls: 0, 
+            completedCalls: 0, 
+            avgDuration: 0, 
+            avgSuccessScore: 0 
+          };
+
+          // Get WhatsApp messages sent for this campaign
+          const whatsappCount = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(whatsappMessages)
+            .where(eq(whatsappMessages.campaignId, campaign.id));
+
+          const whatsappSent = whatsappCount[0]?.count || 0;
+
+          return {
+            id: campaign.id,
+            name: campaign.name,
+            description: campaign.description,
+            agentName: campaign.agentName,
+            isActive: campaign.isActive,
+            createdAt: campaign.createdAt,
+            totalContacts: Number(stats.totalCalls) + Number(whatsappSent),
+            completedContacts: Number(stats.completedCalls),
+            whatsappSent: Number(whatsappSent),
+            avgDuration: stats.avgDuration ? Math.round(Number(stats.avgDuration)) : 0,
+            successRate: stats.avgSuccessScore ? Math.round(Number(stats.avgSuccessScore)) : 0,
+            status: campaign.isActive ? "active" : "inactive",
+            channel: Number(whatsappSent) > 0 ? (Number(stats.totalCalls) > 0 ? "BOTH" : "WHATSAPP") : "VOICE"
+          };
+        })
+      );
+
+      // Get total count for pagination
+      const totalResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(campaigns);
+      const total = totalResult[0]?.count || 0;
+
+      console.log(`📊 All Campaigns API: ${enrichedCampaigns.length} campaigns, page ${page}/${Math.ceil(Number(total) / Number(limit))}`);
+      
+      res.json({
+        campaigns: enrichedCampaigns,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: Number(total),
+          totalPages: Math.ceil(Number(total) / Number(limit))
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching all campaigns:", error);
+      res.status(500).json({ error: "Failed to fetch campaigns" });
     }
   });
 
