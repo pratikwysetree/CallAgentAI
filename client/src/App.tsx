@@ -3,6 +3,7 @@ import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import Sidebar from "@/components/sidebar";
 import { ColorPaletteSwitcher } from "@/components/ColorPaletteSwitcher";
 import { MessageSquare, Settings as SettingsIcon, Users, BarChart3, Phone, PhoneCall, Megaphone, Send, MessageCircle, Home } from "lucide-react";
 import "@/styles/palette-vars.css";
@@ -51,6 +52,12 @@ function Navigation({ children }: { children: React.ReactNode }) {
       href: "/campaign-dashboard",
       icon: Home,
       current: location === "/campaign-dashboard",
+    },
+    {
+      name: "Settings",
+      href: "/settings",
+      icon: SettingsIcon,
+      current: location === "/settings",
     },
     {
       name: "Settings",
@@ -120,6 +127,19 @@ function Navigation({ children }: { children: React.ReactNode }) {
               WhatsApp Chat
             </span>
           </Link>
+
+          <Link href="/whatsapp-chats">
+            <span
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/whatsapp-chats"
+                  ? "palette-primary text-white"
+                  : "palette-text-secondary hover:palette-text hover:palette-surface"
+              }`}
+            >
+              <MessageCircle className="mr-3 h-5 w-5" />
+              WhatsApp Chat
+            </span>
+          </Link>
         </nav>
         
         {/* Color Palette Switcher at bottom */}
@@ -143,22 +163,27 @@ function Navigation({ children }: { children: React.ReactNode }) {
 
 function Router() {
   return (
-    <Navigation>
-      <Switch>
-        <Route path="/" component={ContactCampaigns} />
-        <Route path="/campaign-dashboard" component={CampaignDashboard} />
-        <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
-        <Route path="/live-calls" component={LiveCallsPage} />
-        <Route path="/calls-analytics" component={CallsAnalytics} />
-        <Route path="/campaign-manager" component={CampaignManager} />
-        <Route path="/contact-campaigns" component={ContactCampaigns} />
-        <Route path="/whatsapp-chats" component={WhatsAppChats} />
-        <Route path="/whatsapp-messaging" component={WhatsAppMessaging} />
-        <Route path="/settings" component={SettingsPage} />
-        <Route path="/enhanced-settings" component={EnhancedSettings} />
-        <Route component={NotFound} />
-      </Switch>
-    </Navigation>
+    <div className="flex h-screen palette-background">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-y-auto">
+          <Switch>
+            <Route path="/" component={ContactCampaigns} />
+            <Route path="/campaign-dashboard" component={CampaignDashboard} />
+            <Route path="/whatsapp-bulk" component={WhatsAppBulk} />
+            <Route path="/live-calls" component={LiveCallsPage} />
+            <Route path="/calls-analytics" component={CallsAnalytics} />
+            <Route path="/campaign-manager" component={CampaignManager} />
+            <Route path="/contact-campaigns" component={ContactCampaigns} />
+            <Route path="/whatsapp-chats" component={WhatsAppChats} />
+            <Route path="/whatsapp-messaging" component={WhatsAppMessaging} />
+            <Route path="/settings" component={SettingsPage} />
+            <Route path="/enhanced-settings" component={EnhancedSettings} />
+            <Route component={NotFound} />
+          </Switch>
+        </main>
+      </div>
+    </div>
   );
 }
 

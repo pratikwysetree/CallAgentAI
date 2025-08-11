@@ -10,7 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { FileUpload } from "@/components/ui/file-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Settings, Save, Upload, Mic, MessageSquare, Bot, Globe, Volume2, FileAudio, Languages } from "lucide-react";
-import Sidebar from "@/components/sidebar";
+// ...existing code...
 import { useMutation } from "@tanstack/react-query";
 
 // Removed IndicTTSConfig - using only ElevenLabs
@@ -192,8 +192,6 @@ export default function EnhancedSettings() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar />
-      
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">

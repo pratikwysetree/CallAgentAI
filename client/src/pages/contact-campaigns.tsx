@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import Sidebar from '@/components/sidebar';
+// ...existing code...
 import { 
   Upload, 
   Download, 
@@ -496,7 +496,6 @@ export default function ContactCampaigns() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
       <div className="flex-1 p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -1132,7 +1131,7 @@ export default function ContactCampaigns() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="default">Use Default Template</SelectItem>
-                        {campaigns.map((campaign: any) => (
+                        {(campaigns as any[]).map((campaign) => (
                           <SelectItem key={campaign.id} value={campaign.id}>
                             <div className="flex flex-col">
                               <span className="font-medium">{campaign.name}</span>
@@ -1273,7 +1272,7 @@ export default function ContactCampaigns() {
                       <div className="bg-green-50 p-3 rounded border">
                         <div className="text-sm">
                           {(selectedTemplate.content || 'Hello {{name}}, welcome to LabsCheck! We are excited to partner with your lab {{company}} in {{city}}. Please reply YES to get started with our zero-commission platform.')
-                            .replace(/\{\{(\w+)\}\}/g, (match, variable) => {
+                            .replace(/\{\{(\w+)\}\}/g, (match: string, variable: string) => {
                               const mapping = campaignConfig.variableMapping[variable];
                               const sampleData: Record<string, string> = {
                                 name: 'Dr. Sharma',
@@ -1314,7 +1313,7 @@ export default function ContactCampaigns() {
                   <li>• Selected contacts: {selectedContacts.length}</li>
                   <li>• Channel: {campaignConfig.channel}</li>
                   {campaignConfig.campaignTemplate && campaignConfig.campaignTemplate !== 'default' && (
-                    <li>• Campaign template: {campaigns.find((c: any) => c.id === campaignConfig.campaignTemplate)?.name || 'Selected template'}</li>
+                    <li>• Campaign template: {(campaigns as any[]).find((c) => c.id === campaignConfig.campaignTemplate)?.name || 'Selected template'}</li>
                   )}
                   {campaignConfig.campaignTemplate === 'default' && (
                     <li>• Campaign template: Default Template</li>
