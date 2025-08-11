@@ -32,11 +32,36 @@ A WebSocket server facilitates bi-directional communication, broadcasting live c
 ### Development & Build
 The project emphasizes type safety with full TypeScript coverage. Development benefits from hot reloading and organized imports. A monorepo structure ensures shared schema and types between client and server.
 
+## Production Deployment
+
+### Deployment Configuration
+The application is production-ready with comprehensive deployment configuration:
+- **Render Blueprint**: `render.yaml` for automated deployment
+- **Docker Support**: Multi-stage production Dockerfile
+- **Environment Configuration**: Complete environment variable management
+- **Health Monitoring**: `/api/health` endpoint with service status checks
+- **Custom Domain Support**: Ready for production domain configuration
+
+### MVC Architecture Implementation
+Restructured for production maintainability:
+- **Controllers**: `server/controllers/` - Request handling and response formatting
+- **Services**: `server/services/` - Business logic and external API integration
+- **Models**: Drizzle ORM schema definitions in `shared/schema.ts`
+- **Configuration**: Environment and database configuration in `server/config/`
+
+### Deployment Files
+- `DEPLOYMENT_GUIDE.md`: Complete production deployment instructions
+- `RENDER_DEPLOYMENT.md`: Render-specific deployment guide
+- `.env.example`: Environment variables template
+- `render.yaml`: Render Blueprint configuration
+- `Dockerfile`: Production container configuration
+
 ## External Dependencies
 
 ### Core Infrastructure
 - **Neon Database**: Serverless PostgreSQL hosting.
-- **Replit Hosting**: Development and deployment environment.
+- **Render**: Production hosting platform (primary deployment target).
+- **Replit**: Development environment.
 
 ### AI & Communication Services
 - **OpenAI API**: Used for GPT models and speech recognition (Whisper).

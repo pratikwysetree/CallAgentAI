@@ -113,6 +113,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Health check routes
+  const { HealthController } = await import('./controllers/HealthController');
+  const healthController = new HealthController();
+  
+  app.get('/api/health', healthController.healthCheck.bind(healthController));
+  app.get('/api/system-info', healthController.systemInfo.bind(healthController));
+
   // Dashboard API routes
   app.get('/api/dashboard/stats', async (req, res) => {
     try {

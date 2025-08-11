@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { env, logEnvironmentInfo, getBaseUrl } from "./config/environment";
 
 // CRITICAL: Ensure webhook routes return TwiML XML, not HTML
 // Removed seedData import - calling functionality deleted
@@ -40,11 +41,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // CRITICAL: Register ALL API routes FIRST before Vite middleware
-  const server = await registerRoutes(app);
+  try {
+    // Log environment configuration
+    logEnvironmentInfo();
+    
+    // CRITICAL: Register ALL API routes FIRST before Vite middleware
+    const server = await registerRoutes(app);
 
-  // Database seeding removed - no calling functionality needed
-  console.log('Database ready');
+    // Database seeding removed - no calling functionality needed
+    console.log('✅ Database ready');
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -69,12 +74,35 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
-    port,
+    port: env.PORT,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`🚀 Server running on port ${env.PORT}`);
+    log(`🌐 Base URL: ${getBaseUrl()}`);
+    log(`🏥 Health check: ${getBaseUrl()}/api/health`);
+    
+    if (env.NODE_ENV === 'production') {
+      log('🔐 Production mode - All services should be configured');
+    } else {
+      log('🔧 Development mode - Some services may use defaults');
+    }
   });
+  
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
 })();
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('📛 SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('📛 SIGINT received, shutting down gracefully');
+  process.exit(0);
+});

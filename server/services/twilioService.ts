@@ -1,4 +1,5 @@
 import twilio from 'twilio';
+import { getBaseUrl } from '../config/environment';
 
 export class TwilioService {
   private client: twilio.Twilio;
@@ -26,14 +27,12 @@ export class TwilioService {
         throw new Error('Twilio phone number not configured');
       }
 
-      // Create webhook URLs for handling call events - use Replit domain
-      const replitDomain = process.env.REPLIT_DOMAINS ?
-        `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` :
-        `https://${process.env.REPL_SLUG || 'app'}.${process.env.REPL_OWNER || 'user'}.repl.co`;
+      // Create webhook URLs for handling call events - prioritize custom domain
+      const baseUrl = getBaseUrl();
 
       // CRITICAL FIX: Use answer webhook to play ElevenLabs intro first
-      const answerWebhookUrl = `${replitDomain}/api/calls/webhook/answer`;
-      const statusWebhookUrl = `${replitDomain}/api/calls/webhook/status`;
+      const answerWebhookUrl = `${baseUrl}/api/calls/webhook/answer`;
+      const statusWebhookUrl = `${baseUrl}/api/calls/webhook/status`;
 
       console.log(`🔗 Using answer webhook URL: ${answerWebhookUrl}`); // Debug log
       console.log(`📊 Using status webhook URL: ${statusWebhookUrl}`); // Debug log
